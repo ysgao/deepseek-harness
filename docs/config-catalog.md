@@ -714,17 +714,29 @@ Source: [`packages/goal/goal/src/index.ts:116`](../packages/goal/goal/src/index.
 
 ## `@deepseek-ai/dsh-headless`
 
-Requires: `agentDefaultModel` · `agents` · `sessions`
+Requires: `agentDefaultModel` · `agents` · `sessions` · `authorization`
 
 ```ts config-catalog
-/** Plugin config: the task resolved from this app's injected provider service. */
+/**
+ * Plugin config, resolved from this app's injected startup service: either a
+ * one-shot task, or a credential key to authorize. `task`/`key` are each
+ * required only by their own mode — schemastery validates the flat shape;
+ * {@link apply} enforces the per-mode requirement its caller cannot violate
+ * (`headless-startup` is this config's sole writer).
+ */
 export interface Config {
-  /** The prompt text for the single run. */
-  task: string
+  /** Which startup request this run resolves. */
+  mode: 'task' | 'login'
+  /** The prompt text for the single run, in task mode. */
+  task?: string
+  /** The credential key to authorize, in login mode. */
+  key?: string
+  /** Which of the flow's methods to run, in login mode. */
+  method?: string
 }
 ```
 
-Source: [`packages/bundle/headless/src/index.ts:31`](../packages/bundle/headless/src/index.ts)
+Source: [`packages/bundle/headless/src/index.ts:43`](../packages/bundle/headless/src/index.ts)
 
 <a id="deepseek-aidsh-hooks-claude-code"></a>
 

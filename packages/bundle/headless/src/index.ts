@@ -8,11 +8,17 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { once } from 'node:events'
+import { createInterface } from 'node:readline'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type { ModelSelectionRef } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
+import type { AuthorizationInteraction } from '@deepseek-ai/dsh-authorization'
+import { AuthorizationDeclinedError } from '@deepseek-ai/dsh-authorization'
+import type { CredentialKey } from '@deepseek-ai/dsh-credentials'
+import { parseCredentialKey } from '@deepseek-ai/dsh-credentials'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
@@ -24,17 +30,32 @@ import type {} from '@deepseek-ai/dsh-cmdline'
 /** Stable Cordis plugin name. */
 export const name = 'headless-runner'
 
-/** Core services required before the one-shot turn can start. */
-export const inject = ['agentDefaultModel', 'agents', 'sessions']
+/** Core and authorization services required before either mode can start. */
+export const inject = ['agentDefaultModel', 'agents', 'sessions', 'authorization']
 
-/** Plugin config: the task resolved from this app's injected provider service. */
+/**
+ * Plugin config, resolved from this app's injected startup service: either a
+ * one-shot task, or a credential key to authorize. `task`/`key` are each
+ * required only by their own mode — schemastery validates the flat shape;
+ * {@link apply} enforces the per-mode requirement its caller cannot violate
+ * (`headless-startup` is this config's sole writer).
+ */
 export interface Config {
-  /** The prompt text for the single run. */
-  task: string
+  /** Which startup request this run resolves. */
+  mode: 'task' | 'login'
+  /** The prompt text for the single run, in task mode. */
+  task?: string
+  /** The credential key to authorize, in login mode. */
+  key?: string
+  /** Which of the flow's methods to run, in login mode. */
+  method?: string
 }
 
 export const Config: z<Config> = z.object({
-  task: z.string().required(),
+  mode: z.union(['task', 'login']).required(),
+  task: z.string(),
+  key: z.string(),
+  method: z.string(),
 })
 
 /** Outcome of one owned run interval. */
@@ -51,8 +72,14 @@ interface HeadlessIo {
   exit(code: number): void
 }
 
-/** The process streams the runner writes to; tests substitute captures. */
-export const internals: { stdout: HeadlessIo['stdout']; stderr: HeadlessIo['stderr'] } = {
+/** {@link HeadlessIo} plus the input stream login mode reads prompts from. */
+interface LoginIo extends HeadlessIo {
+  stdin: NodeJS.ReadableStream
+}
+
+/** The process streams the runner reads and writes; tests substitute captures. */
+export const internals: { stdin: LoginIo['stdin']; stdout: HeadlessIo['stdout']; stderr: HeadlessIo['stderr'] } = {
+  stdin: process.stdin,
   stdout: process.stdout,
   stderr: process.stderr,
 }
@@ -134,9 +161,79 @@ async function run(ctx: Context, task: string, io: HeadlessIo): Promise<void> {
 }
 
 /**
- * Mount the one-shot direct driver.
+ * Build the terminal half of one authorization attempt: notices print to
+ * stdout, and each prompt reads one line from stdin. An empty answer reads as
+ * the human declining, mirroring a closed browser tab; a prompt's own
+ * `signal` firing (a flow retiring the losing side of a race) is left to
+ * reject on its own, since that is not a decline.
+ * @param io - the streams to render notices to and read answers from.
+ * @returns the interaction {@link runLogin} hands to `ctx.authorization.begin()`.
+ */
+function buildTerminalInteraction(io: LoginIo): AuthorizationInteraction {
+  return {
+    notify(notice) {
+      io.stdout.write(`${notice.message}\n`)
+      if (notice.url !== undefined) io.stdout.write(`  ${notice.url}\n`)
+      if (notice.code !== undefined) io.stdout.write(`  Code: ${notice.code}\n`)
+    },
+    async prompt(prompt) {
+      // No `output` given: this module renders every line itself through
+      // `io.stdout`, so the interface never touches the real process streams
+      // when a test substitutes captures. `readline.createInterface` would
+      // otherwise default `output` to the actual `process.stdout`.
+      const question = prompt.kind === 'select'
+        ? `${prompt.message}\n${prompt.options.map((option, index) =>
+          `  ${index + 1}. ${option.label}${option.description === undefined ? '' : ` — ${option.description}`}`).join('\n')}\n> `
+        : `${prompt.message}${prompt.placeholder === undefined ? '' : ` (${prompt.placeholder})`} `
+      io.stdout.write(question)
+      const rl = createInterface({ input: io.stdin })
+      try {
+        // readline's 'line' event always carries exactly one string argument.
+        const [answer] = await once(rl, 'line', prompt.signal === undefined ? {} : { signal: prompt.signal }) as [string]
+        if (answer.trim() === '') throw new AuthorizationDeclinedError()
+        if (prompt.kind !== 'select') return answer
+        const chosen = prompt.options[Number.parseInt(answer, 10) - 1]
+        if (chosen === undefined) throw new AuthorizationDeclinedError(`"${answer}" is not one of the offered options`)
+        return chosen.id
+      } finally {
+        rl.close()
+      }
+    },
+  }
+}
+
+/**
+ * Run one credential authorization through its registered flow, over a
+ * terminal interaction, and request process exit.
+ * @param ctx - plugin context carrying `ctx.authorization` and launcher IO services.
+ * @param key - the credential key to authorize.
+ * @param method - which of the flow's methods to run; `undefined` defers to its first.
+ * @param io - process-facing effects.
+ */
+async function runLogin(ctx: Context, key: CredentialKey, method: string | undefined, io: LoginIo): Promise<void> {
+  await ctx.get('loader')?.await()
+  const authorization = ctx.get('authorization')
+  // Early process shutdown can dispose the tree while settlement is pending.
+  if (authorization === undefined) return
+  const outcome = await authorization.begin({
+    key,
+    interaction: buildTerminalInteraction(io),
+    ...method === undefined ? {} : { method },
+  })
+  if (outcome.status === 'cancelled') {
+    io.stderr.write(`dsh: sign-in for "${key}" was declined\n`)
+    io.exit(1)
+    return
+  }
+  io.stdout.write(`Signed in for "${key}".\n`)
+  io.stdout.write('If its route is not already configured, add it under the owning adapter\'s settings section (for example, `providers.anthropic: {}` under `llm-pi-ai:` in $DSH_HOME/settings.yaml, or the web Models page) to make it selectable.\n')
+  io.exit(0)
+}
+
+/**
+ * Mount the one-shot direct driver: a task run, or a credential sign-in.
  * @param ctx - plugin context carrying core services and the launcher-provided exit request.
- * @param config - validated task config.
+ * @param config - validated task or login config.
  */
 export function apply(ctx: Context, config: Config): void {
   // Read through the global service store, not the property proxy: appExit is
@@ -145,6 +242,15 @@ export function apply(ctx: Context, config: Config): void {
   if (exit === undefined) {
     throw new Error('headless-runner: the launcher must provide ctx.appExit before the tree mounts')
   }
-  const io: HeadlessIo = { stdout: internals.stdout, stderr: internals.stderr, exit }
-  void run(ctx, config.task, io).catch((error: unknown) => { fail(io, error) })
+  const io: LoginIo = { stdin: internals.stdin, stdout: internals.stdout, stderr: internals.stderr, exit }
+  if (config.mode === 'task') {
+    // headless-startup is this config's sole writer and always pairs mode
+    // 'task' with a task string; a missing one here is an internal invariant
+    // violation, not a usage error a human caused.
+    if (config.task === undefined) throw new Error('headless-runner: task mode requires "task"')
+    void run(ctx, config.task, io).catch((error: unknown) => { fail(io, error) })
+    return
+  }
+  if (config.key === undefined) throw new Error('headless-runner: login mode requires "key"')
+  void runLogin(ctx, parseCredentialKey(config.key), config.method, io).catch((error: unknown) => { fail(io, error) })
 }

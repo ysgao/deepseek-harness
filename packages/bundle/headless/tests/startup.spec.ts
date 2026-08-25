@@ -52,7 +52,10 @@ export const apply = ctx => globalThis.__headlessStartupApply(ctx)
     `  name: ${rowUrl}`,
     `  inject: [${HEADLESS_STARTUP_SERVICE}]`,
     '  config:',
-    '    task: !!js ctx.headlessStartup.task',
+    '    mode: !!js ctx.headlessStartup.mode',
+    '    task: !!js "ctx.headlessStartup.mode === \'task\' ? ctx.headlessStartup.task : undefined"',
+    '    key: !!js "ctx.headlessStartup.mode === \'login\' ? ctx.headlessStartup.key : undefined"',
+    '    method: !!js "ctx.headlessStartup.mode === \'login\' ? ctx.headlessStartup.method : undefined"',
     '- id: headless-startup',
     `  name: ${pathToFileURL(join(dir, 'startup.mjs')).href}`,
     '',
@@ -83,8 +86,8 @@ export const apply = ctx => globalThis.__headlessStartupApply(ctx)
 describe('headless command-line provider', () => {
   it('joins the task positional into the runner config', async () => {
     const { task, observed } = await bootStartup(['run', 'the', 'tests'])
-    expect(task).toEqual({ task: 'run the tests' })
-    expect(observed.runnerConfig).toEqual({ task: 'run the tests' })
+    expect(task).toEqual({ mode: 'task', task: 'run the tests' })
+    expect(observed.runnerConfig).toEqual({ mode: 'task', task: 'run the tests' })
     expect(observed.exits).toEqual([])
   })
 
@@ -102,5 +105,26 @@ describe('headless command-line provider', () => {
     expect(task).toBeUndefined()
     expect(observed.runnerConfig).toBeUndefined()
     expect(observed.exits).toEqual([0])
+  })
+
+  it('parses the login subcommand into a credential key and forwards it to the runner config', async () => {
+    const { task, observed } = await bootStartup(['login', 'llm-pi-ai/anthropic'])
+    expect(task).toEqual({ mode: 'login', key: 'llm-pi-ai/anthropic' })
+    expect(observed.runnerConfig).toEqual({ mode: 'login', key: 'llm-pi-ai/anthropic' })
+    expect(observed.exits).toEqual([])
+  })
+
+  it('parses login --method into the runner config', async () => {
+    const { task, observed } = await bootStartup(['login', 'llm-pi-ai/anthropic', '--method', 'api-key'])
+    expect(task).toEqual({ mode: 'login', key: 'llm-pi-ai/anthropic', method: 'api-key' })
+    expect(observed.runnerConfig).toEqual({ mode: 'login', key: 'llm-pi-ai/anthropic', method: 'api-key' })
+  })
+
+  it('rejects a malformed login key', async () => {
+    const { task, observed } = await bootStartup(['login', 'not-a-valid-key'])
+    expect(observed.out).toContain('is not a valid credential key')
+    expect(task).toBeUndefined()
+    expect(observed.runnerConfig).toBeUndefined()
+    expect(observed.exits).toEqual([1])
   })
 })

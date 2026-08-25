@@ -1,10 +1,14 @@
 /** Direct one-shot Agent driving, durable aggregation, flushing, and exit mapping. */
 
+import { PassThrough } from 'node:stream'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { Inbox } from '@deepseek-ai/dsh-agent'
 import type { Agent, AgentHandle, CreateAgentOptions } from '@deepseek-ai/dsh-agent'
 import AgentDefaultModelConfig from '@deepseek-ai/dsh-agent-default-model'
+import AuthorizationService from '@deepseek-ai/dsh-authorization'
+import type { AuthorizationFlow } from '@deepseek-ai/dsh-authorization'
+import type { CredentialKey, CredentialRecord } from '@deepseek-ai/dsh-credentials'
 import { createAssistantMessage } from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
 import type { Session, UserMessage } from '@deepseek-ai/dsh-session'
@@ -101,7 +105,7 @@ async function bench(script: Script): Promise<{
       const exited = new Promise<number>((resolve) => {
         ctx.provide('appExit', (code: number) => { order.push('exit'); resolve(code) })
       })
-      apply(ctx, { task: 'do the thing' })
+      apply(ctx, { mode: 'task', task: 'do the thing' })
       return { code: await exited, out, err, order }
     },
   }
@@ -189,7 +193,7 @@ describe('headless runner', () => {
     ctx.provide('agentDefaultModel', { currentSelection: () => ({ provider: 'p', model: 'm' }) } as never)
     ctx.provide('sessions', { flush: () => Promise.resolve(true) } as never)
     ctx.provide('agents', { create: () => Promise.reject(new Error('factory exploded')) } as never)
-    apply(ctx, { task: 't' })
+    apply(ctx, { mode: 'task', task: 't' })
     expect(await exited).toBe(1)
     expect(err).toBe('dsh: factory exploded\n')
     await ctx.fiber.dispose()
@@ -211,7 +215,7 @@ describe('headless runner', () => {
       },
     }
     ctx.provide('agents', { create: () => rejected } as never)
-    apply(ctx, { task: 't' })
+    apply(ctx, { mode: 'task', task: 't' })
     expect(await exited).toBe(1)
     expect(err).toBe('dsh: factory exploded\n')
     await ctx.fiber.dispose()
@@ -232,7 +236,7 @@ describe('headless runner', () => {
     let release: () => void
     const settlement = new Promise<void>((resolve) => { release = resolve })
     ctx.provide('loader', { await: () => settlement } as never)
-    apply(ctx, { task: 't' })
+    apply(ctx, { mode: 'task', task: 't' })
     await services.dispose()
     release!()
     await new Promise(resolve => setTimeout(resolve, 10))
@@ -242,11 +246,240 @@ describe('headless runner', () => {
 
   it('fails loud without the launcher-provided exit request', () => {
     const ctx = new Context()
-    expect(() => { apply(ctx, { task: 't' }) }).toThrow('must provide ctx.appExit')
+    expect(() => { apply(ctx, { mode: 'task', task: 't' }) }).toThrow('must provide ctx.appExit')
   })
 
-  it('validates config: the task is required', () => {
+  it('validates config: mode is required', () => {
     expect(() => new Config({} as never)).toThrow()
-    expect(new Config({ task: 'x' })).toEqual({ task: 'x' })
+    expect(new Config({ mode: 'task', task: 'x' })).toEqual({ mode: 'task', task: 'x' })
+    expect(new Config({ mode: 'login', key: 'llm-pi-ai/anthropic' })).toEqual({ mode: 'login', key: 'llm-pi-ai/anthropic' })
+  })
+
+  it('fails loud when task mode config carries no task', () => {
+    const ctx = new Context()
+    ctx.provide('appExit', () => {})
+    expect(() => { apply(ctx, { mode: 'task' }) }).toThrow('task mode requires "task"')
+  })
+
+  it('fails loud when login mode config carries no key', () => {
+    const ctx = new Context()
+    ctx.provide('appExit', () => {})
+    expect(() => { apply(ctx, { mode: 'login' }) }).toThrow('login mode requires "key"')
+  })
+})
+
+describe('headless login', () => {
+  const KEY = 'test-flow/demo' as CredentialKey
+
+  /** A minimal in-memory `ctx.credentials` stand-in: only the record half the seam reads. */
+  function fakeCredentials(ctx: Context): void {
+    const records = new Map<CredentialKey, CredentialRecord>()
+    type Mutate = (current: CredentialRecord | undefined) => Promise<CredentialRecord | undefined>
+    ctx.provide('credentials', {
+      modifyRecord: async (key: CredentialKey, mutate: Mutate) => {
+        const next = await mutate(records.get(key))
+        if (next !== undefined) {
+          records.set(key, next)
+          ctx.emit('credentials/record-updated', key)
+        }
+        return next
+      },
+      describeRecord: async (key: CredentialKey) => {
+        const stored = records.get(key)
+        return stored === undefined
+          ? { configured: false, writable: true }
+          : { configured: true, kind: stored.kind, writable: true }
+      },
+      readRecord: async (key: CredentialKey) => records.get(key),
+    } as never)
+  }
+
+  /**
+   * Mount the real authorization seam over the fake credential store, plus a
+   * test-only flow built from the mounted `ctx` (so it can commit through
+   * `ctx.credentials` itself, like a real flow does).
+   */
+  async function loginBench(buildFlow: (ctx: Context) => AuthorizationFlow): Promise<{
+    ctx: Context
+    stdin: PassThrough
+    run(key?: string, method?: string): Promise<{ code: number; out: string; err: string }>
+  }> {
+    const ctx = new Context()
+    fakeCredentials(ctx)
+    await ctx.plugin(AuthorizationService)
+    ctx.authorization.registerFlow(buildFlow(ctx))
+    const stdin = new PassThrough()
+    internals.stdin = stdin
+    return {
+      ctx,
+      stdin,
+      run: async (key = KEY, method?: string) => {
+        let out = ''
+        let err = ''
+        internals.stdout = { write: (chunk: string) => { out += chunk; return true } }
+        internals.stderr = { write: (chunk: string) => { err += chunk; return true } }
+        const exited = new Promise<number>((resolve) => {
+          ctx.provide('appExit', (code: number) => { resolve(code) })
+        })
+        apply(ctx, { mode: 'login', key, ...method === undefined ? {} : { method } })
+        const code = await exited
+        return { code, out, err }
+      },
+    }
+  }
+
+  /** A flow that notifies once, prompts once, and commits whatever it read as the answer. */
+  function committingFlow(ctx: Context): AuthorizationFlow {
+    return {
+      key: KEY,
+      label: 'Test Flow',
+      methods: [{ id: 'oauth', label: 'Sign in' }, { id: 'api-key', label: 'Paste a key' }],
+      async run(session) {
+        session.notify({ message: 'Continue in your browser', url: 'https://example.test/authorize', code: 'ABCD' })
+        const answer = await session.prompt({ kind: 'text', message: 'Paste the code' })
+        await ctx.credentials.modifyRecord(KEY, () => Promise.resolve({ kind: 'grant', payload: { token: answer } }))
+      },
+    }
+  }
+
+  /** A flow whose notice carries no url or code, only a message. */
+  function bareNoticeFlow(ctx: Context): AuthorizationFlow {
+    return {
+      key: KEY,
+      label: 'Test Flow',
+      methods: [{ id: 'oauth', label: 'Sign in' }],
+      async run(session) {
+        session.notify({ message: 'just a message' })
+        const answer = await session.prompt({ kind: 'text', message: 'Paste the code' })
+        await ctx.credentials.modifyRecord(KEY, () => Promise.resolve({ kind: 'grant', payload: { token: answer } }))
+      },
+    }
+  }
+
+  /** A flow that asks the human to pick one of two options, one of them described. */
+  function selectFlow(ctx: Context): AuthorizationFlow {
+    return {
+      key: KEY,
+      label: 'Test Flow',
+      methods: [{ id: 'oauth', label: 'Sign in' }],
+      async run(session) {
+        const chosen = await session.prompt({
+          kind: 'select',
+          message: 'Pick one',
+          options: [{ id: 'a', label: 'Option A' }, { id: 'b', label: 'Option B', description: 'the better one' }],
+        })
+        await ctx.credentials.modifyRecord(KEY, () => Promise.resolve({ kind: 'grant', payload: { token: chosen } }))
+      },
+    }
+  }
+
+  /** A flow whose text prompt carries a placeholder and its own (never-firing) signal. */
+  function placeholderFlow(ctx: Context): AuthorizationFlow {
+    return {
+      key: KEY,
+      label: 'Test Flow',
+      methods: [{ id: 'oauth', label: 'Sign in' }],
+      async run(session) {
+        const answer = await session.prompt({
+          kind: 'text',
+          message: 'Paste the code',
+          placeholder: 'e.g. abc123',
+          signal: new AbortController().signal,
+        })
+        await ctx.credentials.modifyRecord(KEY, () => Promise.resolve({ kind: 'grant', payload: { token: answer } }))
+      },
+    }
+  }
+
+  it('authorizes a flow that commits its record, prints its notice, and exits 0', async () => {
+    const test = await loginBench(committingFlow)
+    test.stdin.write('pasted-code\n')
+    const result = await test.run()
+    expect(result.code).toBe(0)
+    expect(result.out).toContain('Continue in your browser')
+    expect(result.out).toContain('https://example.test/authorize')
+    expect(result.out).toContain('Code: ABCD')
+    expect(result.out).toContain('Signed in for "test-flow/demo"')
+    await expect(test.ctx.credentials.describeRecord(KEY)).resolves.toMatchObject({ configured: true })
+    await test.ctx.fiber.dispose()
+  })
+
+  it('declines on an empty answer, prints nothing committed, and exits 1', async () => {
+    const test = await loginBench(committingFlow)
+    test.stdin.write('\n')
+    const result = await test.run()
+    expect(result.code).toBe(1)
+    expect(result.err).toContain('was declined')
+    await expect(test.ctx.credentials.describeRecord(KEY)).resolves.toMatchObject({ configured: false })
+    await test.ctx.fiber.dispose()
+  })
+
+  it('fails loud on an unregistered key', async () => {
+    const test = await loginBench(committingFlow)
+    const result = await test.run('test-flow/no-such-key')
+    expect(result.code).toBe(1)
+    expect(result.err).toContain('no authorization flow is registered')
+    await test.ctx.fiber.dispose()
+  })
+
+  it('runs the named method when --method is given', async () => {
+    const test = await loginBench(committingFlow)
+    test.stdin.write('pasted-code\n')
+    const result = await test.run(KEY, 'api-key')
+    expect(result.code).toBe(0)
+    await test.ctx.fiber.dispose()
+  })
+
+  it('prints only the message when a notice carries no url or code', async () => {
+    const test = await loginBench(bareNoticeFlow)
+    test.stdin.write('pasted-code\n')
+    const result = await test.run()
+    expect(result.code).toBe(0)
+    expect(result.out).toContain('just a message\n')
+    expect(result.out).not.toContain('  https://')
+    expect(result.out).not.toContain('Code:')
+    await test.ctx.fiber.dispose()
+  })
+
+  it('answers a select prompt by its numbered option and commits the chosen id', async () => {
+    const test = await loginBench(selectFlow)
+    test.stdin.write('2\n')
+    const result = await test.run()
+    expect(result.code).toBe(0)
+    expect(result.out).toContain('1. Option A')
+    expect(result.out).toContain('2. Option B')
+    await expect(test.ctx.credentials.readRecord(KEY)).resolves.toEqual({ kind: 'grant', payload: { token: 'b' } })
+    await test.ctx.fiber.dispose()
+  })
+
+  it('declines a select prompt answered with an out-of-range option', async () => {
+    const test = await loginBench(selectFlow)
+    test.stdin.write('9\n')
+    const result = await test.run()
+    expect(result.code).toBe(1)
+    expect(result.err).toContain('was declined')
+    await test.ctx.fiber.dispose()
+  })
+
+  it('renders a text prompt placeholder and answers it under its own signal', async () => {
+    const test = await loginBench(placeholderFlow)
+    test.stdin.write('pasted-code\n')
+    const result = await test.run()
+    expect(result.code).toBe(0)
+    expect(result.out).toContain('(e.g. abc123)')
+    await test.ctx.fiber.dispose()
+  })
+
+  it('abandons a login when authorization is unavailable', async () => {
+    const ctx = new Context()
+    let exited = false
+    internals.stdin = new PassThrough()
+    internals.stdout = { write: () => true }
+    internals.stderr = { write: () => true }
+    ctx.provide('appExit', () => { exited = true })
+    apply(ctx, { mode: 'login', key: KEY })
+    await new Promise(resolve => setTimeout(resolve, 10))
+    expect(exited).toBe(false)
+    await ctx.fiber.dispose()
   })
 })
