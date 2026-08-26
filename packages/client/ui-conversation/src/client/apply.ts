@@ -13,8 +13,8 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { ViewTab } from './contract/views.ts'
 import type {
   ApprovalWait, ChatNodeTurnDataInjected, ChatScrollPosition, ChatViewInjected, ComposerBarInjected,
-  ComposerChainProps, ConversationInjected, ConversationSessionHeaderInjected, ConversationSessionInjected,
-  DetailsInjected,
+  ComposerChainProps, ConversationFileOpener, ConversationInjected, ConversationSessionHeaderInjected,
+  ConversationSessionInjected, DetailsInjected,
 } from './contract/slots.ts'
 import type { InputNotice } from './input/contract.ts'
 import { createChatStore } from './stores.ts'
@@ -22,6 +22,9 @@ import { ConversationController, UnsupportedImageMediaTypeError } from './servic
 import type { IConversation } from './service.ts'
 import { ComposerBlockRegistry } from './input/blocks.ts'
 import type { ComposerBlock } from './input/blocks.ts'
+import { FileOpenRegistryImpl } from './files/file-opener.ts'
+import { FileView } from './files/FileView.tsx'
+import type { FileViewInjected } from './files/FileView.tsx'
 import { InputHub } from './input/hub.ts'
 import { ComposerSubmissionPolicy } from './input/submission-policy.ts'
 import { InputBar } from './skeleton/InputBar.tsx'
@@ -175,6 +178,13 @@ export function apply(ctx: Context): void {
   // way: this package must not import the plugins that would know.
   const composerBlocks = new ComposerBlockRegistry()
 
+  // The file-open registry: any plugin holding a workspace path — the
+  // Workspace Files tree — hands it here through the conversationFileOpener
+  // service below; ConversationSession drains it into chatStore's own
+  // bound actions (see files/file-opener.ts for why this indirection is
+  // the actual cross-session write surface).
+  const fileOpenRegistry = new FileOpenRegistryImpl()
+
   // The input machine feeds every session-scope slot
   // component through the standard provide channel — the 'input' hook plus
   // the two public actions. Materialization is the shell creation trigger
@@ -249,6 +259,7 @@ export function apply(ctx: Context): void {
         views,
         releaseSessionImages: (id) => { conversation.releaseSessionImages(id) },
         bindDraftMirror: write => inputHub.shell(sessionId).bindMirror(write),
+        hooks: { pendingFileOpen: fileOpenRegistry.storeFor(sessionId) },
       }
     },
   }, ConversationSession)
@@ -426,6 +437,39 @@ export function apply(ctx: Context): void {
       }
     },
   }, ChatView)
+
+  // The File view: second entry of the ring, populated only through the
+  // conversationFileOpener service below (fileOpenRegistry → ConversationSession).
+  slots.register({
+    name: 'conversation.view',
+    id: 'file',
+    order: 5,
+    label: () => t('view.file'),
+    locale: NS,
+    inject: (sessionId: SessionId): FileViewInjected => ({
+      readFile: (path, signal) => {
+        const workspaceId = workspaces.list.getSnapshot().items
+          .find(item => item.sessionIds.includes(sessionId))?.workspaceId
+        if (workspaceId === undefined) {
+          return Promise.reject(new Error(`ui-conversation: session "${sessionId}" has no owning workspace`))
+        }
+        return workspaces.readWorkspaceFile(workspaceId, path, signal)
+      },
+      openPath: path => workspaces.openPath(path),
+    }),
+  }, FileView)
+
+  // The cross-plugin file-open service: any plugin holding a workspace path
+  // hands it to fileOpenRegistry instead of only ever falling back to the
+  // Host OS-default handoff (ui-workspace's Files tree is the first caller).
+  const fileOpener: ConversationFileOpener = {
+    openFile: (sessionId, path) => {
+      if (sessions.binding(sessionId) === undefined) return false
+      fileOpenRegistry.request(sessionId, path)
+      return true
+    },
+  }
+  ctx.provide('conversationFileOpener', fileOpener)
 
   // Session stats stick with the composer (composer.dock = stats-line family).
   slots.register({ name: 'conversation.composer.dock', id: 'stats', order: 0, locale: NS }, StatsLine)

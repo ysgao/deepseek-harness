@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-纯 React 原子组件（零 cordis）：StateDot、DisclosureRow、ic_ds_* 图标、Button/Pill/Menu/Modal/Input、Toast 短时横幅、OnboardingSurface 首次使用接管层（portal 到 body 的遮罩加不透明展示层，在且仅在自身生命周期内保持 `#root` 为 `inert`）、markdown 家族（MessageText/MarkdownText/JsonBlock）、只读 JsonTree 检查器、`useAnchoredMaxHeight` 钩子（把底部锚定的浮层高度收敛到锚点上方的视口空间，并在 resize、scroll 与调用方提供的依赖变化时重新测量）、`useAnchoredPosition` 钩子（让固定定位的浮动面板跟住锚点：测量、偏移、按视口边距钳制，并在捕获阶段滚动、窗口缩放与面板自身尺寸变化时重新定位）、TerminalBlock、DiffBlock、ReadBlock、SearchBlock，以及 WebBlock。
+纯 React 原子组件（零 cordis）：StateDot、DisclosureRow、ic_ds_* 图标、Button/Pill/Menu/Modal/Input、Toast 短时横幅、OnboardingSurface 首次使用接管层（portal 到 body 的遮罩加不透明展示层，在且仅在自身生命周期内保持 `#root` 为 `inert`）、markdown 家族（MessageText/MarkdownText/JsonBlock）、只读 JsonTree 检查器、`useAnchoredMaxHeight` 钩子（把底部锚定的浮层高度收敛到锚点上方的视口空间，并在 resize、scroll 与调用方提供的依赖变化时重新测量）、`useAnchoredPosition` 钩子（让固定定位的浮动面板跟住锚点：测量、偏移、按视口边距钳制，并在捕获阶段滚动、窗口缩放与面板自身尺寸变化时重新定位）、TerminalBlock、DiffBlock、ReadBlock、FilePreview、SearchBlock，以及 WebBlock。
 
 ## 悬浮卡片
 
@@ -23,6 +23,10 @@
 ## Read 渲染
 
 `ReadBlock` 将返回的文件窗口渲染为带行号、语法高亮的代码表层：一个粗体路径（或 presenter 提供的标题）横幅加复制控件，其下是内容行，行号槽里是文件自身的行号（窗口化的 read 保留文件本身的编号，因此偏移之后的 read 从大于 1 处起始）。`totalLines` 超过窗口行数时画出 `showing N of M` 提示；超过 `maxLines`（默认 16，与 TerminalBlock 相同的切分算法）时折叠为头部切片加尾部切片，由展开按钮控制。高亮走与 `CodeBlock` 相同的 shiki 路径。原理：[Web read 卡片笔记](../../../.agents/notes/implemented/feature/2026-07-30-web-read-card.zh.md)。
+
+## 文件预览
+
+`FilePreview` 渲染由调用方归一化后的文件预览主体：Markdown 走 `MarkdownText`，文本／代码走 `ReadBlock`（带行号、shiki 高亮），图片使用调用方提供的 blob URL，其余情况——外部类型（无法识别的扩展名，或调用方从不抓取的类型）、过大、错误，或分类结果期望文本但实际是二进制的读取——都渲染为一行提示。该组件是纯函数式的，不携带任何宿主或协议层词汇：调用方在渲染前，把各自的抓取／分类概念（工作区文件读取、工具 read 结果，或任何其他文件来源）归一为纯数据的 `FilePreviewState`／`FilePreviewKind` 联合类型，因此同一套主体既能组成 `Modal` 包裹的文件对话框，也能组成整版的标签页视图。`imageAlt` 默认取 `path`，`className` 默认取组件自身带滚动上限的外层样式；持有不同外层结构的调用方可分别覆盖。目前有两个消费方：`ui-workspace` 的 `FileViewer`（外面套一层 `Modal`）与 `ui-conversation` 的 `FileView`（外面套一层 `conversation.view` 标签页面板）——见 [File 标签页 Agent Note](../../../.agents/notes/implemented/feature/2026-08-26-file-preview-conversation-tab.zh.md)。
 
 ## Diff 渲染
 
@@ -48,6 +52,7 @@
 
 - **流式期间跨边界引用解析被推迟**：定义落在增量冻结边界另一侧的引用式链接或脚注，在回复流式输出期间渲染为字面文本；定稿时的全量解析会将其解析。内联链接以及在同一次解析内完成解析的引用不受影响。
 - **字形级图标是重新绘制的近似版本**：鱼形标志（以及 ui-conversation 持有的闪光图标）来自字体字形，而本地设计数据无法导出其矢量几何；在获得精确导出路径前，使用手工重建版本代替。
+- **`IconFilePlaceholder16` 不是 figma 抽取素材**：整套图标中其余每一个都是真实设计源导出；这一个是为工作区文件树的文件行准备的纯手绘占位符，等待真正的素材。
 - **Pill 与 Input 没有设计来源**：两个原子组件均自行定义；与其相似的侧边栏搜索字段和视图标签条由消费方组合，不是这些原子组件。
 - **StateDot 没有 `Active` 变体**：支持的状态为 done、warning、ongoing 和 error。
 - **面向用户的文案经 label props 本地化，默认值为原中文字面量**：这些原子组件是 zero-cordis 的，拿不到 `ctx.locale`，因此 `HoverCard`（`copyLabel`/`copiedLabel`）、`TerminalBlock`（`labels`）、`JsonTree`（`labels`）、`CodeBlock`（`copyLabel`/`copiedLabel`）、`MarkdownText`（`codeLabels`）、`JsonBlock`（`truncatedLabel`）、`ConnectionBanner`（`label`）和 `Modal`（`closeLabel`）都把文案作为可选 props 接收。已本地化的插件用自己的 `t` 席位传入字典驱动的 label；什么都不传的消费方得到的就是这些默认值。`WebBlock` 尚未跟进这一模式：它的来源列表截断提示与 fetch 截断提示、以及空搜索提示仍是内联中文，待同样的 label-prop 处理。

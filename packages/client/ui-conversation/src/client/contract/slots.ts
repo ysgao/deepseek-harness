@@ -347,6 +347,10 @@ export interface ConvViewOwnerProps {
   inspect?: { callId: CallId } | null
   /** Acknowledge the inspect request once applied (clears the store field). */
   onInspectDone?: () => void
+  /** One-shot file-open request from the optional `conversationFileOpener` service; null when idle. */
+  openFilePath?: string | null
+  /** Acknowledge the file-open request once applied (clears the store field). */
+  onFileOpened?: () => void
 }
 
 /**
@@ -366,10 +370,29 @@ export interface ChatFileMentions {
   forClosing(owner: TurnTailOwnerProps): MarkdownFileMentions | undefined
 }
 
+/**
+ * Optional cross-plugin file-opener, consumed via `ctx.get('conversationFileOpener')`
+ * (optional-service convention): any plugin holding a workspace path — the
+ * Workspace Files tree today — hands it to this service instead of only ever
+ * falling back to the Host OS-default handoff. Absent service (this package
+ * composed out, or no session current) — the caller keeps its own fallback.
+ */
+export interface ConversationFileOpener {
+  /**
+   * Open a path in the given session's in-app File tab.
+   * @param sessionId - target session; must have a live chat store binding.
+   * @param path - workspace-scoped absolute path to preview.
+   * @returns whether the session accepted the request (a live binding was found).
+   */
+  openFile(sessionId: SessionId, path: string): boolean
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
     /** Prose file-mention provider (ui-deliverables); reach via ctx.get — optional. */
     chatFileMentions: ChatFileMentions
+    /** Cross-plugin File-tab opener (this package); reach via ctx.get — optional. */
+    conversationFileOpener: ConversationFileOpener
   }
 }
 
@@ -496,6 +519,13 @@ export interface ConversationSessionInjected {
   releaseSessionImages: (sessionId: SessionId) => void
   /** Bind the input machine's draft persistence mirror to the session store. */
   bindDraftMirror: (write: (text: string) => void) => () => void
+  /**
+   * Framework-bound sources. `pendingFileOpen` is this session's latest
+   * cross-plugin file-open request (the `conversationFileOpener` service's
+   * write side); the component drains it into the chat store's
+   * `openFilePath`/`view` fields and the File view's one-shot owner props.
+   */
+  hooks: { pendingFileOpen: ObservableSnapshot<{ path: string; seq: number } | undefined> }
 }
 
 /** Business callbacks injected into the strict session header seat. */
@@ -655,7 +685,7 @@ export type ConversationSessionSlotProps =
   PropsRuntime<'conversation.session'>
   & PropsRenderSlots<'conversation.view'>
   & PropsStore<ChatStore>
-  & ConversationSessionInjected
+  & InjectFace<ConversationSessionInjected>
 
 /** Full strict-session header props: shared store, tabs/actions render shares, navigation, and locale. */
 export type ConversationSessionHeaderSlotProps =

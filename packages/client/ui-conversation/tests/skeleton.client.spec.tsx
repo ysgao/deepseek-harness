@@ -201,6 +201,7 @@ function mount(
           views={views}
           releaseSessionImages={vi.fn()}
           bindDraftMirror={write => wiring.bindMirror(write)}
+          usePendingFileOpen={select => select(undefined)}
         />
       )
     }

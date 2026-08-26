@@ -172,7 +172,7 @@ export function ConversationSessionHeader({
  */
 export function ConversationSession({
   sessionId, useSession, useInput, inputActions, useStore, actions,
-  renderSlot, views, bindDraftMirror, releaseSessionImages,
+  renderSlot, views, bindDraftMirror, releaseSessionImages, usePendingFileOpen,
 }: ConversationSessionProps) {
   useSyncExternalStore(views.subscribe, views.version)
   const tabs = views.list()
@@ -184,6 +184,8 @@ export function ConversationSession({
   const storedDraft = useStore(s => s.draft)
   // `?? null`: persisted snapshots from before the inspect field rehydrate without it.
   const inspect = useStore(s => s.inspect ?? null)
+  const openFilePath = useStore(s => s.openFilePath ?? null)
+  const pendingFileOpen = usePendingFileOpen(request => request)
 
   useEffect(() => {
     if (inputState.draft === '' && storedDraft !== '') inputActions.setDraft(storedDraft)
@@ -197,12 +199,25 @@ export function ConversationSession({
     releaseSessionImages(sessionId)
   }, [releaseSessionImages, sessionId])
 
+  // Drain the cross-plugin file-open registry (see file-opener.ts) into this
+  // session's own chat store: only this component holds chatStore's bound
+  // actions for its session, so the registry — not a direct external write —
+  // is the actual handoff surface. `seq` (not just `path`) keys the effect so
+  // requesting the same path twice in a row still switches/re-focuses the tab.
+  useEffect(() => {
+    if (pendingFileOpen === undefined) return
+    actions.setOpenFilePath(pendingFileOpen.path)
+    actions.setView('file')
+  }, [pendingFileOpen, actions])
+
   if (blank && composerPhase === 'blank') return null
   return (
     <div className={css.viewArea}>
       {active !== undefined && renderSlot('conversation.view', {
         inspect,
         onInspectDone: () => { actions.setInspect(null) },
+        openFilePath,
+        onFileOpened: () => { actions.setOpenFilePath(null) },
       }, { only: active.id })}
     </div>
   )

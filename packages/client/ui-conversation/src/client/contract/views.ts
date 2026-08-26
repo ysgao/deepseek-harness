@@ -29,4 +29,12 @@ export interface ChatStoreState {
    * persisted snapshots from before this field rehydrate without it.
    */
   inspect: { callId: CallId } | null
+  /**
+   * One-shot file-open handoff: the optional `conversationFileOpener`
+   * service (any plugin with a workspace path to open — the Workspace Files
+   * tree today) writes the path, the File view consumes it and acknowledges
+   * by clearing. Read with `?? null` — persisted snapshots from before this
+   * field rehydrate without it.
+   */
+  openFilePath: string | null
 }
