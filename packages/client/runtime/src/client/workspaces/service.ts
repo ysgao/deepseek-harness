@@ -3,7 +3,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {
   DirectoryListing, IApiClient, RpcError,
-  SessionId, WorkspaceId, WorkspaceView,
+  SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SnapshotStore } from '../contract/store.ts'
 import { createSnapshotStore } from '../contract/store.ts'
@@ -44,6 +44,14 @@ export class DirectoryBrowseError extends Error {
   constructor(readonly rpcError: RpcError) {
     super(`directory browse failed: ${rpcError.code}: ${rpcError.message}`)
     this.name = 'DirectoryBrowseError'
+  }
+}
+
+/** Structured Workspace-file failure so the Files tree can branch on Host business codes (`directory-unreadable`, `file-too-large`). */
+export class WorkspaceFileBrowseError extends Error {
+  constructor(readonly rpcError: RpcError) {
+    super(`workspace file operation failed: ${rpcError.code}: ${rpcError.message}`)
+    this.name = 'WorkspaceFileBrowseError'
   }
 }
 
@@ -290,6 +298,32 @@ export class WorkspaceRuntime implements IWorkspaces {
   async archiveSession(sessionId: SessionId): Promise<void> {
     const result = await this.manager.archiveSession(sessionId)
     if (!result.ok) throw new Error(`session archive failed: ${result.error.code}: ${result.error.message}`)
+  }
+
+  /**
+   * List one directory level under a Workspace root through `workspace.listEntries`.
+   * @param workspaceId - owning workspace; `path` must be its own path or a descendant.
+   * @param path - absolute directory to list.
+   * @param signal - aborts the wire request (and the Host's scan) when the caller supersedes it.
+   * @returns the level's entries and truncation flag.
+   */
+  async listWorkspaceEntries(workspaceId: WorkspaceId, path: string, signal?: AbortSignal): Promise<WorkspaceEntryListing> {
+    const response = await this.api.workspace.listEntries({ workspaceId, path }, signal)
+    if (!response.result.ok) throw new WorkspaceFileBrowseError(response.result.error)
+    return response.result.value
+  }
+
+  /**
+   * Read one regular file under a Workspace root through `workspace.readFile`.
+   * @param workspaceId - owning workspace; `path` must be its own path or a descendant.
+   * @param path - absolute file path.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   * @returns the decoded content (text, or base64 binary with a media type).
+   */
+  async readWorkspaceFile(workspaceId: WorkspaceId, path: string, signal?: AbortSignal): Promise<WorkspaceFileContent> {
+    const response = await this.api.workspace.readFile({ workspaceId, path }, signal)
+    if (!response.result.ok) throw new WorkspaceFileBrowseError(response.result.error)
+    return response.result.value
   }
 
   /**

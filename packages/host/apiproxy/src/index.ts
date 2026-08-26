@@ -21,6 +21,7 @@ import {
   DEFAULT_SESSION_LOG_COMPRESSION_LEVEL,
   type SessionLogCompressionLevel,
 } from './session-export.ts'
+import { DEFAULT_MAX_ENTRIES, DEFAULT_MAX_READ_BYTES } from './workspace-files.ts'
 
 export type * from './api/index.ts'
 export { RpcId } from './api/rpc.ts'
@@ -59,6 +60,19 @@ export interface Config {
    * @default 1024
    */
   coldBlankProbeMaxBytes?: number
+  /**
+   * Complete-result bound per bucket (directories, files) of one
+   * `workspace.listEntries` level (the Web GUI's Files tree).
+   * @default 1000
+   */
+  workspaceFilesMaxEntries?: number
+  /**
+   * Byte bound of one `workspace.readFile` call (the Web GUI's in-app file
+   * preview); a larger file fails with `file-too-large` instead of leaving
+   * the host.
+   * @default 20971520
+   */
+  workspaceFilesMaxReadBytes?: number
 }
 
 /**
@@ -77,6 +91,8 @@ export class ApiProxyService extends Service implements ApiProxy {
     sessionExportCompressionLevel: z.number().step(1).min(0).max(9)
       .default(DEFAULT_SESSION_LOG_COMPRESSION_LEVEL) as z<SessionLogCompressionLevel>,
     coldBlankProbeMaxBytes: z.natural().default(DEFAULT_COLD_BLANK_PROBE_MAX_BYTES),
+    workspaceFilesMaxEntries: z.natural().default(DEFAULT_MAX_ENTRIES),
+    workspaceFilesMaxReadBytes: z.natural().default(DEFAULT_MAX_READ_BYTES),
   })
 
   readonly sessions: ApiProxy['sessions']
@@ -106,6 +122,12 @@ export class ApiProxyService extends Service implements ApiProxy {
       ...(config.coldBlankProbeMaxBytes === undefined
         ? {}
         : { coldBlankProbeMaxBytes: config.coldBlankProbeMaxBytes }),
+      ...(config.workspaceFilesMaxEntries === undefined
+        ? {}
+        : { workspaceFilesMaxEntries: config.workspaceFilesMaxEntries }),
+      ...(config.workspaceFilesMaxReadBytes === undefined
+        ? {}
+        : { workspaceFilesMaxReadBytes: config.workspaceFilesMaxReadBytes }),
     })
     this.sessions = api.sessions
     this.subagents = api.subagents

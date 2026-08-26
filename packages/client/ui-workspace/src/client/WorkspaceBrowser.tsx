@@ -24,6 +24,7 @@ import { deriveFlat, deriveGroups, deriveSearchResults, UNGROUPED_KEY } from './
 import { ProjectRowItem, SearchResultItem, SessionNodeItem } from './rows/Rows.tsx'
 import { FLAT_SESSION_ORDER_KEY } from './stores.ts'
 import { WorkspacePickFlow } from './WorkspacePicker.tsx'
+import { FilesNode } from './files/FilesNode.tsx'
 import css from './WorkspaceBrowser.module.css'
 
 /**
@@ -217,6 +218,7 @@ type SessionTreeProps = Pick<
   WorkspaceBrowserProps,
   'useSessions' | 'startSession' | 'open' | 'forkSession'
   | 'insertWorkspaceBefore' | 'insertSessionBefore' | 't'
+  | 'listWorkspaceEntries' | 'readWorkspaceFile' | 'openPath'
 > & {
   /** Host account home for POSIX hover-path abbreviation. */
   home?: string | undefined
@@ -254,6 +256,7 @@ function SessionTree({
   insertWorkspaceBefore, insertSessionBefore, orderBy,
   groupExpansion, setGroupExpanded,
   sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t,
+  listWorkspaceEntries, readWorkspaceFile, openPath,
 }: SessionTreeProps) {
   const list = useSessions(s => s)
   const current = list.current
@@ -480,6 +483,19 @@ function SessionTree({
                     },
                   }}
               />
+              {/* Files sibling: a real Workspace group's own directory tree,
+                  first row under its header — the Ungrouped bucket has no
+                  single root path, so it renders no Files node. */}
+              {group.expanded && group.workspaceId !== undefined && group.cwd !== undefined && (
+                <FilesNode
+                  workspaceId={group.workspaceId}
+                  rootPath={group.cwd}
+                  listWorkspaceEntries={listWorkspaceEntries}
+                  readWorkspaceFile={readWorkspaceFile}
+                  openPath={openPath}
+                  t={t}
+                />
+              )}
               {(expandedSessionGroups.includes(group.key)
                 ? group.sessions
                 : group.sessions.slice(0, COLLAPSED_SESSION_LIMIT)
@@ -758,6 +774,9 @@ export function WorkspaceBrowser({
   archiveSession,
   insertSessionBefore,
   createWorkspace,
+  listWorkspaceEntries,
+  readWorkspaceFile,
+  openPath,
   searchSessions,
   searchResultLimit,
   useDirectoryFlow,
@@ -1189,6 +1208,9 @@ export function WorkspaceBrowser({
                 orderBy={orderBy}
                 home={home}
                 t={t}
+                listWorkspaceEntries={listWorkspaceEntries}
+                readWorkspaceFile={readWorkspaceFile}
+                openPath={openPath}
                 onRenameRequest={(workspaceId, currentTitle) => {
                   setRenameTarget({ workspaceId, currentTitle })
                   setRenameDraft(currentTitle)

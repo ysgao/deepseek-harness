@@ -6,7 +6,9 @@
  * the concrete class. Widening this interface is the explicit act of
  * widening what features may do to the workspaces domain.
  */
-import type { DirectoryListing, SessionId, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-remotes/client'
+import type {
+  DirectoryListing, SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceId, WorkspaceView,
+} from '@deepseek-ai/dsh-api-remotes/client'
 import type { WorkspaceListState } from '../workspaces/service.ts'
 import type { ObservableSnapshot } from './store.ts'
 
@@ -91,4 +93,23 @@ export interface IWorkspaces {
    * @param sessionId - session to archive.
    */
   archiveSession(sessionId: SessionId): Promise<void>
+  /**
+   * List one directory level under a Workspace root: subdirectories AND
+   * regular files together (the Files sidebar sibling to a Workspace's
+   * session list) — unlike {@link listDirectory}, which serves only the
+   * directory-only workspace-root picker.
+   * @param workspaceId - owning workspace; `path` must be its own path or a descendant.
+   * @param path - absolute directory to list.
+   * @param signal - aborts the wire request (and the Host's scan) when the caller supersedes it.
+   * @returns the level's entries and truncation flag.
+   */
+  listWorkspaceEntries(workspaceId: WorkspaceId, path: string, signal?: AbortSignal): Promise<WorkspaceEntryListing>
+  /**
+   * Read one regular file under a Workspace root for in-app preview.
+   * @param workspaceId - owning workspace; `path` must be its own path or a descendant.
+   * @param path - absolute file path.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   * @returns the decoded content (text, or base64 binary with a media type).
+   */
+  readWorkspaceFile(workspaceId: WorkspaceId, path: string, signal?: AbortSignal): Promise<WorkspaceFileContent>
 }

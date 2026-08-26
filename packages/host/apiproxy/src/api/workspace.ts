@@ -35,6 +35,37 @@ export interface WorkspaceView {
   updatedAt: string
 }
 
+/** One row of a `workspace.listEntries` level: a subdirectory or a regular file. */
+export interface WorkspaceEntry {
+  /** Base name within the listed directory. */
+  name: string
+  /** Absolute host path — the client never joins path segments itself. */
+  path: string
+  /** Whether the row is a directory (including a symlink resolving to one) or a regular file. */
+  type: 'directory' | 'file'
+  /** Hidden by the host platform's convention (dot-prefixed on POSIX); the client owns whether to show it. */
+  hidden: boolean
+  /** Byte size of a file row; absent for a directory row. */
+  size?: number
+}
+
+/** `workspace.listEntries` response value: one directory level, directories and files together. */
+export interface WorkspaceEntryListing {
+  /** Absolute path of the listed directory. */
+  path: string
+  /** Direct children (directories and regular files), name-sorted with directories first. */
+  entries: WorkspaceEntry[]
+  /** True when the backend cut `entries` at its complete-result bound (the name-sorted tail is absent). */
+  truncated: boolean
+}
+
+/** `workspace.readFile` response value: a size-bounded file read, decoded by content kind. */
+export type WorkspaceFileContent =
+  /** UTF-8 text, decoded to a string; the wire's native JSON string form. */
+  | { kind: 'text'; content: string }
+  /** Binary content the client cannot decode as text; base64-encoded on the wire. */
+  | { kind: 'binary'; mediaType: string; data: string }
+
 /** Workspace-domain unary methods (the map keys workspace.* of RpcMethodMap). */
 export interface WorkspaceApi {
   /**
@@ -106,4 +137,28 @@ export interface WorkspaceApi {
    */
   archiveSession(request: RpcRequest<{ sessionId: SessionId }>):
   Promise<RpcResponse<{ archivedSessionIds: SessionId[] }>>
+
+  /**
+   * Lists one directory level under a workspace root: subdirectories AND
+   * regular files together (unlike `host.listDirectory`, which serves the
+   * directory-only workspace-picker interaction). `path` must be the
+   * workspace's own canonical path or a descendant of it; a request outside
+   * that root fails with `directory-unreadable`. Symlinks to a directory are
+   * followed and reported as `type: 'directory'`; broken/cyclic symlinks and
+   * non-regular entries (sockets, devices) are skipped. Bounded and
+   * `truncated`-flagged the same way `host.listDirectory` is.
+   */
+  listEntries(request: RpcRequest<{ workspaceId: WorkspaceId; path: string }>, signal: AbortSignal):
+  Promise<RpcResponse<WorkspaceEntryListing>>
+
+  /**
+   * Reads one regular file under a workspace root for in-app preview. `path`
+   * must be the workspace's own canonical path or a descendant of it; a
+   * request outside that root fails with `directory-unreadable`. Valid UTF-8
+   * decodes as `kind: 'text'`; otherwise the bytes return as `kind: 'binary'`
+   * with a best-effort media type from the file extension. A file exceeding
+   * the deployment's read bound fails with `file-too-large`.
+   */
+  readFile(request: RpcRequest<{ workspaceId: WorkspaceId; path: string }>, signal: AbortSignal):
+  Promise<RpcResponse<WorkspaceFileContent>>
 }

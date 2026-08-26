@@ -205,6 +205,12 @@ export class FakeApiClient implements IApiClient {
   onWorkspaceArchiveSession: (payload: unknown) => Promise<RpcResponse<{ archivedSessionIds: SessionId[] }>> =
     payload => Promise.resolve(ok({ archivedSessionIds: [(payload as { sessionId: SessionId }).sessionId] }))
 
+  onWorkspaceListEntries: (payload: unknown) => Promise<RpcResponse<{ path: string; entries: never[]; truncated: boolean }>> =
+    payload => Promise.resolve(ok({ path: (payload as { path: string }).path, entries: [], truncated: false }))
+
+  onWorkspaceReadFile: (payload: unknown) => Promise<RpcResponse<{ kind: 'text'; content: string }>> =
+    () => Promise.resolve(ok({ kind: 'text' as const, content: '' }))
+
   readonly workspace: IApiClient['workspace'] = {
     list: (payload: unknown) => this.record('workspace.list', payload, this.onWorkspaceList(payload).then(response => (
       response.result.ok
@@ -220,6 +226,10 @@ export class FakeApiClient implements IApiClient {
       this.record('workspace.insertSessionBefore', payload, this.onWorkspaceInsertSessionBefore(payload)),
     archiveSession: (payload: unknown) =>
       this.record('workspace.archiveSession', payload, this.onWorkspaceArchiveSession(payload)),
+    listEntries: (payload: unknown) =>
+      this.record('workspace.listEntries', payload, this.onWorkspaceListEntries(payload)),
+    readFile: (payload: unknown) =>
+      this.record('workspace.readFile', payload, this.onWorkspaceReadFile(payload)),
   }
 
   // Payloads stay `unknown` (lint-lane note above); response rows are the real

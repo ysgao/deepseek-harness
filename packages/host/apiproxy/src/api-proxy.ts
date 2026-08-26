@@ -52,6 +52,15 @@ import {
   type SessionLogExportReady,
   type SessionLogCompressionLevel,
 } from './session-export.ts'
+import {
+  DEFAULT_MAX_ENTRIES,
+  DEFAULT_MAX_READ_BYTES,
+  isWithinWorkspace,
+  listWorkspaceEntries,
+  readWorkspaceFile,
+  resolveWorkspacePath,
+  WorkspaceFileError,
+} from './workspace-files.ts'
 import type { SessionRawArtifact } from '@deepseek-ai/dsh-session-persistence'
 import {
   SESSION_SEARCH_RESULT_LIMIT,
@@ -608,6 +617,10 @@ export interface ApiProxyDefaults {
    * falls back to platform detection ({@link canOpenNativePath}).
    */
   canOpenPath?: () => boolean
+  /** Complete-result bound per bucket (directories, files) of one `workspace.listEntries` level. */
+  workspaceFilesMaxEntries?: number
+  /** Byte bound of one `workspace.readFile` call; a larger file fails with `file-too-large`. */
+  workspaceFilesMaxReadBytes?: number
 }
 
 /** The tool/call payload fields the presenter path reads. */
@@ -1049,6 +1062,8 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     ?? DEFAULT_SESSION_LOG_COMPRESSION_LEVEL
   const coldBlankProbeMaxBytes = defaults.coldBlankProbeMaxBytes
     ?? DEFAULT_COLD_BLANK_PROBE_MAX_BYTES
+  const workspaceFilesMaxEntries = defaults.workspaceFilesMaxEntries ?? DEFAULT_MAX_ENTRIES
+  const workspaceFilesMaxReadBytes = defaults.workspaceFilesMaxReadBytes ?? DEFAULT_MAX_READ_BYTES
   /** The seed model each create/resume declares; re-read so it never goes stale. */
   const agentOptions = (): AgentOptions => {
     const { provider, model } = defaults.defaultModelSelection()
@@ -2817,6 +2832,61 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           })
         }
         return ok(request, { archivedSessionIds: [...ctx.workspaceRegistry.archivedSessionIds] })
+      },
+
+      async listEntries(request, signal) {
+        const { workspaceId, path } = request.payload
+        const workspace = ctx.workspaceRegistry.get(brandWorkspaceId(workspaceId))
+        if (workspace === undefined) return workspaceNotFound(request, workspaceId)
+        const target = resolveWorkspacePath(path)
+        if (!isWithinWorkspace(workspace.path, target)) {
+          return err(request, {
+            code: 'directory-unreadable',
+            message: `"${path}" is outside workspace "${workspaceId}" (${workspace.path})`,
+            details: { path },
+          })
+        }
+        try {
+          return ok(request, await listWorkspaceEntries(target, workspaceFilesMaxEntries, signal))
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'workspace directory listing was aborted', details: {} })
+          }
+          if (!(error instanceof WorkspaceFileError)) throw error
+          return err(request, { code: error.code as 'directory-unreadable', message: error.message, details: { path: error.path } })
+        }
+      },
+
+      async readFile(request, signal) {
+        const { workspaceId, path } = request.payload
+        const workspace = ctx.workspaceRegistry.get(brandWorkspaceId(workspaceId))
+        if (workspace === undefined) return workspaceNotFound(request, workspaceId)
+        const target = resolveWorkspacePath(path)
+        if (!isWithinWorkspace(workspace.path, target)) {
+          return err(request, {
+            code: 'directory-unreadable',
+            message: `"${path}" is outside workspace "${workspaceId}" (${workspace.path})`,
+            details: { path },
+          })
+        }
+        try {
+          return ok(request, await readWorkspaceFile(target, workspaceFilesMaxReadBytes, signal))
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'workspace file read was aborted', details: {} })
+          }
+          if (!(error instanceof WorkspaceFileError)) throw error
+          if (error.code === 'file-too-large') {
+            return err(request, {
+              code: 'file-too-large',
+              message: error.message,
+              // maxBytes is always set for this code (see WorkspaceFileError); the
+              // narrowing keeps the wire detail shape exact without a cast.
+              details: { path: error.path, maxBytes: error.maxBytes ?? workspaceFilesMaxReadBytes },
+            })
+          }
+          return err(request, { code: 'directory-unreadable', message: error.message, details: { path: error.path } })
+        }
       },
     },
 

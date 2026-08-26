@@ -125,16 +125,23 @@ async function responseBytes(response: Response): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer())
 }
 
+/** Fields every Config default check holds constant besides the one under test. */
+const OTHER_DEFAULTS = {
+  coldBlankProbeMaxBytes: 1024,
+  workspaceFilesMaxEntries: 1000,
+  workspaceFilesMaxReadBytes: 20 * 1024 * 1024,
+}
+
 describe('session export compression config', () => {
   it('defaults to level 6 and rejects values outside the integer 0-9 range', () => {
     expect(ApiProxyService.Config({})).toEqual({
       sessionExportCompressionLevel: 6,
-      coldBlankProbeMaxBytes: 1024,
+      ...OTHER_DEFAULTS,
     })
     expect(ApiProxyService.Config({ sessionExportCompressionLevel: 0 }))
-      .toEqual({ sessionExportCompressionLevel: 0, coldBlankProbeMaxBytes: 1024 })
+      .toEqual({ sessionExportCompressionLevel: 0, ...OTHER_DEFAULTS })
     expect(ApiProxyService.Config({ sessionExportCompressionLevel: 9 }))
-      .toEqual({ sessionExportCompressionLevel: 9, coldBlankProbeMaxBytes: 1024 })
+      .toEqual({ sessionExportCompressionLevel: 9, ...OTHER_DEFAULTS })
     for (const value of [-1, 10, 1.5]) {
       expect(() => ApiProxyService.Config({ sessionExportCompressionLevel: value } as never)).toThrow()
     }
@@ -144,11 +151,28 @@ describe('session export compression config', () => {
 describe('cold blank probe config', () => {
   it('accepts a per-Session byte bound including zero and rejects invalid bounds', () => {
     expect(ApiProxyService.Config({ coldBlankProbeMaxBytes: 0 }))
-      .toEqual({ sessionExportCompressionLevel: 6, coldBlankProbeMaxBytes: 0 })
+      .toEqual({ sessionExportCompressionLevel: 6, ...OTHER_DEFAULTS, coldBlankProbeMaxBytes: 0 })
     expect(ApiProxyService.Config({ coldBlankProbeMaxBytes: 2048 }))
-      .toEqual({ sessionExportCompressionLevel: 6, coldBlankProbeMaxBytes: 2048 })
+      .toEqual({ sessionExportCompressionLevel: 6, ...OTHER_DEFAULTS, coldBlankProbeMaxBytes: 2048 })
     for (const value of [-1, 1.5]) {
       expect(() => ApiProxyService.Config({ coldBlankProbeMaxBytes: value })).toThrow()
+    }
+  })
+})
+
+describe('workspace files config', () => {
+  it('defaults to 1000 entries and 20MB, and accepts explicit natural-number overrides', () => {
+    expect(ApiProxyService.Config({ workspaceFilesMaxEntries: 50 })).toEqual({
+      sessionExportCompressionLevel: 6, coldBlankProbeMaxBytes: 1024,
+      workspaceFilesMaxEntries: 50, workspaceFilesMaxReadBytes: 20 * 1024 * 1024,
+    })
+    expect(ApiProxyService.Config({ workspaceFilesMaxReadBytes: 1024 })).toEqual({
+      sessionExportCompressionLevel: 6, coldBlankProbeMaxBytes: 1024,
+      workspaceFilesMaxEntries: 1000, workspaceFilesMaxReadBytes: 1024,
+    })
+    for (const value of [-1, 1.5]) {
+      expect(() => ApiProxyService.Config({ workspaceFilesMaxEntries: value })).toThrow()
+      expect(() => ApiProxyService.Config({ workspaceFilesMaxReadBytes: value })).toThrow()
     }
   })
 })

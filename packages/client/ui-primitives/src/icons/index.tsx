@@ -669,6 +669,25 @@ export const IconFolderClose16 = ({ size = 16, className }: IconProps) => (
   </svg>
 )
 
+/**
+ * Placeholder generic-file glyph (plain page outline with a folded corner):
+ * NOT a figma extract like its neighbors — no file icon exists yet in the
+ * design system. Stands in for the Workspace Files tree's file rows until a
+ * real design asset replaces it.
+ */
+export const IconFilePlaceholder16 = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} className={className} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M4 1.5H9.5L12.5 4.5V13.5C12.5 13.9142 12.1642 14.25 11.75 14.25H4C3.58579 14.25 3.25 13.9142 3.25 13.5V2.25C3.25 1.83579 3.58579 1.5 4 1.5Z"
+      stroke="currentColor"
+      strokeWidth="1.1"
+      fill="none"
+      strokeLinejoin="round"
+    />
+    <path d="M9.25 1.5V4.5H12.25" stroke="currentColor" strokeWidth="1.1" fill="none" strokeLinejoin="round" />
+  </svg>
+)
+
 /** tree_corner_8x10 (figma extract; session-tree "L" connector, stroke geometry pre-expanded) */
 export const IconTreeCorner8x10 = ({ size = 10, className }: IconProps) => (
   <svg width={(size * 8) / 10} height={size} className={className} viewBox="-0.5 0 8.5 10.5" fill="none">

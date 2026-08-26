@@ -834,10 +834,23 @@ export interface Config {
    * @default 1024
    */
   coldBlankProbeMaxBytes?: number
+  /**
+   * Complete-result bound per bucket (directories, files) of one
+   * `workspace.listEntries` level (the Web GUI's Files tree).
+   * @default 1000
+   */
+  workspaceFilesMaxEntries?: number
+  /**
+   * Byte bound of one `workspace.readFile` call (the Web GUI's in-app file
+   * preview); a larger file fails with `file-too-large` instead of leaving
+   * the host.
+   * @default 20971520
+   */
+  workspaceFilesMaxReadBytes?: number
 }
 ```
 
-来源：[`packages/host/apiproxy/src/index.ts:41`](../packages/host/apiproxy/src/index.ts)
+来源：[`packages/host/apiproxy/src/index.ts:42`](../packages/host/apiproxy/src/index.ts)
 
 <a id="deepseek-aidsh-host-directory-picker-browse"></a>
 

@@ -1,7 +1,8 @@
 /** Test-owned workspaces face: the renderer standard-kit observable plus recorded actions. */
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
-  DirectoryListing, IWorkspaces, SessionId, SnapshotStore, WorkspaceId, WorkspaceListState, WorkspaceView,
+  DirectoryListing, IWorkspaces, SessionId, SnapshotStore, WorkspaceEntryListing, WorkspaceFileContent,
+  WorkspaceId, WorkspaceListState, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { workspaceListState } from './fixtures.ts'
 import type { Stabilizer } from './fixtures.ts'
@@ -211,5 +212,35 @@ export class TestWorkspaces implements IWorkspaces {
     await this.update((draft) => {
       draft.archivedSessionIds = [...draft.archivedSessionIds, sessionId]
     })
+  }
+
+  /**
+   * List one directory level under a Workspace root (recorded). The default
+   * serves an empty level; stub to shape a tree.
+   * @param workspaceId - owning workspace.
+   * @param path - absolute directory to list.
+   * @param signal - forwarded like the production face.
+   * @returns the level's entries and truncation flag.
+   */
+  async listWorkspaceEntries(workspaceId: WorkspaceId, path: string, signal?: AbortSignal): Promise<WorkspaceEntryListing> {
+    this.calls.push({ method: 'listWorkspaceEntries', args: [workspaceId, path, signal] })
+    const stub = this.stubs.get('listWorkspaceEntries')
+    if (stub !== undefined) return await (stub(workspaceId, path, signal) as Promise<WorkspaceEntryListing>)
+    return { path, entries: [], truncated: false }
+  }
+
+  /**
+   * Read one file under a Workspace root (recorded). The default serves
+   * empty text content; stub to shape a preview.
+   * @param workspaceId - owning workspace.
+   * @param path - absolute file path.
+   * @param signal - forwarded like the production face.
+   * @returns the decoded content.
+   */
+  async readWorkspaceFile(workspaceId: WorkspaceId, path: string, signal?: AbortSignal): Promise<WorkspaceFileContent> {
+    this.calls.push({ method: 'readWorkspaceFile', args: [workspaceId, path, signal] })
+    const stub = this.stubs.get('readWorkspaceFile')
+    if (stub !== undefined) return await (stub(workspaceId, path, signal) as Promise<WorkspaceFileContent>)
+    return { kind: 'text', content: '' }
   }
 }

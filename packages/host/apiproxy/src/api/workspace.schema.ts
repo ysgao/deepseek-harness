@@ -7,7 +7,7 @@
 import { z } from 'zod'
 import type { RequestPayload, ResponseValue } from './rpc-map.ts'
 import type { Wire } from './rpc.schema.ts'
-import type { WorkspaceView } from './workspace.ts'
+import type { WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceView } from './workspace.ts'
 import { sessionIdSchema, workspaceIdSchema } from './sessions.schema.ts'
 
 export { workspaceIdSchema } from './sessions.schema.ts'
@@ -98,3 +98,37 @@ export const workspaceArchiveSessionRequestSchema = z.object({
 export const workspaceArchiveSessionValueSchema = z.object({
   archivedSessionIds: z.array(sessionIdSchema),
 }) satisfies z.ZodType<Wire<ResponseValue<'workspace.archiveSession'>>>
+
+/** One `workspace.listEntries` row: a subdirectory or a regular file. */
+export const workspaceEntrySchema = z.object({
+  name: z.string(),
+  path: z.string(),
+  type: z.union([z.literal('directory'), z.literal('file')]),
+  hidden: z.boolean(),
+  size: z.number().optional(),
+}) satisfies z.ZodType<Wire<WorkspaceEntry>>
+
+/** workspace.listEntries request payload: the path must be the workspace root or a descendant. */
+export const workspaceListEntriesRequestSchema = z.object({
+  workspaceId: workspaceIdSchema,
+  path: z.string(),
+}) satisfies z.ZodType<Wire<RequestPayload<'workspace.listEntries'>>>
+
+/** workspace.listEntries response value. */
+export const workspaceListEntriesValueSchema = z.object({
+  path: z.string(),
+  entries: z.array(workspaceEntrySchema),
+  truncated: z.boolean(),
+}) satisfies z.ZodType<Wire<ResponseValue<'workspace.listEntries'>>> satisfies z.ZodType<Wire<WorkspaceEntryListing>>
+
+/** workspace.readFile request payload: the path must be the workspace root or a descendant. */
+export const workspaceReadFileRequestSchema = z.object({
+  workspaceId: workspaceIdSchema,
+  path: z.string(),
+}) satisfies z.ZodType<Wire<RequestPayload<'workspace.readFile'>>>
+
+/** workspace.readFile response value: text decodes as a plain JSON string; binary content is base64 with a media type. */
+export const workspaceReadFileValueSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('text'), content: z.string() }),
+  z.object({ kind: z.literal('binary'), mediaType: z.string(), data: z.string() }),
+]) satisfies z.ZodType<Wire<ResponseValue<'workspace.readFile'>>> satisfies z.ZodType<Wire<WorkspaceFileContent>>

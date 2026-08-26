@@ -102,6 +102,9 @@ export function apply(ctx: ClientContext): void {
       await ctx.workspaces.insertSessionBefore(workspaceId, sessionId, beforeSessionId)
     },
     createWorkspace: input => ctx.workspaces.create(input),
+    listWorkspaceEntries: (workspaceId, path, signal) => ctx.workspaces.listWorkspaceEntries(workspaceId, path, signal),
+    readWorkspaceFile: (workspaceId, path, signal) => ctx.workspaces.readWorkspaceFile(workspaceId, path, signal),
+    openPath: path => ctx.workspaces.openPath(path),
     hooks: { directoryFlow: browserFlowSource, hostDescription },
   })
   const pickerInjected = (): WorkspacePickerInjected => ({

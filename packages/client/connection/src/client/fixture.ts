@@ -34,7 +34,7 @@ import { deriveEventMessage, foldSurface } from '@deepseek-ai/dsh-session/surfac
 import type {
   ApiProxy, ClientRequest, ClientResponse, HistoryEntry, HostFrame, MuxFrame, RpcReceipt,
   ModelProviderGroup, ModelSelection, RpcRequest, RpcResponse, RpcResult, ServerRequest, ServerResponse, SessionSummary,
-  ToolCallView, ToolEventView, ToolResultView, WorkspaceId, WorkspaceView,
+  ToolCallView, ToolEventView, ToolResultView, WorkspaceEntry, WorkspaceFileContent, WorkspaceId, WorkspaceView,
 } from './api.ts'
 import type { RequestPayload, ResponseValue, RpcMethodMap } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { AbstractApiClient, RpcId, SESSION_SEARCH_RESULT_LIMIT } from './api.ts'
@@ -1604,6 +1604,54 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     const name = path.slice(path.lastIndexOf('/') + 1)
     return directoryTree.get(parent)?.includes(name) === true ? [] : undefined
   }
+
+  // In-memory workspace-file tree behind workspace.listEntries/readFile (the
+  // Files sidebar sibling under a Workspace's session list): directories AND
+  // files together, keyed by workspace root. Deterministic content covering
+  // the in-app preview matrix (text/code, markdown, image, and one binary
+  // type that falls back to openPath) so assembled Web tests can walk it
+  // without a real filesystem.
+  const workspaceFileTree = new Map<string, readonly (
+    | { name: string; type: 'directory' }
+    | { name: string; type: 'file'; content: string }
+    | { name: string; type: 'file'; binary: true; mediaType: string }
+  )[]>([
+    ['/tmp/fixture', [
+      { name: 'README.md', type: 'file', content: '# fixture\n\n这是 fixture 工作区的示例 Markdown 文件。\n\n- 一\n- 二\n' },
+      { name: 'index.ts', type: 'file', content: 'export function hello(): string {\n  return \'fixture\'\n}\n' },
+      { name: 'notes.txt', type: 'file', content: '纯文本示例文件。\n' },
+      { name: 'src', type: 'directory' },
+    ]],
+    ['/tmp/fixture/src', [
+      { name: 'main.py', type: 'file', content: 'def main() -> None:\n    print("fixture")\n' },
+    ]],
+    [`${FIXTURE_HOME}/Documents/project`, [
+      { name: 'package.json', type: 'file', content: '{\n  "name": "project"\n}\n' },
+      { name: 'logo.png', type: 'file', binary: true, mediaType: 'image/png' },
+    ]],
+  ])
+  /** 1x1 transparent PNG, base64: a deterministic non-empty binary fixture payload. */
+  const FIXTURE_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+  const workspaceEntriesOf = (path: string): WorkspaceEntry[] | undefined => {
+    const known = workspaceFileTree.get(path)
+    if (known === undefined) return undefined
+    return known.map(child => ({
+      name: child.name,
+      path: `${path}/${child.name}`,
+      type: child.type,
+      hidden: child.name.startsWith('.'),
+    }))
+  }
+  const workspaceFileAt = (path: string): WorkspaceFileContent | undefined => {
+    const parent = path.slice(0, path.lastIndexOf('/'))
+    const name = path.slice(path.lastIndexOf('/') + 1)
+    const entry = workspaceFileTree.get(parent)?.find(
+      (child): child is Extract<typeof child, { type: 'file' }> => child.name === name && child.type === 'file',
+    )
+    if (entry === undefined) return undefined
+    if ('binary' in entry) return { kind: 'binary', mediaType: entry.mediaType, data: FIXTURE_PNG_BASE64 }
+    return { kind: 'text', content: entry.content }
+  }
   const crumbsOf = (path: string): { name: string; path: string; hidden: boolean }[] => {
     const crumbs = [{ name: '/', path: '/', hidden: false }]
     let acc = ''
@@ -2788,6 +2836,26 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         }
         return ok(request, { archivedSessionIds: [...archivedSessionIds] })
       },
+      listEntries: (request) => {
+        const { path } = request.payload
+        const entries = workspaceEntriesOf(path)
+        if (entries === undefined) {
+          return err(request, { code: 'directory-unreadable', message: `cannot list ${path}: not in the fixture workspace tree`, details: { path } })
+        }
+        return ok(request, {
+          path,
+          entries: [...entries].sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'directory' ? -1 : 1)),
+          truncated: false,
+        })
+      },
+      readFile: (request) => {
+        const { path } = request.payload
+        const content = workspaceFileAt(path)
+        if (content === undefined) {
+          return err(request, { code: 'directory-unreadable', message: `cannot read ${path}: not in the fixture workspace tree`, details: { path } })
+        }
+        return ok(request, content)
+      },
     },
     agentPresets: {
       // Both trusts appear, because a surface must present a locally authored
@@ -3203,6 +3271,8 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'workspace.insertBefore': return this.api.workspace.insertBefore(request)
       case 'workspace.insertSessionBefore': return this.api.workspace.insertSessionBefore(request)
       case 'workspace.archiveSession': return this.api.workspace.archiveSession(request)
+      case 'workspace.listEntries': return this.api.workspace.listEntries(request, signal)
+      case 'workspace.readFile': return this.api.workspace.readFile(request, signal)
       case 'skill.list': return this.api.skills.list(request)
       case 'agentPreset.list': return this.api.agentPresets.list(request)
       case 'agentPreset.select': return this.api.agentPresets.select(request)
