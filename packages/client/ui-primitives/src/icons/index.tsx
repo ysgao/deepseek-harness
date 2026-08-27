@@ -889,3 +889,29 @@ export const IconArchiveOutline20 = ({ size = 20, className }: IconProps) => (
     <path d="M12.7962 12.5661V11.0832H7.20548V12.5661L12.7962 12.5661Z" fill="currentColor" />
   </svg>
 )
+
+/** ic_ds_arrow_up_outline_14 (hand-drawn, stroke-based, no figma source): upload/commit glyph — an up arrow into a base line. */
+export const IconArrowUpOutline14 = ({ size = 14, className }: IconProps) => (
+  <svg width={size} height={size} className={className} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M7 10V3M3 7L7 3L11 7M4 12H10"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/** ic_ds_undo_outline_14 (hand-drawn, stroke-based, no figma source): revert/discard glyph — a shaft hooking back on itself. */
+export const IconUndoOutline14 = ({ size = 14, className }: IconProps) => (
+  <svg width={size} height={size} className={className} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M6 4L2 7L6 10M2 7H8A3.5 3.5 0 0 1 8 14H6"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)

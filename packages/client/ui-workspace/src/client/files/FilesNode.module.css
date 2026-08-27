@@ -82,7 +82,7 @@
   align-items: center;
   gap: 5px;
   flex: none;
-  max-width: 40%;
+  max-width: 75%;
 }
 
 .gitBranch {
@@ -97,6 +97,22 @@
 .gitDirtyDot {
   display: inline-flex;
   flex: none;
+}
+
+.gitChangedCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--dsw-alias-state-warn-label);
+  background: var(--dsw-alias-state-warn-tertiary);
 }
 
 .gitRefreshButton {
@@ -114,9 +130,47 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
-.gitRefreshButton:hover {
+.gitRefreshButton:hover:not(:disabled) {
   background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-primary);
+}
+
+.gitRefreshButton:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.gitDiscardButton:hover:not(:disabled) {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.gitCommitInput {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.gitCommitField {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  font-size: 12px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+}
+
+.gitCommitField:focus {
+  outline: none;
+  border-color: var(--dsw-alias-state-business-primary);
+}
+
+.discardConfirmButton:not(:disabled) {
+  color: var(--dsw-alias-state-error-primary);
 }
 
 .gitStatusBadge {

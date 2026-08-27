@@ -200,6 +200,12 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
       async gitStatus(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { isRepo: false, branch: null, files: {} } } }
       },
+      async gitCommitAll(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { committed: true as const } } }
+      },
+      async gitDiscardAll(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { discarded: true as const } } }
+      },
     },
     agentPresets: {
       list(request: RpcRequest<{}>) {

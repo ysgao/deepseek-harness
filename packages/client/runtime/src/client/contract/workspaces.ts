@@ -121,4 +121,20 @@ export interface IWorkspaces {
    * @returns the workspace's git status; `isRepo: false` when its directory is outside any git working tree.
    */
   listWorkspaceGitStatus(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<WorkspaceGitStatus>
+  /**
+   * Stage every pending change (tracked and untracked) and commit them with
+   * `message` to the git repository enclosing the Workspace's directory.
+   * @param workspaceId - target workspace.
+   * @param message - commit message; must be non-blank.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   */
+  commitAllWorkspaceChanges(workspaceId: WorkspaceId, message: string, signal?: AbortSignal): Promise<void>
+  /**
+   * Revert every tracked file's pending change to its `HEAD` content in the
+   * git repository enclosing the Workspace's directory; an untracked file is
+   * left untouched.
+   * @param workspaceId - target workspace.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   */
+  discardAllWorkspaceChanges(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void>
 }

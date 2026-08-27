@@ -48,6 +48,10 @@ export interface RpcErrorDetailsMap {
   'directory-picker-unavailable': { capability: string }
   /** A `workspace.readFile` target exceeds the deployment's file-preview read bound. */
   'file-too-large': { path: string; maxBytes: number }
+  /** A `workspace.gitCommitAll`/`gitDiscardAll` target is outside any git working tree. */
+  'git-not-a-repository': { path: string }
+  /** A `workspace.gitCommitAll`/`gitDiscardAll` git command exited non-zero; the message is git's own output. */
+  'git-command-failed': { command: string }
   'agent-preset-read-only': { agentPreset: string; reason: string }
   'agent-preset-locked': { sessionId: SessionId; agentPreset: string }
   'agent-preset-conflict': { sessionId: SessionId; requestedPreset: string; existingPreset?: string }

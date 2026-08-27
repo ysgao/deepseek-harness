@@ -150,6 +150,13 @@ export type WorkspaceBrowserInjected = {
    * markers).
    */
   listWorkspaceGitStatus: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<WorkspaceGitStatus>
+  /** Stage every pending change (tracked and untracked) and commit them with `message` (the Files tree header's Commit control). */
+  commitAllWorkspaceChanges: (workspaceId: WorkspaceId, message: string, signal?: AbortSignal) => Promise<void>
+  /**
+   * Revert every tracked file's pending change to its `HEAD` content; an
+   * untracked file is left untouched (the Files tree header's Discard control).
+   */
+  discardAllWorkspaceChanges: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<void>
   /** Open a Workspace file with the Host OS default application (the Files tree's external-preview fallback). */
   openPath: (path: string) => Promise<void>
   /**

@@ -18,13 +18,21 @@ Status: implemented
 
 **分支名使用 `symbolic-ref --short HEAD`，而非 `rev-parse --abbrev-ref HEAD`。** 后者在一个"未出生"的分支（刚 `git init`、尚无任何提交的仓库——这是真实且常见的状态，并非罕见情形）上会直接失败，因为没有可解析的提交；`symbolic-ref` 直接读取 HEAD 指向的引用目标，在两种情况下都能解析成功。分离头指针（HEAD 直接指向一个提交而非某个引用）没有分支名，按 git 自身的约定报告为字面量 `"HEAD"`。
 
-**客户端与 UI 层的贯穿方式与相邻 props 完全一致。** `IWorkspaces` 新增 `listWorkspaceGitStatus`；`WorkspaceRuntime` 将其实现为一次简单的 `this.api.workspace.gitStatus(...)` 调用；`WorkspaceBrowserInjected`／`WorkspaceBrowser`／`SessionTree`／`FilesNodeProps` 均在 `listWorkspaceEntries`／`readWorkspaceFile` 旁新增匹配的 prop。`FilesNode` 在挂载时（以及 `workspaceId` 变化时）拉取 git 状态，卸载时中止。始终可见的头部行（不受文件树自身内部展开开关的控制）在 `files` 非空时显示分支名与一个脏状态指示点（复用 `ui-primitives` 的 `StateDot`）；每一行文件在有待处理更改时，会在文件名后显示其状态字母，颜色沿用既有的 `--dsw-alias-state-{warn,success,error,business}-primary` 令牌区分。
+**客户端与 UI 层的贯穿方式与相邻 props 完全一致。** `IWorkspaces` 新增 `listWorkspaceGitStatus`、`commitAllWorkspaceChanges`、`discardAllWorkspaceChanges`；`WorkspaceRuntime` 将它们分别实现为一次简单的 `this.api.workspace.{gitStatus,gitCommitAll,gitDiscardAll}(...)` 调用；`WorkspaceBrowserInjected`／`WorkspaceBrowser`／`SessionTree`／`FilesNodeProps` 均在 `listWorkspaceEntries`／`readWorkspaceFile` 旁新增匹配的 props。`FilesNode` 在挂载时（以及 `workspaceId` 变化时）拉取 git 状态，卸载时中止。始终可见的头部行（不受文件树自身内部展开开关的控制）显示分支名，并在 `files` 非空时额外显示一个已更改文件数徽标（`.gitChangedCount`）以及"全部提交"／"全部放弃"图标按钮；每一行文件在有待处理更改时，会在文件名后显示其状态字母，颜色沿用既有的 `--dsw-alias-state-{warn,success,error,business}-primary` 令牌区分。目录行自身的聚合标记仍然使用 `StateDot`（见下文）。
 
 **git 状态没有实时推送通道，因此改为两条拉取式刷新路径：头部一个显式的刷新图标，以及把文件树折叠后再重新展开**（与 `useLevel` 目录列表钩子已有的"折叠后重新展开即重新拉取"生命周期相同，且这里几乎是白得来的，因为 `FilesNode` 自身的展开处理函数本就在每次切换时执行）。`useGitStatus` 返回 `[status, refresh]`；`refresh` 只是让拉取 effect 依赖数组里的一个令牌自增，并不先清空当前的 `status`，因此一次刷新是原地更新显示，而不是先清空——这与 `workspaceId` 变化不同，后者仍会立即清空（不能让另一个工作区的旧状态残留）。刷新按钮是展开切换 `<button>` 的一个 flex 同级元素，而不是嵌套在其内部——`<button>` 内嵌 `<button>` 是无效的 HTML，且会同时错误地触发两个处理函数——因此头部的外层元素改为一个普通的 `<div>`（`.headerRow`），内含展开切换按钮（`.headerToggle`，`flex: 1`）与 `GitStatusSummary`（分支名、脏状态点、刷新按钮）两个 flex 子元素。
 
 `TestWorkspaces`（`test-support/client-runtime`）与 `FixtureApiClient`（`client/connection`）都实现了这个新方法——前者记录调用并默认返回 `isRepo: false`，后者由于其工作区树是合成的、从来不是真实的 git 工作树，因此始终报告 `isRepo: false`。
 
 **目录行同样携带一个聚合脏状态标记**，只要该目录之下任意深度存在一个有待处理更改的文件——无论该层级是否被拉取过——就会显示。由于 `files` 本就通过一次拉取覆盖了整个仓库，目录行只需对同一个映射做一次简单的前缀扫描即可回答这个问题（`isUnderDirectory`，带路径分段边界校验，因此 `/ws/foo` 不会误匹配 `/ws/foobar/x.txt`），而不需要发起第二次请求；走入一个尚未展开的子树也不需要任何额外信号就能知道它内部有更改。
+
+**新增两个 RPC 方法 `workspace.gitCommitAll({ workspaceId, message })` 与 `workspace.gitDiscardAll({ workspaceId })`，完成与 `gitStatus` 相同的六层模板。** 二者都委托给 `workspace-git.ts` 中新增的 `commitAllChanges` 与 `discardAllChanges` 函数，其调用 `git` 的方式与 `workspaceGitStatus` 一致。`commitAllChanges` 依次执行 `git add -A` 与 `git commit -m <message>`（空白或仅含空格的提交信息会在请求 schema 的 `.refine()` 处被拒绝，而不是在宿主端原语里）。`discardAllChanges` 依次执行 `git reset` 与 `git checkout -- .` 两条独立命令，而不是用一条 `git restore --staged --worktree --source=HEAD -- .`——一次手动复现确认后者会把一个已暂存但尚未提交的新文件直接删除，因为 `git restore` 对一个已暂存的新增文件所做的"恢复到 HEAD"会理解为"这个路径在 HEAD 时并不存在"，从而将其移除；`reset` 只取消暂存、不触碰工作区内容，随后 `checkout -- .` 只恢复受版本控制文件的工作区内容，未跟踪文件（无论是否已暂存）则保持不动。**因此放弃操作只针对受版本控制的更改，绝不是一次完整的 clean**——`discardAllChanges` 从不执行 `git clean`（理由见下方"曾考虑的替代方案"）。
+
+**与 `gitStatus` 不同，`gitCommitAll`／`gitDiscardAll` 把"不是仓库"视为业务错误，而非正常结果。** `gitStatus` 的 `{ isRepo: false }` 返回值是为了让头部能安静地不渲染任何内容；而提交或放弃是用户的一次主动操作，在非工作树目录下没有任何有意义的结果，因此 `workspace-git.ts` 改为抛出 `GitNotARepositoryError`，其余任何 git 失败（一个失败的钩子、一次合并冲突、提交时缺失 `git` 可执行文件）则以携带失败子命令名称的 `GitCommandError` 呈现。二者分别对应 `RpcErrorDetailsMap` 中新增的 `git-not-a-repository`／`git-command-failed` 条目。这两个新 RPC 调用同样使用 `AbstractApiClient.callUnary` 的 `'caller-signal-only'` 超时策略，绕开客户端常规的 30 秒期限——一次提交可能触发一个任意缓慢的 pre-commit／commit-msg 钩子，理应运行至完成（或由用户自行取消），而不应受制于为普通读取调用设定的固定预算。
+
+**提交信息使用一个内联文本输入框（`GitCommitInput`）在激活期间原地替换分支／徽标行，而非弹窗。** 回车键在已去除首尾空白的信息非空且没有请求处于进行中时提交，Esc 键取消，一组"对勾／关闭"图标按钮提供相同的两个点击操作。放弃操作因其破坏性且不需要任何自由文本输入，改为弹出一个明确说明"仅限受版本控制文件、不影响未跟踪文件"这一具体范围的确认 `Modal`，执行前先由用户确认。
+
+**提交与放弃均为纯图标按钮**——`IconArrowUpOutline14`（一个指向底线的向上箭头）与 `IconUndoOutline14`（一根向后勾回的线条）——二者都是新手绘、以描边为主的 `ui-primitives` 图标集新增项；两者都没有 Figma 源文件，延续该图标集既有的"手绘占位符"先例，而非 deepsuite／figma 提取。二者的 `title` 属性（`files.git.commit`／`files.git.discard`）是唯一的标签，与头部本就存在的纯图标刷新按钮做法一致。一次成功的提交或放弃会让 `levelRefreshKey` 自增，从而使当前展开的 `FilesLevel`（及其内部嵌套的一切）重新挂载并重新拉取——这样文件树自身的目录列表才能感知到磁盘上已变化的文件内容；提交与放弃都没有其他渠道能告诉一个已经拉取过的层级"磁盘上的文件变了"。
 
 ## 曾考虑的替代方案
 
@@ -37,12 +45,17 @@ Status: implemented
 - **发起第二个、按目录范围划分的 RPC 调用（或客户端递归拉取）来回答"这个目录内部是否有更改"。** 拒绝：覆盖整个仓库的 `files` 映射已经能通过一次对既有数据的简单前缀扫描（`isUnderDirectory`）来回答这个问题——目录行不需要任何额外的拉取、聚合查询，也不需要提前展开尚未拉取的层级。
 - **实时推送通道**（一个 SSE／文件监听式的 `host/workspace-git-changed` 帧，仿照 `host/workspace-changed`）而非拉取式刷新。作为不成比例而拒绝：git 状态随时可能由应用外部改变（另一个终端、另一个工具），推送通道就需要为每个打开的工作区在 `.git` 上持续运行一个文件系统监听器，而这只是一个非主视图的面板。两条廉价的、由用户主动触发的拉取路径（显式刷新、折叠后重新展开）已经覆盖同样的需求，且没有那份常驻开销。
 - **每次刷新开始时都把 `status` 清空为 `undefined`**，与最初"仅挂载时拉取一次"的重置方式保持一致。在真正接上手动刷新之后被拒绝：这会让分支标签与徽标在每次点击后、新结果到达前都先闪烁清空，而这些数据通常仍然是当前有效的。现在只有 `workspaceId` 变化才会立即清空；同一工作区内的一次刷新会保留上一个已知值，直到新结果到达。
+- **用一条 `git restore --staged --worktree --source=HEAD -- .` 命令实现放弃操作。** 一次手动复现表明它会把一个已暂存但尚未提交的新文件直接删除，而不是仅仅取消其暂存，因此被拒绝。`git reset`（只取消暂存）随后 `git checkout -- .`（只恢复受版本控制文件的工作区内容）对真正受版本控制的更改能达到同样的净效果，且不会造成这种数据丢失。
+- **把完整的 `git clean -fd` 也纳入放弃操作**，将"全部放弃"理解为"把工作区重置为一次干净检出"。经 `AskUserQuestion` 明确确认后拒绝：一个未跟踪文件没有任何已提交内容可供回退，因此对它"放弃"只能意味着把它彻底删除——这比恢复一处 git 总能从 `HEAD` 重建的受版本控制编辑要危险得多，也不是用户在一个*文件*面板上点击"全部放弃"时会预期这个标签所代表的行为。
+- **用一个弹窗对话框输入提交信息**，仿照放弃确认自身的 `Modal`。经 `AskUserQuestion` 确认后改为内联输入框：录入一行自由文本不需要弹窗那种焦点陷阱式的分量，原地替换分支／徽标行能让头部保持惯常的单行高度，而不必为单个输入框另开一个界面层。
 
 ## 影响
 
 - 新增文件：`packages/host/apiproxy/src/workspace-git.ts`，及其测试 `packages/host/apiproxy/tests/workspace-git.spec.ts`。
 - 新增 RPC 方法 `workspace.gitStatus`，请求为 `{ workspaceId }`，响应为 `WorkspaceGitStatus { isRepo, branch, files }`——一个正常（非错误）的 `isRepo: false` 结果同时覆盖"不是仓库"与"没有可用的 `git` 可执行文件"两种情形。
-- `IWorkspaces`、`WorkspaceBrowserInjected`、`FilesNodeProps` 均新增 `listWorkspaceGitStatus`；`TestWorkspaces` 与 `FixtureApiClient` 都实现了它（默认 `isRepo: false`）。
-- `zh`／`en` 两侧均新增本地化键 `files.git.branch`、`files.git.dirty`、`files.git.folderDirty`、`files.git.refresh`、`files.git.status.{M,A,D,R,C,U}`。
-- 每个改动到的文件在其所属包自身的测试套件中都达到 100% 的行／分支／函数覆盖率（`workspace-git.ts`、`FilesNode.tsx`、`api-proxy.ts`／`fetch/client.ts` 的接线部分）；`workspace-git.ts` 中有一条分支——调用方信号恰好在仓库根检查完成与分支名调用完成之间这段极窄的窗口内中止——被标记为 `v8 ignore`，理由是无法在测试中可移植地构造这种竞态，这与 `workspace-files.ts` 自身对其"扫描中途失败"分支已有的先例一致。`ui-workspace/src/client/index.ts` 与 `WorkspaceBrowser.tsx` 仍处于本次改动之前就已存在的 GUI 债务覆盖率豁免名单（`vitest.config.ts`）之内；本次在其中新增的仅是 prop 传递，不引入新分支。
+- 另新增两个 RPC 方法：`workspace.gitCommitAll`，请求为 `{ workspaceId, message }`（空白或仅含空格的信息在 schema 层被拒绝），以及 `workspace.gitDiscardAll`，请求为 `{ workspaceId }`——二者成功时均返回 `void`，且都在非工作树目录下抛出 `git-not-a-repository`／`git-command-failed`（`RpcErrorDetailsMap` 新增条目），而不是像 `gitStatus` 那样返回一个正常结果。
+- `IWorkspaces`、`WorkspaceBrowserInjected`、`FilesNodeProps` 均新增 `listWorkspaceGitStatus`，以及 `commitAllWorkspaceChanges`／`discardAllWorkspaceChanges`（在 `FilesNodeProps` 上为 `commitAllChanges`／`discardAllChanges`）；`TestWorkspaces` 与 `FixtureApiClient` 都实现了全部三者（后者由于没有真实的 git 工作树，提交／放弃调用都会走 `gitStatus` 在 `isRepo: false` 时同样使用的 `git-not-a-repository` 错误路径）。
+- `ui-primitives` 新增两个手绘图标：`IconArrowUpOutline14`、`IconUndoOutline14`（均无 Figma 源文件）；图标集回归测试里硬编码的总数从 71 调整为 73。
+- `zh`／`en` 两侧均新增本地化键 `files.git.branch`、`files.git.changedCount`、`files.git.folderDirty`、`files.git.refresh`、`files.git.commit`、`files.git.discard`、`files.git.commitPlaceholder`、`files.git.commitSubmit`、`files.git.cancel`、`files.git.discardConfirmTitle`、`files.git.discardConfirmDesc`、`files.git.discardConfirm`、`files.git.discardPending`、`files.git.status.{M,A,D,R,C,U}`；`files.git.dirty` 已随着头部脏状态点被更改文件数徽标取代而移除。
+- 每个改动到的文件在其所属包自身的测试套件中都达到 100% 的行／分支／函数覆盖率（`workspace-git.ts`——18 个测试，覆盖 `gitStatus`／`commitAllChanges`／`discardAllChanges`；`FilesNode.tsx`——36 个测试；`api-proxy.ts`／`fetch/client.ts` 的接线部分）；`workspace-git.ts` 中每个子命令各有一条分支——调用方信号恰好在某次 git 子进程调用完成、下一次尚未开始之间这段极窄的窗口内中止——被标记为 `v8 ignore`，理由是无法在测试中可移植地构造这种竞态，这与 `workspace-files.ts` 自身对其"扫描中途失败"分支已有的先例一致。`ui-workspace/src/client/index.ts` 与 `WorkspaceBrowser.tsx` 仍处于本次改动之前就已存在的 GUI 债务覆盖率豁免名单（`vitest.config.ts`）之内；本次在其中新增的仅是 prop 传递，不引入新分支。
 - 早期草稿中，调用方信号在仓库根检查阶段中止时会被吞掉、直接归入普通的 `isRepo: false` 结果（`catch` 块把包括中止在内的一切都吞掉了）——这一问题在落地前被一个测试捕捉并修复：中止现在会重新抛出，并向上传播到 RPC 处理器的 `cancelled` 响应，与 `listEntries`／`readFile` 报告取消的方式保持一致。

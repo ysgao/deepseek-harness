@@ -182,6 +182,12 @@ export class FakeApiClient implements IApiClient {
       branch: null,
       files: {},
     }))),
+    gitCommitAll: (payload: unknown) => this.record('workspace.gitCommitAll', payload, Promise.resolve(ok({
+      committed: true as const,
+    }))),
+    gitDiscardAll: (payload: unknown) => this.record('workspace.gitDiscardAll', payload, Promise.resolve(ok({
+      discarded: true as const,
+    }))),
   }
 
   // Payloads stay `unknown` (lint-lane note above); response rows are the real

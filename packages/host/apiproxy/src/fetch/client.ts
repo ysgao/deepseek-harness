@@ -35,6 +35,8 @@ import {
   workspaceArchiveSessionValueSchema,
   workspaceCreateValueSchema,
   workspaceDeleteValueSchema,
+  workspaceGitCommitAllValueSchema,
+  workspaceGitDiscardAllValueSchema,
   workspaceGitStatusValueSchema,
   workspaceInsertBeforeValueSchema,
   workspaceInsertSessionBeforeValueSchema,
@@ -129,6 +131,8 @@ export interface IApiClient {
     listEntries(payload: RequestPayload<'workspace.listEntries'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.listEntries'>>>
     readFile(payload: RequestPayload<'workspace.readFile'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.readFile'>>>
     gitStatus(payload: RequestPayload<'workspace.gitStatus'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitStatus'>>>
+    gitCommitAll(payload: RequestPayload<'workspace.gitCommitAll'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitCommitAll'>>>
+    gitDiscardAll(payload: RequestPayload<'workspace.gitDiscardAll'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitDiscardAll'>>>
   }
   skills: {
     list(payload: RequestPayload<'skill.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'skill.list'>>>
@@ -215,6 +219,8 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'workspace.listEntries': workspaceListEntriesValueSchema,
   'workspace.readFile': workspaceReadFileValueSchema,
   'workspace.gitStatus': workspaceGitStatusValueSchema,
+  'workspace.gitCommitAll': workspaceGitCommitAllValueSchema,
+  'workspace.gitDiscardAll': workspaceGitDiscardAllValueSchema,
   'skill.list': skillListValueSchema,
   'agentPreset.list': agentPresetListValueSchema,
   'agentPreset.select': agentPresetSelectValueSchema,
@@ -474,6 +480,11 @@ export abstract class AbstractApiClient implements IApiClient {
     listEntries: (payload, signal) => this.callUnary('workspace.listEntries', payload, signal),
     readFile: (payload, signal) => this.callUnary('workspace.readFile', payload, signal),
     gitStatus: (payload, signal) => this.callUnary('workspace.gitStatus', payload, signal),
+    // Commit/discard may run a slow commit hook (lint, build, …); like the
+    // native directory picker, this is user-paced, not bound by the normal
+    // unary deadline. Caller/connection aborts remain.
+    gitCommitAll: (payload, signal) => this.callUnary('workspace.gitCommitAll', payload, signal, 'caller-signal-only'),
+    gitDiscardAll: (payload, signal) => this.callUnary('workspace.gitDiscardAll', payload, signal, 'caller-signal-only'),
   }
 
   readonly skills: IApiClient['skills'] = {

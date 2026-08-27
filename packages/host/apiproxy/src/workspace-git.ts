@@ -1,11 +1,16 @@
 /**
- * Host-side git status for the Web GUI's Files tree: current branch and
- * pending-change file classification, scanned from the git repository
- * enclosing a workspace's own directory (which may be an ancestor of it).
- * Shells out to the host's own `git` binary; there is no bundled git
- * implementation. A directory outside any working tree, or a host with no
- * `git` binary at all, both resolve as `isRepo: false` rather than a thrown
- * error — this module never distinguishes "not a repo" from "can't tell".
+ * Host-side git operations for the Web GUI's Files tree: status (branch and
+ * pending-change classification), and the Commit-all/Discard-all write
+ * actions, all scanned or applied against the git repository enclosing a
+ * workspace's own directory (which may be an ancestor of it). Shells out to
+ * the host's own `git` binary; there is no bundled git implementation.
+ *
+ * `workspaceGitStatus` treats a directory outside any working tree, or a
+ * host with no `git` binary at all, as `isRepo: false` rather than a thrown
+ * error — it never distinguishes "not a repo" from "can't tell". The write
+ * actions (`commitAllChanges`, `discardAllChanges`) cannot use that same
+ * quiet fallback — a write the caller believes succeeded must not silently
+ * no-op — so they throw {@link GitNotARepositoryError} instead.
  * @module
  */
 
@@ -15,6 +20,51 @@ import { promisify } from 'node:util'
 import type { WorkspaceGitStatus } from './api/workspace.ts'
 
 const execFileAsync = promisify(execFile)
+
+/** Thrown by a write action when its target directory is outside any git working tree. */
+export class GitNotARepositoryError extends Error {
+  /** @param path - the directory that was checked. */
+  constructor(readonly path: string) {
+    super(`"${path}" is not inside a git working tree`)
+    this.name = 'GitNotARepositoryError'
+  }
+}
+
+/** Thrown by a write action when the underlying git command exits non-zero (including a failing commit hook). */
+export class GitCommandError extends Error {
+  /**
+   * @param command - short name of the failing step (`add`, `commit`, `reset`, `checkout`).
+   * @param message - git's own stderr/stdout text.
+   */
+  constructor(readonly command: string, message: string) {
+    super(message)
+    this.name = 'GitCommandError'
+  }
+}
+
+function messageOf(error: unknown): string {
+  /* v8 ignore next -- every catch site here rejects with a real
+     node:child_process Error; the String() fallback exists only for the
+     `unknown` narrowing. */
+  return error instanceof Error ? error.message : String(error)
+}
+
+/**
+ * Resolves the git repository root enclosing `path` via `rev-parse
+ * --show-toplevel`; the caller decides how to report a non-repository
+ * (`workspaceGitStatus` collapses it to `isRepo: false`, the write actions
+ * throw {@link GitNotARepositoryError}) — this helper only distinguishes an
+ * abort (rethrown as-is) from every other failure (rethrown as a plain
+ * `Error`, folded by the caller).
+ * @param path - candidate directory (absolute).
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @returns the repository's absolute root path.
+ * @throws when `path` is not inside a working tree, or the caller aborts.
+ */
+async function repoToplevel(path: string, signal: AbortSignal | undefined): Promise<string> {
+  const { stdout } = await execFileAsync('git', ['-C', path, 'rev-parse', '--show-toplevel'], { signal })
+  return stdout.trim()
+}
 
 /** Porcelain v1 status-record prefix width (`XY` + one space) before the path field starts. */
 const STATUS_PREFIX_LENGTH = 3
@@ -68,8 +118,7 @@ function parsePorcelain(stdout: string, repoRoot: string): Record<string, string
 export async function workspaceGitStatus(path: string, signal?: AbortSignal): Promise<WorkspaceGitStatus> {
   let repoRoot: string
   try {
-    const { stdout } = await execFileAsync('git', ['-C', path, 'rev-parse', '--show-toplevel'], { signal })
-    repoRoot = stdout.trim()
+    repoRoot = await repoToplevel(path, signal)
   } catch (error: unknown) {
     // An abort must propagate (the caller reports cancelled), not collapse
     // into the ordinary "not a repo" result.
@@ -81,6 +130,94 @@ export async function workspaceGitStatus(path: string, signal?: AbortSignal): Pr
     execFileAsync('git', ['-C', repoRoot, 'status', '--porcelain=v1', '-z', '--untracked-files=all'], { signal }),
   ])
   return { isRepo: true, branch, files: parsePorcelain(statusOut, repoRoot) }
+}
+
+/**
+ * Stages every pending change — tracked and untracked alike — and commits
+ * them with `message` to the git repository enclosing `path`.
+ * @param path - workspace's own directory (absolute).
+ * @param message - commit message (the caller/schema enforces non-blank).
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @throws {GitNotARepositoryError} when `path` is outside any git working tree.
+ * @throws {GitCommandError} when `git add` or `git commit` exits non-zero
+ * (a failing commit hook, no pending changes, no configured git identity, …).
+ */
+export async function commitAllChanges(path: string, message: string, signal?: AbortSignal): Promise<void> {
+  const repoRoot = await repoRootOrThrow(path, signal)
+  try {
+    await execFileAsync('git', ['-C', repoRoot, 'add', '-A'], { signal })
+  } catch (error: unknown) {
+    /* v8 ignore next -- needs the caller signal to abort in the narrow window
+       between the repo-root check settling and this call settling; not
+       reliably raceable in a portable test (see currentBranch's own guard). */
+    if (signal?.aborted) throw error
+    /* v8 ignore next -- `git add -A` fails only on a filesystem-permission or
+       similar host condition; forcing one needs a platform-specific trick
+       (chmod semantics differ enough across this suite's OS matrix) rather
+       than a portable repro. */
+    throw new GitCommandError('add', messageOf(error))
+  }
+  try {
+    await execFileAsync('git', ['-C', repoRoot, 'commit', '-m', message], { signal })
+  } catch (error: unknown) {
+    /* v8 ignore next -- same narrow-window rationale as the `add` catch above. */
+    if (signal?.aborted) throw error
+    throw new GitCommandError('commit', messageOf(error))
+  }
+}
+
+/**
+ * Reverts every tracked file's pending change — staged or unstaged,
+ * modified/added/deleted/renamed — to its `HEAD` content, in the git
+ * repository enclosing `path`. An untracked file (never added to the index)
+ * is left untouched: git has no copy of it to restore, so discarding it
+ * would delete it permanently. Unstaging a newly `add`ed file (no `HEAD`
+ * version) returns it to untracked rather than deleting it, for the same
+ * reason — verified empirically, since `git restore --staged --worktree`
+ * deletes such a file outright, unlike the `reset` + `checkout` pair used
+ * here.
+ * @param path - workspace's own directory (absolute).
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @throws {GitNotARepositoryError} when `path` is outside any git working tree.
+ * @throws {GitCommandError} when `git reset` or `git checkout` exits non-zero.
+ */
+export async function discardAllChanges(path: string, signal?: AbortSignal): Promise<void> {
+  const repoRoot = await repoRootOrThrow(path, signal)
+  try {
+    await execFileAsync('git', ['-C', repoRoot, 'reset'], { signal })
+  } catch (error: unknown) {
+    /* v8 ignore next -- same narrow-window rationale as commitAllChanges's own catch blocks. */
+    if (signal?.aborted) throw error
+    /* v8 ignore next -- `git reset` (no arguments, against an already-resolved
+       repository root) fails only on the same kind of host filesystem
+       condition as `git add -A` above, not portably reproducible. */
+    throw new GitCommandError('reset', messageOf(error))
+  }
+  try {
+    await execFileAsync('git', ['-C', repoRoot, 'checkout', '--', '.'], { signal })
+  } catch (error: unknown) {
+    /* v8 ignore next -- same narrow-window rationale as commitAllChanges's own catch blocks. */
+    if (signal?.aborted) throw error
+    throw new GitCommandError('checkout', messageOf(error))
+  }
+}
+
+/**
+ * Shared repo-root resolution for the write actions: unlike
+ * {@link workspaceGitStatus}, a non-repository must fail loud rather than
+ * quietly no-op a write the caller believes succeeded.
+ * @param path - candidate directory (absolute).
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @returns the repository's absolute root path.
+ * @throws {GitNotARepositoryError} when `path` is outside any git working tree.
+ */
+async function repoRootOrThrow(path: string, signal: AbortSignal | undefined): Promise<string> {
+  try {
+    return await repoToplevel(path, signal)
+  } catch (error: unknown) {
+    if (signal?.aborted) throw error
+    throw new GitNotARepositoryError(path)
+  }
 }
 
 /**

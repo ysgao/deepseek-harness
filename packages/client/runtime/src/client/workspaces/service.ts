@@ -339,6 +339,27 @@ export class WorkspaceRuntime implements IWorkspaces {
   }
 
   /**
+   * Stage every pending change and commit them through `workspace.gitCommitAll`.
+   * @param workspaceId - target workspace.
+   * @param message - commit message; must be non-blank.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   */
+  async commitAllWorkspaceChanges(workspaceId: WorkspaceId, message: string, signal?: AbortSignal): Promise<void> {
+    const response = await this.api.workspace.gitCommitAll({ workspaceId, message }, signal)
+    if (!response.result.ok) throw new WorkspaceFileBrowseError(response.result.error)
+  }
+
+  /**
+   * Revert every tracked file's pending change through `workspace.gitDiscardAll`.
+   * @param workspaceId - target workspace.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   */
+  async discardAllWorkspaceChanges(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void> {
+    const response = await this.api.workspace.gitDiscardAll({ workspaceId }, signal)
+    if (!response.result.ok) throw new WorkspaceFileBrowseError(response.result.error)
+  }
+
+  /**
    * Move a session within its Workspace's manual order (DOM-insertBefore-like).
    * @param workspaceId - owning workspace.
    * @param sessionId - accounted session to move.

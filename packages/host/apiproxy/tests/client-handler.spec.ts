@@ -92,6 +92,8 @@ function scriptedApi(overrides: {
       listEntries: r => ok(r, { path: r.payload.path, entries: [], truncated: false }),
       readFile: r => ok(r, { kind: 'text' as const, content: '' }),
       gitStatus: r => ok(r, { isRepo: false, branch: null, files: {} }),
+      gitCommitAll: r => ok(r, { committed: true as const }),
+      gitDiscardAll: r => ok(r, { discarded: true as const }),
     },
     skills: { list: r => ok(r, { skills: [] }), ...overrides.skills },
     agentPresets: {
@@ -257,6 +259,16 @@ describe('unary round trip', () => {
     expect(content.result).toEqual({ ok: true, value: { kind: 'text', content: '' } })
     const status = await c.workspace.gitStatus({ workspaceId: 'w1' as never })
     expect(status.result).toEqual({ ok: true, value: { isRepo: false, branch: null, files: {} } })
+    const committed = await c.workspace.gitCommitAll({ workspaceId: 'w1' as never, message: 'test commit' })
+    expect(committed.result).toEqual({ ok: true, value: { committed: true } })
+    const discarded = await c.workspace.gitDiscardAll({ workspaceId: 'w1' as never })
+    expect(discarded.result).toEqual({ ok: true, value: { discarded: true } })
+  })
+
+  it('rejects a blank commit message with bad-request', async () => {
+    const c = client(scriptedApi())
+    const blankMessage = await c.workspace.gitCommitAll({ workspaceId: 'w1' as never, message: '   ' })
+    expect(blankMessage.result).toMatchObject({ ok: false, error: { code: 'bad-request' } })
   })
 
   it('routes the agent-preset roster and switch through the wire', async () => {

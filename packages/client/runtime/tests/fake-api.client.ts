@@ -214,6 +214,12 @@ export class FakeApiClient implements IApiClient {
   onWorkspaceGitStatus: (payload: unknown) => Promise<RpcResponse<WorkspaceGitStatus>> =
     () => Promise.resolve(ok({ isRepo: false, branch: null, files: {} }))
 
+  onWorkspaceGitCommitAll: (payload: unknown) => Promise<RpcResponse<{ committed: true }>> =
+    () => Promise.resolve(ok({ committed: true }))
+
+  onWorkspaceGitDiscardAll: (payload: unknown) => Promise<RpcResponse<{ discarded: true }>> =
+    () => Promise.resolve(ok({ discarded: true }))
+
   readonly workspace: IApiClient['workspace'] = {
     list: (payload: unknown) => this.record('workspace.list', payload, this.onWorkspaceList(payload).then(response => (
       response.result.ok
@@ -235,6 +241,10 @@ export class FakeApiClient implements IApiClient {
       this.record('workspace.readFile', payload, this.onWorkspaceReadFile(payload)),
     gitStatus: (payload: unknown) =>
       this.record('workspace.gitStatus', payload, this.onWorkspaceGitStatus(payload)),
+    gitCommitAll: (payload: unknown) =>
+      this.record('workspace.gitCommitAll', payload, this.onWorkspaceGitCommitAll(payload)),
+    gitDiscardAll: (payload: unknown) =>
+      this.record('workspace.gitDiscardAll', payload, this.onWorkspaceGitDiscardAll(payload)),
   }
 
   // Payloads stay `unknown` (lint-lane note above); response rows are the real

@@ -144,3 +144,27 @@ export const workspaceGitStatusValueSchema = z.object({
   branch: z.string().nullable(),
   files: z.record(z.string(), z.string()),
 }) satisfies z.ZodType<Wire<ResponseValue<'workspace.gitStatus'>>> satisfies z.ZodType<Wire<WorkspaceGitStatus>>
+
+/** workspace.gitCommitAll request payload: the commit message must be non-blank. */
+export const workspaceGitCommitAllRequestSchema = z.object({
+  workspaceId: workspaceIdSchema,
+  message: z.string(),
+}).refine(
+  payload => payload.message.trim() !== '',
+  { message: 'workspace.gitCommitAll requires a non-blank commit message' },
+) satisfies z.ZodType<Wire<RequestPayload<'workspace.gitCommitAll'>>>
+
+/** workspace.gitCommitAll response value. */
+export const workspaceGitCommitAllValueSchema = z.object({
+  committed: z.literal(true),
+}) satisfies z.ZodType<Wire<ResponseValue<'workspace.gitCommitAll'>>>
+
+/** workspace.gitDiscardAll request payload. */
+export const workspaceGitDiscardAllRequestSchema = z.object({
+  workspaceId: workspaceIdSchema,
+}) satisfies z.ZodType<Wire<RequestPayload<'workspace.gitDiscardAll'>>>
+
+/** workspace.gitDiscardAll response value. */
+export const workspaceGitDiscardAllValueSchema = z.object({
+  discarded: z.literal(true),
+}) satisfies z.ZodType<Wire<ResponseValue<'workspace.gitDiscardAll'>>>

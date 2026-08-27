@@ -2857,8 +2857,19 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         return ok(request, content)
       },
       // The fixture's workspace tree is synthetic, never a real git working
-      // tree, so every workspace reports as not a repo.
+      // tree, so every workspace reports as not a repo, and a write action
+      // fails the same way the real backend would against a non-repo target.
       gitStatus: request => ok(request, { isRepo: false, branch: null, files: {} }),
+      gitCommitAll: request => err(request, {
+        code: 'git-not-a-repository',
+        message: `"${request.payload.workspaceId}" is not inside a git working tree`,
+        details: { path: '' },
+      }),
+      gitDiscardAll: request => err(request, {
+        code: 'git-not-a-repository',
+        message: `"${request.payload.workspaceId}" is not inside a git working tree`,
+        details: { path: '' },
+      }),
     },
     agentPresets: {
       // Both trusts appear, because a surface must present a locally authored
@@ -3290,6 +3301,8 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'workspace.listEntries': return this.api.workspace.listEntries(request, signal)
       case 'workspace.readFile': return this.api.workspace.readFile(request, signal)
       case 'workspace.gitStatus': return this.api.workspace.gitStatus(request, signal)
+      case 'workspace.gitCommitAll': return this.api.workspace.gitCommitAll(request, signal)
+      case 'workspace.gitDiscardAll': return this.api.workspace.gitDiscardAll(request, signal)
       case 'skill.list': return this.api.skills.list(request)
       case 'agentPreset.list': return this.api.agentPresets.list(request)
       case 'agentPreset.select': return this.api.agentPresets.select(request)

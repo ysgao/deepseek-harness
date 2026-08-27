@@ -187,4 +187,27 @@ export interface WorkspaceApi {
    */
   gitStatus(request: RpcRequest<{ workspaceId: WorkspaceId }>, signal: AbortSignal):
   Promise<RpcResponse<WorkspaceGitStatus>>
+
+  /**
+   * Stages every pending change — tracked and untracked alike — and commits
+   * them with `message` to the git repository enclosing a workspace's own
+   * directory. A blank `message` fails schema validation before this method
+   * runs. Fails `git-not-a-repository` when the directory is outside any
+   * git working tree, `git-command-failed` when `git add`/`git commit`
+   * itself exits non-zero (a failing commit hook, no pending changes, no
+   * configured git identity, …) — the message is git's own output.
+   */
+  gitCommitAll(request: RpcRequest<{ workspaceId: WorkspaceId; message: string }>, signal: AbortSignal):
+  Promise<RpcResponse<{ committed: true }>>
+
+  /**
+   * Reverts every tracked file's pending change to its `HEAD` content in the
+   * git repository enclosing a workspace's own directory; an untracked file
+   * is left untouched (git has no copy of it to restore). Fails
+   * `git-not-a-repository` when the directory is outside any git working
+   * tree, `git-command-failed` when the underlying `git` commands exit
+   * non-zero.
+   */
+  gitDiscardAll(request: RpcRequest<{ workspaceId: WorkspaceId }>, signal: AbortSignal):
+  Promise<RpcResponse<{ discarded: true }>>
 }

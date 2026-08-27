@@ -1,10 +1,12 @@
 /** Real-git branch and porcelain-status coverage of workspace-git.ts. */
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { workspaceGitStatus } from '../src/workspace-git.ts'
+import {
+  commitAllChanges, discardAllChanges, GitCommandError, GitNotARepositoryError, workspaceGitStatus,
+} from '../src/workspace-git.ts'
 
 function tempDir(prefix: string): string {
   return realpathSync.native(mkdtempSync(join(tmpdir(), prefix)))
@@ -123,5 +125,94 @@ describe('workspaceGitStatus', () => {
     const controller = new AbortController()
     controller.abort()
     await expect(workspaceGitStatus(root, controller.signal)).rejects.toThrow()
+  })
+})
+
+describe('commitAllChanges', () => {
+  it('stages tracked and untracked changes and commits them with the given message', async () => {
+    const root = tempDir('dsh-workspace-git-commit-')
+    initRepo(root)
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    commitAll(root, 'init')
+    writeFileSync(join(root, 'a.txt'), 'changed')
+    writeFileSync(join(root, 'new.txt'), 'new file')
+
+    await commitAllChanges(root, 'commit everything')
+
+    expect(execFileSync('git', ['-C', root, 'log', '-1', '--format=%s']).toString().trim()).toBe('commit everything')
+    expect(execFileSync('git', ['-C', root, 'status', '--porcelain']).toString()).toBe('')
+  })
+
+  it('rejects a directory outside any git working tree with GitNotARepositoryError', async () => {
+    const root = tempDir('dsh-workspace-git-commit-none-')
+    await expect(commitAllChanges(root, 'msg')).rejects.toThrow(GitNotARepositoryError)
+  })
+
+  it('rejects with GitCommandError when there is nothing to commit', async () => {
+    const root = tempDir('dsh-workspace-git-commit-empty-')
+    initRepo(root)
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    commitAll(root, 'init')
+
+    await expect(commitAllChanges(root, 'nothing pending')).rejects.toThrow(GitCommandError)
+  })
+
+  it('propagates an abort instead of collapsing into a GitCommandError', async () => {
+    const root = tempDir('dsh-workspace-git-commit-abort-')
+    initRepo(root)
+    const controller = new AbortController()
+    controller.abort()
+    const error = await commitAllChanges(root, 'msg', controller.signal).catch((reason: unknown) => reason)
+    expect(error).not.toBeInstanceOf(GitCommandError)
+    expect(error).not.toBeInstanceOf(GitNotARepositoryError)
+  })
+})
+
+describe('discardAllChanges', () => {
+  it('reverts every tracked file to HEAD and leaves an untracked file alone', async () => {
+    const root = tempDir('dsh-workspace-git-discard-')
+    initRepo(root)
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    commitAll(root, 'init')
+    writeFileSync(join(root, 'a.txt'), 'changed')
+    execFileSync('git', ['-C', root, 'add', 'a.txt']) // staged modification
+    writeFileSync(join(root, 'staged-new.txt'), 'staged new')
+    execFileSync('git', ['-C', root, 'add', 'staged-new.txt']) // staged addition, no HEAD version
+    writeFileSync(join(root, 'plain-untracked.txt'), 'never added')
+
+    await discardAllChanges(root)
+
+    expect(readFileSync(join(root, 'a.txt'), 'utf-8')).toBe('hello')
+    // A staged-new file is unstaged back to untracked, not deleted.
+    expect(existsSync(join(root, 'staged-new.txt'))).toBe(true)
+    expect(existsSync(join(root, 'plain-untracked.txt'))).toBe(true)
+    const status = execFileSync('git', ['-C', root, 'status', '--porcelain']).toString()
+    expect(status).toContain('?? staged-new.txt')
+    expect(status).toContain('?? plain-untracked.txt')
+    expect(status).not.toContain('a.txt')
+  })
+
+  it('rejects a directory outside any git working tree with GitNotARepositoryError', async () => {
+    const root = tempDir('dsh-workspace-git-discard-none-')
+    await expect(discardAllChanges(root)).rejects.toThrow(GitNotARepositoryError)
+  })
+
+  it('rejects with GitCommandError when the repository has no commits yet (unborn HEAD)', async () => {
+    const root = tempDir('dsh-workspace-git-discard-unborn-')
+    initRepo(root)
+    writeFileSync(join(root, 'a.txt'), 'staged before any commit')
+    execFileSync('git', ['-C', root, 'add', 'a.txt'])
+
+    await expect(discardAllChanges(root)).rejects.toThrow(GitCommandError)
+  })
+
+  it('propagates an abort instead of collapsing into a GitCommandError', async () => {
+    const root = tempDir('dsh-workspace-git-discard-abort-')
+    initRepo(root)
+    const controller = new AbortController()
+    controller.abort()
+    const error = await discardAllChanges(root, controller.signal).catch((reason: unknown) => reason)
+    expect(error).not.toBeInstanceOf(GitCommandError)
+    expect(error).not.toBeInstanceOf(GitNotARepositoryError)
   })
 })

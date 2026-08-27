@@ -257,4 +257,27 @@ export class TestWorkspaces implements IWorkspaces {
     if (stub !== undefined) return await (stub(workspaceId, signal) as Promise<WorkspaceGitStatus>)
     return { isRepo: false, branch: null, files: {} }
   }
+
+  /**
+   * Stage and commit every pending change (recorded). The default resolves with no effect; stub to simulate failure.
+   * @param workspaceId - owning workspace.
+   * @param message - commit message.
+   * @param signal - forwarded like the production face.
+   */
+  async commitAllWorkspaceChanges(workspaceId: WorkspaceId, message: string, signal?: AbortSignal): Promise<void> {
+    this.calls.push({ method: 'commitAllWorkspaceChanges', args: [workspaceId, message, signal] })
+    const stub = this.stubs.get('commitAllWorkspaceChanges')
+    if (stub !== undefined) await (stub(workspaceId, message, signal) as Promise<void>)
+  }
+
+  /**
+   * Revert every tracked file's pending change (recorded). The default resolves with no effect; stub to simulate failure.
+   * @param workspaceId - owning workspace.
+   * @param signal - forwarded like the production face.
+   */
+  async discardAllWorkspaceChanges(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void> {
+    this.calls.push({ method: 'discardAllWorkspaceChanges', args: [workspaceId, signal] })
+    const stub = this.stubs.get('discardAllWorkspaceChanges')
+    if (stub !== undefined) await (stub(workspaceId, signal) as Promise<void>)
+  }
 }

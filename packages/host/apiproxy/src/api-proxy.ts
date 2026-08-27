@@ -66,7 +66,9 @@ import {
   resolveWorkspacePath,
   WorkspaceFileError,
 } from './workspace-files.ts'
-import { workspaceGitStatus } from './workspace-git.ts'
+import {
+  commitAllChanges, discardAllChanges, GitCommandError, GitNotARepositoryError, workspaceGitStatus,
+} from './workspace-git.ts'
 import type { SessionRawArtifact } from '@deepseek-ai/dsh-session-persistence'
 import {
   SESSION_SEARCH_RESULT_LIMIT,
@@ -2960,6 +2962,48 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         } catch (error: unknown) {
           if (signal.aborted) {
             return err(request, { code: 'cancelled', message: 'workspace git status was aborted', details: {} })
+          }
+          throw error
+        }
+      },
+
+      async gitCommitAll(request, signal) {
+        const { workspaceId, message } = request.payload
+        const workspace = ctx.workspaceRegistry.get(brandWorkspaceId(workspaceId))
+        if (workspace === undefined) return workspaceNotFound(request, workspaceId)
+        try {
+          await commitAllChanges(workspace.path, message, signal)
+          return ok(request, { committed: true })
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'workspace git commit was aborted', details: {} })
+          }
+          if (error instanceof GitNotARepositoryError) {
+            return err(request, { code: 'git-not-a-repository', message: error.message, details: { path: error.path } })
+          }
+          if (error instanceof GitCommandError) {
+            return err(request, { code: 'git-command-failed', message: error.message, details: { command: error.command } })
+          }
+          throw error
+        }
+      },
+
+      async gitDiscardAll(request, signal) {
+        const { workspaceId } = request.payload
+        const workspace = ctx.workspaceRegistry.get(brandWorkspaceId(workspaceId))
+        if (workspace === undefined) return workspaceNotFound(request, workspaceId)
+        try {
+          await discardAllChanges(workspace.path, signal)
+          return ok(request, { discarded: true })
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'workspace git discard was aborted', details: {} })
+          }
+          if (error instanceof GitNotARepositoryError) {
+            return err(request, { code: 'git-not-a-repository', message: error.message, details: { path: error.path } })
+          }
+          if (error instanceof GitCommandError) {
+            return err(request, { code: 'git-command-failed', message: error.message, details: { command: error.command } })
           }
           throw error
         }

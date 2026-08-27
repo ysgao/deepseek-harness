@@ -218,7 +218,8 @@ type SessionTreeProps = Pick<
   WorkspaceBrowserProps,
   'useSessions' | 'startSession' | 'open' | 'forkSession'
   | 'insertWorkspaceBefore' | 'insertSessionBefore' | 't'
-  | 'listWorkspaceEntries' | 'readWorkspaceFile' | 'listWorkspaceGitStatus' | 'openPath' | 'openFileInSession'
+  | 'listWorkspaceEntries' | 'readWorkspaceFile' | 'listWorkspaceGitStatus'
+  | 'commitAllWorkspaceChanges' | 'discardAllWorkspaceChanges' | 'openPath' | 'openFileInSession'
 > & {
   /** Host account home for POSIX hover-path abbreviation. */
   home?: string | undefined
@@ -256,7 +257,8 @@ function SessionTree({
   insertWorkspaceBefore, insertSessionBefore, orderBy,
   groupExpansion, setGroupExpanded,
   sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t,
-  listWorkspaceEntries, readWorkspaceFile, listWorkspaceGitStatus, openPath, openFileInSession,
+  listWorkspaceEntries, readWorkspaceFile, listWorkspaceGitStatus,
+  commitAllWorkspaceChanges, discardAllWorkspaceChanges, openPath, openFileInSession,
 }: SessionTreeProps) {
   const list = useSessions(s => s)
   const current = list.current
@@ -493,6 +495,8 @@ function SessionTree({
                   listWorkspaceEntries={listWorkspaceEntries}
                   readWorkspaceFile={readWorkspaceFile}
                   listWorkspaceGitStatus={listWorkspaceGitStatus}
+                  commitAllChanges={commitAllWorkspaceChanges}
+                  discardAllChanges={discardAllWorkspaceChanges}
                   openPath={openPath}
                   currentSessionId={current}
                   openFileInSession={openFileInSession}
@@ -780,6 +784,8 @@ export function WorkspaceBrowser({
   listWorkspaceEntries,
   readWorkspaceFile,
   listWorkspaceGitStatus,
+  commitAllWorkspaceChanges,
+  discardAllWorkspaceChanges,
   openPath,
   openFileInSession,
   searchSessions,
@@ -1216,6 +1222,8 @@ export function WorkspaceBrowser({
                 listWorkspaceEntries={listWorkspaceEntries}
                 readWorkspaceFile={readWorkspaceFile}
                 listWorkspaceGitStatus={listWorkspaceGitStatus}
+                commitAllWorkspaceChanges={commitAllWorkspaceChanges}
+                discardAllWorkspaceChanges={discardAllWorkspaceChanges}
                 openPath={openPath}
                 openFileInSession={openFileInSession}
                 onRenameRequest={(workspaceId, currentTitle) => {
