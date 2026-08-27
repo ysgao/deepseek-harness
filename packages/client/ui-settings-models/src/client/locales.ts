@@ -99,6 +99,10 @@ export const en = {
   onboardingSave: 'Save and continue',
   onboardingSaving: 'Saving…',
   keyRequired: 'Enter an API key to continue.',
+  signInChooseMethod: 'Choose how to sign in',
+  signInSubmit: 'Continue',
+  signInDecline: 'Decline',
+  signInCancel: 'Cancel sign-in',
 }
 
 /** The settings.models namespace key union. */
@@ -201,4 +205,8 @@ export const zh: { [Key in keyof typeof en]: string } = {
   onboardingSave: '保存并继续',
   onboardingSaving: '保存中…',
   keyRequired: '请输入 API 密钥后继续。',
+  signInChooseMethod: '选择登录方式',
+  signInSubmit: '继续',
+  signInDecline: '拒绝',
+  signInCancel: '取消登录',
 }

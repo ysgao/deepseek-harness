@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-25-headless-authorization-login.md
-2026-08-25-headless-authorization-login.md: 419b71ba6cfec9fe37cd03e12e30679fff2b7cf4
-2026-08-25-headless-authorization-login.zh.md: b2e324a92846d069354154b37a8dd054abe27aba
+2026-08-25-headless-authorization-login.md: d9a508ebc19ba99455c1fb68bfce644851297255
+2026-08-25-headless-authorization-login.zh.md: b2da1fe89529bd3407f79cdfb25b39f675c8ae85

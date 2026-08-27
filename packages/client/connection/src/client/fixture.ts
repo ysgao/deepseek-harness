@@ -3105,6 +3105,19 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         return ok(request, {})
       },
     },
+    // No authorization flow is registered in this in-memory world: a demo
+    // fixture has nothing an OAuth flow could commit to, so `list` is
+    // constantly empty and `begin` reports the same "no such flow" a real
+    // deployment with no dsh-authorization flows registered would.
+    authorization: {
+      list: request => ok(request, { entries: [] }),
+      begin: request => err(request, {
+        code: 'authorization-not-found',
+        message: `no authorization flow is registered for "${request.payload.key}"`,
+        details: { key: request.payload.key },
+      }),
+      cancel: request => ok(request, {}),
+    },
     llm: {
       providers: request => ok(request, {
         providers: [
@@ -3294,6 +3307,9 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'credentials.describe': return this.api.credentials.describe(request)
       case 'credentials.set': return this.api.credentials.set(request)
       case 'credentials.unset': return this.api.credentials.unset(request)
+      case 'authorization.list': return this.api.authorization.list(request)
+      case 'authorization.begin': return this.api.authorization.begin(request)
+      case 'authorization.cancel': return this.api.authorization.cancel(request)
       case 'llm.providers': return this.api.llm.providers(request)
       case 'llm.models': return this.api.llm.models(request)
       case 'llm.discoverModels': return this.api.llm.discoverModels(request, signal)

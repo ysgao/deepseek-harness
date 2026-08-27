@@ -15,6 +15,8 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the ctx.remote merge and the forwarded-event key face
 // (settings/credentials invalidations ride the allowlist) into this program.
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+// Type-only: pulls the ctx.authorization Context merge into this program.
+import type {} from '@deepseek-ai/dsh-client-runtime/client'
 import { ModelsSection } from './ModelsSection.tsx'
 import type { ModelsSectionInjected } from './ModelsSection.tsx'
 import { DeepSeekOnboardingDialog } from './DeepSeekOnboardingDialog.tsx'
@@ -56,7 +58,7 @@ export function refreshIfLoaded(controller: ModelsSettingsStore): void {
  * ui-settings' apply, whose activation order relative to this one is NOT
  * constrained; registration depends on each slot through `slots.inject()`.
  */
-export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope', 'settingsSchema']
+export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope', 'settingsSchema', 'authorization']
 
 /**
  * Register the Models section once the `settings.section` declaration is on
@@ -77,6 +79,7 @@ export function apply(ctx: ClientContext): void {
     controller,
     hooks: { snapshot: controller.store },
     api: connection.api,
+    authorization: ctx.authorization,
     schema,
     t,
   })
@@ -110,6 +113,12 @@ export function apply(ctx: ClientContext): void {
       ctx.remote.$on('settings/document-updated', () => { refreshModels() }),
       ctx.remote.$on('credentials/reference-updated', refreshModels),
       ctx.remote.$on('llm/adapters-updated', refreshModels),
+      // authorization/settled rides the generic forwarded-event channel
+      // rather than a dedicated HostFrame, so dsh-client-runtime itself never
+      // subscribes to it (it only ever calls ctx.remote.$dispatch, never
+      // $on); this plugin, already bridging $on for its own refresh needs,
+      // reports the settlement into ctx.authorization instead.
+      ctx.remote.$on('authorization/settled', (key) => { ctx.authorization.notifySettled(key) }),
       ctx.on('connection/reset', refreshModels),
     ]
     return () => {

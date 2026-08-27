@@ -2,7 +2,7 @@
 // data source on a real clock; behavior tests need per-case responses and
 // deferred-controlled timing). Streams are hand pumps: pushMux/pushHost.
 import type {
-  ClientResponse, HostFrame, IApiClient, ModelSelection, MuxFrame,
+  AuthorizationEntry, ClientResponse, HostFrame, IApiClient, ModelSelection, MuxFrame,
   RpcError, RpcReceipt, RpcRequest, RpcResponse, SessionId, SessionModels, SessionSearchItem, SkillEntry,
   WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
@@ -280,6 +280,21 @@ export class FakeApiClient implements IApiClient {
     describe: payload => this.record('credentials.describe', payload, Promise.resolve(ok({ credentials: {} }))),
     set: payload => this.record('credentials.set', payload, Promise.resolve(ok({}))),
     unset: payload => this.record('credentials.unset', payload, Promise.resolve(ok({}))),
+  }
+
+  onAuthorizationList: (payload: unknown) => Promise<RpcResponse<{ entries: AuthorizationEntry[] }>> =
+    () => Promise.resolve(ok({ entries: [] }))
+
+  onAuthorizationBegin: (payload: unknown) => Promise<RpcResponse<{ accepted: true }>> =
+    () => Promise.resolve(ok({ accepted: true as const }))
+
+  onAuthorizationCancel: (payload: unknown) => Promise<RpcResponse<{}>> =
+    () => Promise.resolve(ok({}))
+
+  readonly authorization: IApiClient['authorization'] = {
+    list: payload => this.record('authorization.list', payload, this.onAuthorizationList(payload)),
+    begin: payload => this.record('authorization.begin', payload, this.onAuthorizationBegin(payload)),
+    cancel: payload => this.record('authorization.cancel', payload, this.onAuthorizationCancel(payload)),
   }
 
   readonly llm: IApiClient['llm'] = {

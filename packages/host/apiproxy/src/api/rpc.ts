@@ -8,6 +8,7 @@
 import type { z as zCore } from 'zod'
 type ZodIssue = zCore.core.$ZodIssue
 import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { CredentialKey } from '@deepseek-ai/dsh-credentials/types'
 import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
@@ -73,6 +74,10 @@ export interface RpcErrorDetailsMap {
   'settings-conflict': { ns: string; expected: number; actual: number }
   /** A credential write was refused (read-only shadowing layer or storage failure); the message is the seam's own text. */
   'credential-rejected': { ref: string }
+  /** `authorization.begin` named a key no flow is registered for, or a method that key's flow does not offer. */
+  'authorization-not-found': { key: CredentialKey }
+  /** `authorization.begin` named a key an attempt is already running for; the caller must wait or `authorization.cancel` it first. */
+  'authorization-in-flight': { key: CredentialKey }
   /**
    * Interrogating a draft provider endpoint did not produce a model listing:
    * no adapter family serves the namespace, the protocol has no listing this

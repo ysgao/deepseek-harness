@@ -3,7 +3,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Schema from '@deepseek-ai/schemastery'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { bindSnapshotSelector, TestAuthorization } from '@deepseek-ai/dsh-client-test-runtime'
 import type { RpcResponse, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
 import {
   ModelsSection, needsSetup, providerCopy, providerTargetLabel, removeProviderProfile,
@@ -194,6 +194,7 @@ async function mountFace(scripted: ReturnType<typeof scriptedFace>) {
     controller,
     useSnapshot: bindSnapshotSelector(controller.store),
     api: face as never,
+    authorization: new TestAuthorization(async (fn) => { await fn() }),
     schema: settingsSchema,
     t,
   }
@@ -275,6 +276,7 @@ describe('ModelsSection', () => {
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
       api={face as never}
+      authorization={new TestAuthorization(async (fn) => { await fn() })}
       schema={settingsSchema}
       t={t}
     />)
@@ -299,6 +301,7 @@ describe('ModelsSection', () => {
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
       api={face as never}
+      authorization={new TestAuthorization(async (fn) => { await fn() })}
       schema={settingsSchema}
       t={t}
     />)
@@ -1029,6 +1032,7 @@ describe('ModelsSection', () => {
         controller={controller}
         useSnapshot={bindSnapshotSelector(controller.store)}
         api={face as never}
+        authorization={new TestAuthorization(async (fn) => { await fn() })}
         schema={settingsSchema}
         t={t}
       />)
@@ -1168,6 +1172,7 @@ describe('ModelsSection', () => {
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
       api={face.face as never}
+      authorization={new TestAuthorization(async (fn) => { await fn() })}
       schema={settingsSchema}
       t={t}
     />)
@@ -1190,6 +1195,7 @@ describe('ModelsSection', () => {
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
       api={face as never}
+      authorization={new TestAuthorization(async (fn) => { await fn() })}
       schema={settingsSchema}
       t={t}
     />)
@@ -1251,6 +1257,7 @@ describe('ModelsSection', () => {
       controller={controller}
       useSnapshot={bindSnapshotSelector(controller.store)}
       api={face as never}
+      authorization={new TestAuthorization(async (fn) => { await fn() })}
       schema={settingsSchema}
       t={t}
     />)

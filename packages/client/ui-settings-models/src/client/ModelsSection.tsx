@@ -15,6 +15,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
+import type { IAuthorization } from '@deepseek-ai/dsh-client-runtime/client'
 import { Button, IconPlusOutline16, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
 import { CustomProviderCard } from './CustomProviderCard.tsx'
@@ -35,6 +36,8 @@ export interface ModelsSectionInjected {
   }
   /** Wire faces the editor writes through. */
   api: Pick<IApiClient, 'settings' | 'credentials' | 'llm'>
+  /** Subscription sign-in service, threaded to each row's editor card. */
+  authorization: IAuthorization
   /** Settings schema and immutable path callbacks. */
   schema: SettingsSchemaOperations
   /** Section copy. */
@@ -70,7 +73,7 @@ interface EditorTarget extends ProviderIdentity {
 /** Values that vary around the shared provider-editor rendering. */
 interface ProviderEditorRenderProps extends Pick<
   ProviderEditorProps,
-  'namespace' | 'schema' | 'api' | 't' | 'readOnly' | 'onClose'
+  'namespace' | 'schema' | 'api' | 'authorization' | 't' | 'readOnly' | 'onClose'
 > {
   target: EditorTarget
 }
@@ -176,16 +179,16 @@ export function providerCopy(template: string, target: ProviderIdentity): string
  * @returns the section, or null while the shell has not injected yet.
  */
 export function ModelsSection(props: ModelsSectionProps): ReactNode {
-  const { controller, useSnapshot, api, schema, t } = props
+  const { controller, useSnapshot, api, authorization, schema, t } = props
   if (
     controller === undefined || useSnapshot === undefined || api === undefined
-    || schema === undefined || t === undefined
+    || authorization === undefined || schema === undefined || t === undefined
   ) return null
-  return <Loaded injected={{ controller, useSnapshot, api, schema, t }} />
+  return <Loaded injected={{ controller, useSnapshot, api, authorization, schema, t }} />
 }
 
 function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
-  const { controller, api, schema, t } = injected
+  const { controller, api, authorization, schema, t } = injected
   const state = injected.useSnapshot(snapshot => snapshot)
   const [editing, setEditing] = useState<EditorTarget | undefined>(undefined)
   const [adding, setAdding] = useState(false)
@@ -309,6 +312,7 @@ function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
                   namespace,
                   schema,
                   api,
+                  authorization,
                   t,
                   readOnly: !state.writable,
                   onClose: (changed) => { closeSetup(changed, target) },
@@ -394,6 +398,7 @@ function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
                   namespace,
                   schema,
                   api,
+                  authorization,
                   t,
                   readOnly: !state.writable,
                   onClose: (changed) => { closeEditor(changed, target) },
@@ -434,6 +439,7 @@ function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
                 schema={schema}
                 settingsPath={addTarget.settingsPath}
                 api={api}
+                authorization={authorization}
                 t={t}
                 readOnly={!state.writable}
                 onClose={(changed) => { closeEditor(changed, addTarget) }}

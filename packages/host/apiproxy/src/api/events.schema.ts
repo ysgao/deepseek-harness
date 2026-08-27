@@ -10,6 +10,7 @@ import type { HostFrame, MuxFrame } from './events.ts'
 import type { Wire } from './rpc.schema.ts'
 import { rpcErrorSchema, rpcIdSchema } from './rpc.schema.ts'
 import { approvalRequestIdSchema } from './approvals.schema.ts'
+import { authorizationNoticeSchema, authorizationPromptSchema, credentialKeySchema } from './authorization.schema.ts'
 import {
   contentBlockSchema, messageIdSchema, sessionEventSchema, sessionIdSchema, toolEventViewSchema,
 } from './sessions.schema.ts'
@@ -89,5 +90,12 @@ export const hostFrameSchema = z.discriminatedUnion('type', [
   // structural contract belongs to the owner package's cordis `Events`
   // declaration — the host validated JSON-safety before forwarding.
   z.object({ type: z.literal('host/remote-event'), event: z.string().min(1), args: z.array(z.unknown()) }),
+  z.object({ type: z.literal('authorization/notice'), key: credentialKeySchema, notice: authorizationNoticeSchema }),
+  z.object({ type: z.literal('authorization/prompt-requested'), key: credentialKeySchema, prompt: authorizationPromptSchema }),
+  z.object({
+    type: z.literal('authorization/prompt-resolved'),
+    key: credentialKeySchema,
+    outcome: z.union([z.literal('answered'), z.literal('declined'), z.literal('withdrawn')]),
+  }),
   z.object({ type: z.literal('stream/error'), error: rpcErrorSchema }),
 ]) as unknown as z.ZodType<HostFrame>

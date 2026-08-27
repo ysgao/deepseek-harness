@@ -11,8 +11,11 @@ import type { ApprovalOutcome, ApprovalRequestId } from '@deepseek-ai/dsh-user-a
 import type { Message } from '@deepseek-ai/dsh-llm/types'
 import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
 import type { CallId } from '@deepseek-ai/dsh-llm/brand'
+import type { CredentialKey } from '@deepseek-ai/dsh-credentials/types'
+import type { AuthorizationNotice } from '@deepseek-ai/dsh-authorization/types'
 import type { JsonValue, SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools/presentation'
+import type { WireAuthorizationPrompt } from './authorization.ts'
 import type { RpcError, RpcId, RpcRequest } from './rpc.ts'
 import type { JobView } from './jobs.ts'
 import type { WorkspaceView } from './workspace.ts'
@@ -152,4 +155,27 @@ export type HostFrame =
    * per-event frame variant.
    */
   | { type: 'host/remote-event'; event: string; args: JsonValue[] }
+  /**
+   * A running authorization attempt's report to the human: what is happening,
+   * or what to do next. Pure push (fire-and-forget from the flow's own point
+   * of view); accumulates client-side until the attempt settles.
+   */
+  | { type: 'authorization/notice'; key: CredentialKey; notice: AuthorizationNotice }
+  /**
+   * A running authorization attempt needs an answer before it can continue.
+   * Answerable server-request (stable rpcId, replayed on host-stream
+   * reconnect while still pending), settled by POST /api/respond. `prompt`
+   * omits the seam's own `signal` — a flow-internal cancellation channel
+   * (e.g. pi-ai racing a pasted code against its own callback server), never
+   * a wire-safe field.
+   */
+  | { type: 'authorization/prompt-requested'; key: CredentialKey; prompt: WireAuthorizationPrompt }
+  /**
+   * The prompt named by this frame's rpcId (echoed from its `requested`
+   * frame) is no longer pending: answered through `respond`, declined
+   * (an empty/refused answer), or withdrawn by the flow's own prompt signal
+   * (the losing side of an internal race, e.g. pi-ai's callback server
+   * winning over a pasted code).
+   */
+  | { type: 'authorization/prompt-resolved'; key: CredentialKey; outcome: 'answered' | 'declined' | 'withdrawn' }
   | { type: 'stream/error'; error: RpcError }

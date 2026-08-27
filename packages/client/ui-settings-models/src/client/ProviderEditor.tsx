@@ -21,13 +21,15 @@
  * see instead of rebuilding the whole subtree from a partial descriptor.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import type { CredentialView, IApiClient, SettingsNamespaceView, SettingsPathOpView } from '@deepseek-ai/dsh-api-remotes/client'
+import type { IAuthorization } from '@deepseek-ai/dsh-client-runtime/client'
 import {
   DeepSeekModelsEditor, modelDrafts, validateDeepSeekModels,
 } from './DeepSeekModelsEditor.tsx'
 import { apiKeyFailure } from './apiKey.ts'
+import { AuthorizationPanel } from './AuthorizationPanel.tsx'
 import { EditorFooter } from './EditorFooter.tsx'
 import { ModelListEditor } from './ModelListEditor.tsx'
 import { deriveKeyRef, messageOf, protocolChoices } from './store.ts'
@@ -65,6 +67,14 @@ export interface ProviderEditorProps {
   settingsPath: readonly string[]
   /** Wire faces for writes and for interrogating a provider endpoint. */
   api: Pick<IApiClient, 'settings' | 'credentials' | 'llm'>
+  /**
+   * Subscription sign-in service. Absent callers (onboarding's credential-only
+   * capture) simply never offer it; present, the card renders a "sign in"
+   * affordance beside the API-key field only when a flow is actually
+   * registered for this row's derived key — no per-family hardcoding decides
+   * that, the registry does.
+   */
+  authorization?: IAuthorization
   /** Section copy. */
   t: (key: keyof typeof en) => string
   /** Disable writes (read-only settings provider). */
@@ -179,6 +189,22 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
     () => layout === 'pi-ai' ? protocolChoices(namespace, schema) : [],
     [layout, namespace, schema],
   )
+  const authorization = props.authorization
+  const authorizationList = useSyncExternalStore(
+    fn => authorization?.list.subscribe(fn) ?? (() => {}),
+    () => authorization?.list.getSnapshot(),
+  )
+  useEffect(() => {
+    if (authorization === undefined || authorizationList?.state !== 'idle') return
+    void authorization.refreshEntries()
+  }, [authorization, authorizationList?.state])
+  // Data-driven, not `layout === 'pi-ai'`: a row's sign-in affordance follows
+  // whatever the registry actually claims for its derived key, so a route the
+  // catalog does not register a flow for (DeepSeek, a hand-declared pi-ai
+  // route) correctly shows none.
+  const authEntry = authorizationList?.entries.find(
+    candidate => String(candidate.key) === `${namespace.ns}/${props.provider}`)
+  const authKeyState = authEntry === undefined ? undefined : authorizationList?.byKey[authEntry.key]
 
   useEffect(() => {
     let stale = false
@@ -387,6 +413,17 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
           />
           {shownKeyFailure === undefined ? null : <p className={styles['error']}>{t(shownKeyFailure)}</p>}
         </div>
+        {authEntry === undefined || authorization === undefined || authKeyState === undefined
+          ? null
+          : (
+            <AuthorizationPanel
+              entry={authEntry}
+              keyState={authKeyState}
+              authorization={authorization}
+              t={t}
+              disabled={disabled}
+            />
+          )}
         {props.credentialOnly === true ? null : <details className={styles['customized']}>
           <summary className={styles['customizedSummary']}>{t('customized')}</summary>
           <div className={styles['customizedBody']}>

@@ -18,6 +18,8 @@ export type {
   CredentialsApi, CredentialView, ConfigurableProviderView, DiscoveredModelView, LlmApi,
   SubagentsApi, SubagentAddress, SubagentCatalog, SubagentListEntry, SubagentPromptReceipt,
   JobView,
+  AuthorizationApi, AuthorizationEntry, AuthorizationMethod, AuthorizationNotice, AuthorizationPrompt,
+  AuthorizationPromptOption, AuthorizationPromptResponsePayload, WireAuthorizationPrompt,
 } from '@deepseek-ai/dsh-host-apiproxy/api'
 export type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools/presentation'
 export type {
@@ -36,6 +38,7 @@ export { AbstractApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
 export type { IApiClient } from '@deepseek-ai/dsh-host-apiproxy/client'
 export type { SessionId, SessionEvent } from '@deepseek-ai/dsh-session/types'
 export type { MessageId } from '@deepseek-ai/dsh-llm/brand'
+export type { CredentialKey } from '@deepseek-ai/dsh-credentials/types'
 export type { ContentBlock, StreamChunk } from '@deepseek-ai/dsh-llm/types'
 
 /** Successful value returned by the connection-generation host handshake. */

@@ -71,6 +71,6 @@ No invalidation; no authorization state enters a request prefix.
 
 ## Known Limitations and Deferred Work
 
-- **No flow is resumable** — an attempt lives in the process that started it, so a browser reload during a login abandons it and the human starts over. Durable attempts need a store this seam does not have.
+- **No flow is resumable across a process restart** — `begin()` and its `AuthorizationInteraction` all live in the process that called them, so restarting that process takes an in-flight attempt with it and the human starts over. This is process-local, not caller-local: `dsh --profile headless login` calls `begin()` from the CLI invocation itself, so exiting that command *is* losing the process — but a Web UI sign-in (`dsh-host-apiproxy`'s `authorization.begin` RPC) calls it from the long-lived host process, so a browser reload or reconnect does not lose the attempt, only an actual host restart does. Durable attempts surviving a host restart would need a store this seam does not have.
 - **Nothing revokes** — signing out is `ctx.credentials.deleteRecord(key)`, which forgets the local record without telling the issuer. A provider that needs a server-side revoke has no place to declare it yet.
 - **A key with no flow is inert** — the seam reports what is registered, so a record left by an uninstalled plugin can be deleted but not re-authorized. Recognizing that orphan is the caller's join, as it is for [`listRecords()`](../credentials/README.md#surface).

@@ -22,7 +22,7 @@ Status: implemented
 
 ## 曾考虑的替代方案
 
-- **Web UI 的"登录"流程**（一个设置页面按钮，经由 RPC 网关驱动 `ctx.authorization.begin()`）——按照 `dsh-llm-pi-ai` README 的说法（"提供这些 profile 正是 Web 的 Models 页面所做的事"），这更贴近长期打算的 UX，但它需要新的 gateway RPC surface、客户端 UI，以及在浏览器端处理一套其 OAuth 机制（`127.0.0.1` 上的本地回调服务器）本是为运行 CLI 的那台机器设计、而不必然是运行浏览器标签页的那台机器所设计的 flow。已推迟；CLI 路径完全不需要那套 surface，且直接契合 pi-ai 自身的 flow 形态。
+- **Web UI 的"登录"流程**（一个设置页面按钮，经由 RPC 网关驱动 `ctx.authorization.begin()`）——按照 `dsh-llm-pi-ai` README 的说法（"提供这些 profile 正是 Web 的 Models 页面所做的事"），这更贴近长期打算的 UX，但它需要新的 gateway RPC surface、客户端 UI，以及在浏览器端处理一套其 OAuth 机制（`127.0.0.1` 上的本地回调服务器）本是为运行 CLI 的那台机器设计、而不必然是运行浏览器标签页的那台机器所设计的 flow。写下本笔记时已推迟；此后已经实现，见 [2026-08-27-web-authorization-signin](2026-08-27-web-authorization-signin.zh.md)。
 - **为终端交互新建一个专门的包**——该交互实际上只有一种真实实现（一个真正的终端），当前也没有其他消费方；capability seam 是为一个契约的多个 provider 而设计的，在这里发明一个只会是"有 seam 无需求"。最终把它保留为 `dsh-headless` 内部的一个普通函数。
 - **两行组合的 row（`headless-runner` + 一个兄弟 `headless-login`），各自基于对方 mode 做 `disabled: !!js`**——被否决，因为本仓库没有任何现有 row 会基于另一个 row *注入的服务值* 来禁用自身（只有针对静态 `process.platform` 的先例），而在这里把 Loader 的求值／注入顺序搞错会静默失败而不是明确报错。一个插件内部用 TypeScript 分支，不需要这样的假设。
 - **为 `Config` 使用 schemastery 的可辨识联合**（`z.union([z.object({mode: z.const('task')...}), z.object({mode: z.const('login')...})])`）——本仓库没有任何示例练习过 schemastery 对由 `z.const` 判别的 `z.object` 分支做联合；在没有先例确认分支能被正确选中的情况下，扁平的可选字段 schema 加上 `apply()` 中显式的 TypeScript 判别，是更诚实、可验证的选择。

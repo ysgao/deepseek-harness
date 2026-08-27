@@ -21,6 +21,9 @@
       "path": "../../host/apiproxy"
     },
     {
+      "path": "../../credentials/credentials"
+    },
+    {
       "path": "../../interaction/commands"
     },
     {

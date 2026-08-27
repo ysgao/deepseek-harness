@@ -71,6 +71,6 @@ notice 是单向的，且从不携带机密：一条消息，以及可选的"人
 
 ## Known Limitations and Deferred Work
 
-- **flow 不可恢复** —— 一次尝试只存活于发起它的进程中，因此登录途中刷新浏览器会丢弃它，人需要重来。可持久的尝试需要一个本 seam 并不具备的存储。
+- **跨进程重启时 flow 不可恢复** —— `begin()` 及其 `AuthorizationInteraction` 都存活在调用它们的那个进程里，因此重启该进程会把一次进行中的尝试一起带走，人需要重来。这个限制与进程绑定，而非与调用方绑定：`dsh --profile headless login` 是在 CLI（命令行界面）调用本身里调用 `begin()` 的，所以退出该命令*就是*丢失了这个进程。但 Web UI 登录（`dsh-host-apiproxy` 的 `authorization.begin` RPC）是从长期存活的宿主进程发起调用的，因此浏览器刷新或重新连接不会丢失这次尝试，只有宿主进程真正重启才会丢失。要让尝试持久到能挺过宿主进程重启，需要一个本 seam 并不具备的存储。
 - **没有吊销** —— 登出即 `ctx.credentials.deleteRecord(key)`，它只遗忘本地记录而不通知签发方。需要服务端吊销的 provider 目前无处声明这一点。
 - **没有 flow 的键是惰性的** —— seam 只报告已注册的内容，因此被卸载插件遗留的记录可以删除但无法重新授权。识别这种孤儿记录由调用方自行 join，与 [`listRecords()`](../credentials/README.zh.md#surface) 的情况相同。

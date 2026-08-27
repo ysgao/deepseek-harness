@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
+import { TestAuthorization, TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import { apply as settingsApply, inject as settingsInject } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { apply, inject, refreshIfLoaded } from '@deepseek-ai/dsh-client-ui-settings-models/client'
 import {
@@ -34,6 +34,7 @@ async function bench(isLoopback = true, settings?: object, services: object = {}
     api: settings === undefined ? services : { ...services, settings },
     isLoopback,
   } as never)
+  ctx.provide('authorization', new TestAuthorization(async (fn) => { await fn() }))
   await ctx.plugin({ inject: [...settingsInject], apply: settingsApply }).await()
   return { ctx, slots: ctx.get('slots') as SlotRegistry, locale }
 }
@@ -53,7 +54,7 @@ function declare(slots: SlotRegistry): () => void {
 
 describe('ui-settings-models apply', () => {
   it('declares the services it uses', () => {
-    expect(inject).toEqual(['slots', 'locale', 'connection', 'remote', 'settingsScope', 'settingsSchema'])
+    expect(inject).toEqual(['slots', 'locale', 'connection', 'remote', 'settingsScope', 'settingsSchema', 'authorization'])
   })
 
   it('registers the models nav entry for declarations before or after apply', async () => {
@@ -180,6 +181,15 @@ describe('pushed invalidations', () => {
     b.ctx.remote.$dispatch('credentials/reference-updated', ['OPENAI_API_KEY'])
     b.ctx.remote.$dispatch('llm/adapters-updated', [])
     b.ctx.emit('connection/reset')
+  })
+
+  it('reports a pushed authorization/settled event into ctx.authorization.notifySettled', async () => {
+    const b = await bench()
+    declare(b.slots)
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const authorization = b.ctx.authorization as unknown as TestAuthorization
+    b.ctx.remote.$dispatch('authorization/settled', ['llm-pi-ai/anthropic', 'authorized'])
+    expect(authorization.calls).toContainEqual({ method: 'notifySettled', args: ['llm-pi-ai/anthropic'] })
   })
 
   it('refreshes a loaded page and skips an idle one', () => {

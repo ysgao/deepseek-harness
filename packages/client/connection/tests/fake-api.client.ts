@@ -228,6 +228,12 @@ export class FakeApiClient implements IApiClient {
     unset: payload => this.record('credentials.unset', payload, Promise.resolve(ok({}))),
   }
 
+  readonly authorization: IApiClient['authorization'] = {
+    list: payload => this.record('authorization.list', payload, Promise.resolve(ok({ entries: [] }))),
+    begin: payload => this.record('authorization.begin', payload, Promise.resolve(ok({ accepted: true as const }))),
+    cancel: payload => this.record('authorization.cancel', payload, Promise.resolve(ok({}))),
+  }
+
   readonly llm: IApiClient['llm'] = {
     providers: payload => this.record('llm.providers', payload, Promise.resolve(ok({ providers: [] }))),
     models: payload => this.record('llm.models', payload, Promise.resolve(ok({ groups: [], failures: [] }))),

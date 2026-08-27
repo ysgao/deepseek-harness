@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-27-web-authorization-signin.md
+2026-08-27-web-authorization-signin.md: f5b27ff4f07fa643486d0e0f45dfa642e1b6500b
+2026-08-27-web-authorization-signin.zh.md: 3fc5df0ca73c1177caab1e98e94b1d9b5eccc977

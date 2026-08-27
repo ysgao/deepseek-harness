@@ -27,6 +27,7 @@ function scriptedApi(overrides: {
   goals?: Partial<ApiProxy['goals']>
   settings?: Partial<ApiProxy['settings']>
   credentials?: Partial<ApiProxy['credentials']>
+  authorization?: Partial<ApiProxy['authorization']>
   llm?: Partial<ApiProxy['llm']>
   respond?: ApiProxy['respond']
 } = {}): ApiProxy {
@@ -123,6 +124,12 @@ function scriptedApi(overrides: {
       set: err,
       unset: err,
       ...overrides.credentials,
+    },
+    authorization: {
+      list: r => ok(r, { entries: [] }),
+      begin: r => ok(r, { accepted: true as const }),
+      cancel: r => ok(r, {}),
+      ...overrides.authorization,
     },
     llm: {
       providers: r => ok(r, { providers: [] }),
@@ -756,6 +763,16 @@ describe('config unary surface', () => {
         models: record('llm.models', r => ok(r, { groups: [group], failures: [] })),
         discoverModels: record('llm.discoverModels', r => ok(r, { models: [{ id: 'acme-large', contextWindow: 65536 }] })),
       },
+      authorization: {
+        list: record('authorization.list', r => ok(r, {
+          entries: [{
+            key: 'llm-pi-ai/anthropic' as never, label: 'Anthropic (Claude Pro/Max)',
+            methods: [{ id: 'oauth', label: 'Sign in with Anthropic' }], inFlight: false,
+          }],
+        })),
+        begin: record('authorization.begin', r => ok(r, { accepted: true as const })),
+        cancel: record('authorization.cancel', r => ok(r, {})),
+      },
     })
     const c = client(api)
 
@@ -788,11 +805,27 @@ describe('config unary surface', () => {
     })
     expect(discovered.result).toEqual({ ok: true, value: { models: [{ id: 'acme-large', contextWindow: 65536 }] } })
 
+    const authEntries = await c.authorization.list({})
+    expect(authEntries.result).toEqual({
+      ok: true,
+      value: {
+        entries: [{
+          key: 'llm-pi-ai/anthropic', label: 'Anthropic (Claude Pro/Max)',
+          methods: [{ id: 'oauth', label: 'Sign in with Anthropic' }], inFlight: false,
+        }],
+      },
+    })
+    const authBegun = await c.authorization.begin({ key: 'llm-pi-ai/anthropic' as never, method: 'oauth' })
+    expect(authBegun.result).toEqual({ ok: true, value: { accepted: true } })
+    expect((await c.authorization.cancel({ key: 'llm-pi-ai/anthropic' as never })).result).toEqual({ ok: true, value: {} })
+
     expect(seen.map(call => call.method)).toEqual([
       'settings.describe', 'settings.openDocument', 'settings.update', 'settings.replace', 'settings.mutate',
       'credentials.describe', 'credentials.set', 'credentials.unset',
       'llm.providers', 'llm.models', 'llm.discoverModels',
+      'authorization.list', 'authorization.begin', 'authorization.cancel',
     ])
+    expect(seen[12]?.payload).toEqual({ key: 'llm-pi-ai/anthropic', method: 'oauth' })
     expect(seen[2]?.payload).toEqual({ ns: 'llm-deepseek', patch: { baseURL: 'https://next' } })
     expect(seen[4]?.payload)
       .toEqual({ ns: 'llm-deepseek', ops: [{ op: 'unset', path: ['baseURL'] }], expectedRevision: 0 })

@@ -37,12 +37,17 @@ import {
 import type { PresetBearingSession } from '@deepseek-ai/dsh-agent-presets'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {
-  ApiProxy, ConfigurableProviderView, CredentialView, GoalRef, HistoryEntry, HostFrame,
+  ApiProxy, AuthorizationEntry, AuthorizationNotice, AuthorizationPrompt, WireAuthorizationPrompt,
+  ConfigurableProviderView, CredentialView,
+  GoalRef, HistoryEntry, HostFrame,
   ModelCatalogFailure, ModelProviderGroup,
   ModelReasoning, MuxFrame, PromptContentPart, QuestionResponsePayload, SessionListMetadata, SessionProjectionsBlock, SessionSearchItem,
   QueuedInboxItem, SessionSummary, SettingsNamespaceView, SubagentAddress, JobView, ToolEventView,
   WorkspaceId, WorkspaceView,
 } from './api/index.ts'
+import { authorizationPromptResponsePayloadSchema } from './api/authorization.schema.ts'
+import type { CredentialKey } from '@deepseek-ai/dsh-credentials/types'
+import { AuthorizationDeclinedError } from '@deepseek-ai/dsh-authorization'
 import {
   DEFAULT_SESSION_LOG_COMPRESSION_LEVEL,
   flushLiveSessionLog,
@@ -666,6 +671,33 @@ interface PendingQuestion {
   onAbort?: () => void
 }
 
+/**
+ * One outstanding authorization prompt, addressed by the stable server-request
+ * id. Host-scoped (no owning session): a running attempt has at most one
+ * prompt pending at a time, since the seam hands a flow's `run()` exactly one
+ * `interaction.prompt()` call per question and awaits its answer before the
+ * next. `signal` is the prompt's own withdrawal channel (e.g. pi-ai racing a
+ * pasted code against its own callback server), independent of the attempt's
+ * overall cancellation, which rides `authorization.cancel` instead.
+ */
+interface PendingAuthorizationPrompt {
+  rpcId: RpcId
+  key: CredentialKey
+  prompt: WireAuthorizationPrompt
+  resolve: (answer: string) => void
+  reject: (error: Error) => void
+  signal?: AbortSignal
+  onAbort?: () => void
+}
+
+/** Project a pending authorization prompt into its answerable host frame (initial push and host-open replay share it). */
+function requestedPromptFrame(pending: PendingAuthorizationPrompt): RpcRequest<HostFrame> {
+  return {
+    rpcId: pending.rpcId,
+    payload: { type: 'authorization/prompt-requested', key: pending.key, prompt: pending.prompt },
+  }
+}
+
 /** Validate one answer batch against the exact question request it resolves. */
 function matchesQuestions(payload: QuestionResponsePayload, pending: PendingQuestion): boolean {
   if (payload.sessionId !== pending.sessionId) return false
@@ -1085,7 +1117,9 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   let workspaceCreationChain = Promise.resolve()
   const pendingQuestions = new Map<RpcId, PendingQuestion>()
   const pendingApprovals = new Map<RpcId, PendingApproval>()
+  const pendingAuthorizationPrompts = new Map<RpcId, PendingAuthorizationPrompt>()
   const muxQueues = new Set<FrameQueue<RpcRequest<MuxFrame>>>()
+  const hostQueues = new Set<FrameQueue<RpcRequest<HostFrame>>>()
   const imageAdmissionChains = new WeakMap<Agent, Promise<void>>()
 
   /** Serialize image admission with model selection for one agent. */
@@ -1232,6 +1266,12 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     for (const queue of muxQueues) queue.push(envelope)
   }
 
+  /** Send one transient frame to every connected host consumer. */
+  function broadcastHost(payload: HostFrame): void {
+    const envelope = frame(payload)
+    for (const queue of hostQueues) queue.push(envelope)
+  }
+
   // Projection change feed → session/projection push frames. The carrier
   // mints the wire frame (the Service Definition package holds no wire vocabulary); the
   // child activates only when a projection registry is composed, and the
@@ -1309,6 +1349,18 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     if (agent?.session !== session) return
     broadcast({ type: 'session/queue', sessionId: session.id, items: queueItems(agent, event.data) })
   })
+
+  /** Remove a pending authorization prompt before settling it: synchronous deletion makes the first claimant win. */
+  function claimAuthorizationPrompt(
+    pending: PendingAuthorizationPrompt,
+    outcome: 'answered' | 'declined' | 'withdrawn',
+  ): void {
+    pendingAuthorizationPrompts.delete(pending.rpcId)
+    if (pending.signal !== undefined && pending.onAbort !== undefined) {
+      pending.signal.removeEventListener('abort', pending.onAbort)
+    }
+    broadcastHost({ type: 'authorization/prompt-resolved', key: pending.key, outcome })
+  }
 
   /** Remove a wait before settling it: synchronous deletion makes the first claimant win. */
   function claimQuestion(pending: PendingQuestion, outcome: 'answered' | 'cancelled'): void {
@@ -1879,6 +1931,15 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   /** Missing-service report shared by the credentials domain. */
   function credentialsAbsent(): RpcError {
     return { code: 'internal', message: 'credentials service is absent: this deployment does not mount a credential provider (e.g. @deepseek-ai/dsh-credentials-local) in its composition', details: {} }
+  }
+
+  /** Missing-service report for `authorization.begin`: no flow can be registered without the seam mounted. */
+  function authorizationAbsent(key: CredentialKey): RpcError {
+    return {
+      code: 'authorization-not-found',
+      message: 'authorization service is absent: this deployment does not mount @deepseek-ai/dsh-authorization in its composition',
+      details: { key },
+    }
   }
 
   /** Map one redacted settings descriptor to its wire view. */
@@ -3335,6 +3396,102 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       },
     },
 
+    authorization: {
+      list(request) {
+        const authorization = ctx.get('authorization')
+        const entries: AuthorizationEntry[] = authorization === undefined ? [] : [...authorization.list()]
+        return Promise.resolve(ok(request, { entries }))
+      },
+
+      begin(request) {
+        const { key, method } = request.payload
+        const authorization = ctx.get('authorization')
+        if (authorization === undefined) return Promise.resolve(err(request, authorizationAbsent(key)))
+        const entry = authorization.describe(key)
+        if (entry === undefined) {
+          return Promise.resolve(err(request, {
+            code: 'authorization-not-found',
+            message: `no authorization flow is registered for "${key}"`,
+            details: { key },
+          }))
+        }
+        if (method !== undefined && !entry.methods.some(candidate => candidate.id === method)) {
+          return Promise.resolve(err(request, {
+            code: 'authorization-not-found',
+            message: `authorization flow for "${key}" offers no method "${method}"`,
+            details: { key },
+          }))
+        }
+        if (entry.inFlight) {
+          return Promise.resolve(err(request, {
+            code: 'authorization-in-flight',
+            message: `an authorization attempt for "${key}" is already running`,
+            details: { key },
+          }))
+        }
+        // Fire-and-forget, mirroring session.prompt: the flow can take minutes
+        // (a human clicking through consent), so this response acks the start
+        // rather than the finish. Notices, prompts, and settlement all ride the
+        // host stream from here on, keyed by `key` rather than by this call —
+        // every open tab converges on the same shared attempt.
+        void authorization.begin({
+          key,
+          ...method === undefined ? {} : { method },
+          interaction: {
+            notify(notice: AuthorizationNotice) {
+              broadcastHost({ type: 'authorization/notice', key, notice })
+            },
+            prompt(prompt: AuthorizationPrompt): Promise<string> {
+              return new Promise<string>((resolve, reject) => {
+                const { signal, ...wirePrompt } = prompt
+                const pending: PendingAuthorizationPrompt = {
+                  rpcId: RpcId(randomUUID()),
+                  key,
+                  prompt: wirePrompt,
+                  resolve,
+                  reject,
+                  ...signal === undefined ? {} : { signal },
+                }
+                const onAbort = (): void => {
+                  claimAuthorizationPrompt(pending, 'withdrawn')
+                  reject(new Error('the authorization prompt was withdrawn'))
+                }
+                pending.onAbort = onAbort
+                pendingAuthorizationPrompts.set(pending.rpcId, pending)
+                signal?.addEventListener('abort', onAbort, { once: true })
+                // Stable-id answerable frame: unlike broadcastHost's pure
+                // pushes, this must keep pending.rpcId, not mint a fresh one.
+                const envelope = requestedPromptFrame(pending)
+                for (const queue of hostQueues) queue.push(envelope)
+              })
+            },
+          },
+        }).catch((error: unknown) => {
+          // Reached only by the rare TOCTOU race the checks above cannot fully
+          // close (two concurrent begin() calls for the same key racing past
+          // the inFlight check together): every other failure already fired
+          // authorization/settled, which every open tab observes regardless of
+          // which call actually started the attempt.
+          ctx.logger.debug(`authorization.begin: attempt for "${key}" failed to start after the availability check`)
+          ctx.logger.debug(error)
+        }).finally(() => {
+          // A prompt this attempt never got to answer (it ended some other
+          // way) must not dangle: at most one is pending per key at a time.
+          for (const pending of [...pendingAuthorizationPrompts.values()]) {
+            if (pending.key !== key) continue
+            claimAuthorizationPrompt(pending, 'withdrawn')
+            pending.reject(new Error('the authorization attempt ended without answering this prompt'))
+          }
+        })
+        return Promise.resolve(ok(request, { accepted: true }))
+      },
+
+      cancel(request) {
+        ctx.get('authorization')?.cancel(request.payload.key)
+        return Promise.resolve(ok(request, {}))
+      },
+    },
+
     llm: {
       providers(request) {
         const registered = ctx.llm.listProviders()
@@ -3501,6 +3658,11 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
 
       host(_request, signal) {
         const queue = new FrameQueue<RpcRequest<HostFrame>>()
+        hostQueues.add(queue)
+        // Refresh recovery: still-pending authorization prompts replay with
+        // their stable rpcId so a reconnecting client can still answer them —
+        // the attempt itself lives in this process, not in the browser tab.
+        for (const pending of pendingAuthorizationPrompts.values()) queue.push(requestedPromptFrame(pending))
         const committedWorkspaces = ctx.workspaceRegistry.list()
         const committedWorkspaceIds = new Set(
           committedWorkspaces.map(workspace => String(workspace.id)),
@@ -3600,7 +3762,10 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             }),
           )),
         ]
-        return queue.iterate(signal, () => { for (const dispose of disposers) dispose() })
+        return queue.iterate(signal, () => {
+          hostQueues.delete(queue)
+          for (const dispose of disposers) dispose()
+        })
       },
     },
 
@@ -3662,8 +3827,9 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     },
 
     respond(message: ClientResponse): Promise<RpcReceipt> {
-      // Route by the echoed rpcId (the wire correlation): approvals first,
-      // then questions — the two registries share one id space of UUIDs.
+      // Route by the echoed rpcId (the wire correlation): approvals, then
+      // authorization prompts, then questions — the three registries share one
+      // id space of UUIDs.
       const approval = pendingApprovals.get(message.rpcId)
       if (approval !== undefined) {
         if (!message.result.ok) return Promise.resolve({ accepted: false, reason: 'bad-response' })
@@ -3674,6 +3840,26 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           return Promise.resolve({ accepted: false, reason: 'bad-response' })
         }
         approval.resolve(parsed.data.outcome)
+        return Promise.resolve({ accepted: true })
+      }
+      const authorizationPending = pendingAuthorizationPrompts.get(message.rpcId)
+      if (authorizationPending !== undefined) {
+        if (!message.result.ok) {
+          if (message.result.error.code !== 'cancelled') {
+            return Promise.resolve({ accepted: false, reason: 'bad-response' })
+          }
+          claimAuthorizationPrompt(authorizationPending, 'declined')
+          authorizationPending.reject(new AuthorizationDeclinedError())
+          return Promise.resolve({ accepted: true })
+        }
+        const parsed = authorizationPromptResponsePayloadSchema.safeParse(message.result.value)
+        // Same audit-correlation posture as approvals: the answer must name the
+        // key the rpcId actually routed to.
+        if (!parsed.success || parsed.data.key !== authorizationPending.key) {
+          return Promise.resolve({ accepted: false, reason: 'bad-response' })
+        }
+        claimAuthorizationPrompt(authorizationPending, 'answered')
+        authorizationPending.resolve(parsed.data.answer)
         return Promise.resolve({ accepted: true })
       }
       const pending = pendingQuestions.get(message.rpcId)
