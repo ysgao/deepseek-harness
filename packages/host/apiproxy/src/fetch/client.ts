@@ -45,6 +45,7 @@ import {
   workspaceListValueSchema,
   workspaceReadFileValueSchema,
   workspaceRenameValueSchema,
+  workspaceWriteFileValueSchema,
 } from '../api/workspace.schema.ts'
 import { skillListValueSchema } from '../api/skills.schema.ts'
 import {
@@ -135,6 +136,7 @@ export interface IApiClient {
     gitCommitAll(payload: RequestPayload<'workspace.gitCommitAll'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitCommitAll'>>>
     gitDiscardAll(payload: RequestPayload<'workspace.gitDiscardAll'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitDiscardAll'>>>
     gitFileDiff(payload: RequestPayload<'workspace.gitFileDiff'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitFileDiff'>>>
+    writeFile(payload: RequestPayload<'workspace.writeFile'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.writeFile'>>>
   }
   skills: {
     list(payload: RequestPayload<'skill.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'skill.list'>>>
@@ -224,6 +226,7 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'workspace.gitCommitAll': workspaceGitCommitAllValueSchema,
   'workspace.gitDiscardAll': workspaceGitDiscardAllValueSchema,
   'workspace.gitFileDiff': workspaceGitFileDiffValueSchema,
+  'workspace.writeFile': workspaceWriteFileValueSchema,
   'skill.list': skillListValueSchema,
   'agentPreset.list': agentPresetListValueSchema,
   'agentPreset.select': agentPresetSelectValueSchema,
@@ -489,6 +492,9 @@ export abstract class AbstractApiClient implements IApiClient {
     gitCommitAll: (payload, signal) => this.callUnary('workspace.gitCommitAll', payload, signal, 'caller-signal-only'),
     gitDiscardAll: (payload, signal) => this.callUnary('workspace.gitDiscardAll', payload, signal, 'caller-signal-only'),
     gitFileDiff: (payload, signal) => this.callUnary('workspace.gitFileDiff', payload, signal),
+    // Same user-paced rationale as gitCommitAll/gitDiscardAll above: a large
+    // file write is not bound by the normal unary deadline.
+    writeFile: (payload, signal) => this.callUnary('workspace.writeFile', payload, signal, 'caller-signal-only'),
   }
 
   readonly skills: IApiClient['skills'] = {

@@ -3,7 +3,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {
   DirectoryListing, IApiClient, RpcError,
-  SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceGitStatus, WorkspaceId, WorkspaceView,
+  SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceFileVersion, WorkspaceGitStatus,
+  WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SnapshotStore } from '../contract/store.ts'
 import { createSnapshotStore } from '../contract/store.ts'
@@ -370,6 +371,24 @@ export class WorkspaceRuntime implements IWorkspaces {
     const response = await this.api.workspace.gitFileDiff({ workspaceId, path }, signal)
     if (!response.result.ok) throw new WorkspaceFileBrowseError(response.result.error)
     return response.result.value
+  }
+
+  /**
+   * Overwrite one existing file under a Workspace root through
+   * `workspace.writeFile`.
+   * @param workspaceId - owning workspace; `path` must be its own path or a descendant.
+   * @param path - absolute file path.
+   * @param content - the full new UTF-8 text content.
+   * @param expectedVersion - the version last observed for this path; a mismatch rejects with `file-changed`.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   * @returns the version the write produced.
+   */
+  async writeWorkspaceFile(
+    workspaceId: WorkspaceId, path: string, content: string, expectedVersion: WorkspaceFileVersion, signal?: AbortSignal,
+  ): Promise<WorkspaceFileVersion> {
+    const response = await this.api.workspace.writeFile({ workspaceId, path, content, expectedVersion }, signal)
+    if (!response.result.ok) throw new WorkspaceFileBrowseError(response.result.error)
+    return response.result.value.version
   }
 
   /**

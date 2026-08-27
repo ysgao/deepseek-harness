@@ -7,7 +7,7 @@
 
 import { describe, expect, it, vi } from 'vitest'
 import type { SessionId } from '@deepseek-ai/dsh-session'
-import type { ApiProxy, GoalRef, HostFrame, MuxFrame, RpcMessage, RpcRequest, RpcResponse } from '@deepseek-ai/dsh-host-apiproxy'
+import type { ApiProxy, GoalRef, HostFrame, MuxFrame, RpcMessage, RpcRequest, RpcResponse, WorkspaceFileVersion } from '@deepseek-ai/dsh-host-apiproxy'
 import { InProcessApiClient, RpcId, toFetchHandler } from '@deepseek-ai/dsh-host-apiproxy'
 
 const sid = (id: string): SessionId => id as SessionId
@@ -90,11 +90,12 @@ function scriptedApi(overrides: {
       insertSessionBefore: r => ok(r, { workspace: { workspaceId: 'w1' as never, path: '/t', title: 't', sessionIds: [], createdAt: '0', updatedAt: '0' } }),
       archiveSession: r => ok(r, { archivedSessionIds: [r.payload.sessionId] }),
       listEntries: r => ok(r, { path: r.payload.path, entries: [], truncated: false }),
-      readFile: r => ok(r, { kind: 'text' as const, content: '' }),
+      readFile: r => ok(r, { kind: 'text' as const, content: '', version: 'test-version' as WorkspaceFileVersion }),
       gitStatus: r => ok(r, { isRepo: false, branch: null, files: {} }),
       gitCommitAll: r => ok(r, { committed: true as const }),
       gitDiscardAll: r => ok(r, { discarded: true as const }),
       gitFileDiff: r => ok(r, { oldText: null, newText: null }),
+      writeFile: r => ok(r, { version: 'test-version' as WorkspaceFileVersion }),
     },
     skills: { list: r => ok(r, { skills: [] }), ...overrides.skills },
     agentPresets: {
@@ -257,7 +258,7 @@ describe('unary round trip', () => {
     const listing = await c.workspace.listEntries({ workspaceId: 'w1' as never, path: '/t' })
     expect(listing.result).toEqual({ ok: true, value: { path: '/t', entries: [], truncated: false } })
     const content = await c.workspace.readFile({ workspaceId: 'w1' as never, path: '/t/a.txt' })
-    expect(content.result).toEqual({ ok: true, value: { kind: 'text', content: '' } })
+    expect(content.result).toEqual({ ok: true, value: { kind: 'text', content: '', version: 'test-version' as WorkspaceFileVersion } })
     const status = await c.workspace.gitStatus({ workspaceId: 'w1' as never })
     expect(status.result).toEqual({ ok: true, value: { isRepo: false, branch: null, files: {} } })
     const committed = await c.workspace.gitCommitAll({ workspaceId: 'w1' as never, message: 'test commit' })
@@ -266,6 +267,10 @@ describe('unary round trip', () => {
     expect(discarded.result).toEqual({ ok: true, value: { discarded: true } })
     const diff = await c.workspace.gitFileDiff({ workspaceId: 'w1' as never, path: '/t/a.txt' })
     expect(diff.result).toEqual({ ok: true, value: { oldText: null, newText: null } })
+    const written = await c.workspace.writeFile({
+      workspaceId: 'w1' as never, path: '/t/a.txt', content: 'new content', expectedVersion: 'test-version' as WorkspaceFileVersion,
+    })
+    expect(written.result).toEqual({ ok: true, value: { version: 'test-version' as WorkspaceFileVersion } })
   })
 
   it('rejects a blank commit message with bad-request', async () => {

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { WorkspaceFileBrowseError } from '@deepseek-ai/dsh-client-runtime/client'
-import type { RpcError, WorkspaceFileContent } from '@deepseek-ai/dsh-client-runtime/client'
+import type { RpcError, WorkspaceFileContent, WorkspaceFileVersion } from '@deepseek-ai/dsh-client-runtime/client'
 import { FileViewer } from '../src/client/files/FileViewer.tsx'
 import { zh } from '../src/client/locales.ts'
 
@@ -50,7 +50,7 @@ describe('FileViewer', () => {
     render(
       <FileViewer
         path="/ws/README.md"
-        readFile={readFileOnce({ kind: 'text', content: '# Title\n\nBody text.' })}
+        readFile={readFileOnce({ kind: 'text', content: '# Title\n\nBody text.', version: 'test-version' as WorkspaceFileVersion })}
         openPath={vi.fn()}
         onClose={vi.fn()}
         t={t}
@@ -64,7 +64,7 @@ describe('FileViewer', () => {
     render(
       <FileViewer
         path="/ws/index.ts"
-        readFile={readFileOnce({ kind: 'text', content: 'const a = 1\nconst b = 2' })}
+        readFile={readFileOnce({ kind: 'text', content: 'const a = 1\nconst b = 2', version: 'test-version' as WorkspaceFileVersion })}
         openPath={vi.fn()}
         onClose={vi.fn()}
         t={t}
@@ -167,7 +167,7 @@ describe('FileViewer', () => {
     render(
       <FileViewer
         path="/ws/notes.txt"
-        readFile={readFileOnce({ kind: 'text', content: 'hello world' })}
+        readFile={readFileOnce({ kind: 'text', content: 'hello world', version: 'test-version' as WorkspaceFileVersion })}
         openPath={vi.fn()}
         onClose={vi.fn()}
         t={t}
@@ -182,7 +182,7 @@ describe('FileViewer', () => {
     render(
       <FileViewer
         path="justaname.txt"
-        readFile={readFileOnce({ kind: 'text', content: 'x' })}
+        readFile={readFileOnce({ kind: 'text', content: 'x', version: 'test-version' as WorkspaceFileVersion })}
         openPath={vi.fn()}
         onClose={vi.fn()}
         t={t}
@@ -202,7 +202,7 @@ describe('FileViewer', () => {
     render(
       <FileViewer
         path="/ws/empty.txt"
-        readFile={readFileOnce({ kind: 'text', content: '' })}
+        readFile={readFileOnce({ kind: 'text', content: '', version: 'test-version' as WorkspaceFileVersion })}
         openPath={vi.fn()}
         onClose={vi.fn()}
         t={t}
@@ -215,7 +215,7 @@ describe('FileViewer', () => {
     render(
       <FileViewer
         path="/ws/single.txt"
-        readFile={readFileOnce({ kind: 'text', content: 'only line\n' })}
+        readFile={readFileOnce({ kind: 'text', content: 'only line\n', version: 'test-version' as WorkspaceFileVersion })}
         openPath={vi.fn()}
         onClose={vi.fn()}
         t={t}
@@ -229,7 +229,7 @@ describe('FileViewer', () => {
     let resolveFirst: ((content: WorkspaceFileContent) => void) | undefined
     const readFile = vi.fn((path: string) => {
       if (path === '/ws/first.txt') return new Promise<WorkspaceFileContent>((resolve) => { resolveFirst = resolve })
-      return Promise.resolve({ kind: 'text' as const, content: 'second' })
+      return Promise.resolve({ kind: 'text' as const, content: 'second', version: 'test-version' as WorkspaceFileVersion })
     })
     const { rerender } = render(
       <FileViewer path="/ws/first.txt" readFile={readFile} openPath={vi.fn()} onClose={vi.fn()} t={t} />,
@@ -240,7 +240,7 @@ describe('FileViewer', () => {
     await screen.findByText('second')
     // The first (now-superseded) fetch settling afterward must not clobber
     // the second file's already-rendered content.
-    await act(async () => { resolveFirst?.({ kind: 'text', content: 'stale first' }) })
+    await act(async () => { resolveFirst?.({ kind: 'text', content: 'stale first', version: 'test-version' as WorkspaceFileVersion }) })
     expect(screen.getByText('second')).not.toBeNull()
     expect(screen.queryByText('stale first')).toBeNull()
   })
@@ -249,7 +249,7 @@ describe('FileViewer', () => {
     let rejectFirst: ((error: Error) => void) | undefined
     const readFile = vi.fn((path: string) => {
       if (path === '/ws/first.txt') return new Promise<WorkspaceFileContent>((_resolve, reject) => { rejectFirst = reject })
-      return Promise.resolve({ kind: 'text' as const, content: 'second' })
+      return Promise.resolve({ kind: 'text' as const, content: 'second', version: 'test-version' as WorkspaceFileVersion })
     })
     const { rerender } = render(
       <FileViewer path="/ws/first.txt" readFile={readFile} openPath={vi.fn()} onClose={vi.fn()} t={t} />,
@@ -269,7 +269,7 @@ describe('FileViewer', () => {
     render(
       <FileViewer
         path="/ws/notes.txt"
-        readFile={readFileOnce({ kind: 'text', content: 'hello' })}
+        readFile={readFileOnce({ kind: 'text', content: 'hello', version: 'test-version' as WorkspaceFileVersion })}
         openPath={vi.fn()}
         onClose={vi.fn()}
         t={t}
@@ -289,7 +289,7 @@ describe('FileViewer', () => {
       render(
         <FileViewer
           path="/ws/notes.txt"
-          readFile={readFileOnce({ kind: 'text', content: 'hello' })}
+          readFile={readFileOnce({ kind: 'text', content: 'hello', version: 'test-version' as WorkspaceFileVersion })}
           openPath={vi.fn()}
           onClose={vi.fn()}
           t={t}
@@ -311,7 +311,7 @@ describe('FileViewer', () => {
     render(
       <FileViewer
         path="/ws/notes.txt"
-        readFile={readFileOnce({ kind: 'text', content: 'hello' })}
+        readFile={readFileOnce({ kind: 'text', content: 'hello', version: 'test-version' as WorkspaceFileVersion })}
         openPath={vi.fn()}
         onClose={vi.fn()}
         t={t}
@@ -345,7 +345,7 @@ describe('FileViewer', () => {
     render(
       <FileViewer
         path="/ws/notes.txt"
-        readFile={readFileOnce({ kind: 'text', content: 'x' })}
+        readFile={readFileOnce({ kind: 'text', content: 'x', version: 'test-version' as WorkspaceFileVersion })}
         openPath={vi.fn()}
         onClose={onClose}
         t={t}

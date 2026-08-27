@@ -1,18 +1,34 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { bindSnapshotSelector, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import {
   createSnapshotStore, EMPTY_CHAT_SNAPSHOT, EMPTY_CONVERSATION_VIEWS, WorkspaceFileBrowseError,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
-  ConversationSnapshot, RpcError, SessionId, SessionListState, WorkspaceFileContent, WorkspaceListState,
+  ConversationSnapshot, RpcError, SessionId, SessionListState, WorkspaceFileContent, WorkspaceFileVersion, WorkspaceListState,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { FileView } from '../src/client/files/FileView.tsx'
 import type { FileViewProps } from '../src/client/files/FileView.tsx'
 import { zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)
+
+// FileEditor mounts a real CodeMirror 6 EditorView; jsdom lacks these two
+// measurement constructors entirely (see file-editor.client.spec.tsx in
+// ui-primitives for the same stub and its rationale).
+const emptyRectList = () => ({ length: 0, item: () => null, [Symbol.iterator]: function* () {} }) as unknown as DOMRectList
+if (typeof Range.prototype.getClientRects !== 'function') Range.prototype.getClientRects = emptyRectList
+if (typeof Element.prototype.getClientRects !== 'function') Element.prototype.getClientRects = emptyRectList
+
+beforeEach(() => {
+  vi.stubGlobal('ResizeObserver', class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  })
+})
+afterEach(() => { vi.unstubAllGlobals() })
 
 const t = makeTranslate(zh)
 const SID = 's1' as SessionId
@@ -73,6 +89,7 @@ function baseProps(overrides: Partial<FileViewProps> = {}): FileViewProps {
     openPath: vi.fn(async () => {}),
     getGitStatus: noGitStatus(),
     getFileDiff: vi.fn(async () => ({ oldText: null, newText: null })),
+    writeFile: vi.fn(async () => 'test-version' as WorkspaceFileVersion),
     t,
     ...overrides,
   } as unknown as FileViewProps
@@ -86,7 +103,7 @@ describe('FileView', () => {
 
   it('acknowledges the one-shot openFilePath handoff and fetches the file', async () => {
     const onFileOpened = vi.fn()
-    const readFile = vi.fn(readFileOnce({ kind: 'text', content: 'hello' }))
+    const readFile = vi.fn(readFileOnce({ kind: 'text', content: 'hello', version: 'test-version' as WorkspaceFileVersion }))
     render(<FileView {...baseProps({ openFilePath: '/ws/notes.txt', onFileOpened, readFile })} />)
     expect(onFileOpened).toHaveBeenCalled()
     await screen.findByText('hello')
@@ -101,7 +118,7 @@ describe('FileView', () => {
       <FileView
         {...baseProps({
           openFilePath: '/ws/README.md',
-          readFile: readFileOnce({ kind: 'text', content: '# Title\n\nBody.' }),
+          readFile: readFileOnce({ kind: 'text', content: '# Title\n\nBody.', version: 'test-version' as WorkspaceFileVersion }),
         })}
       />,
     )
@@ -178,7 +195,9 @@ describe('FileView', () => {
   })
 
   it('re-fetches on a new openFilePath after the first file is showing', async () => {
-    const readFile = vi.fn((path: string) => Promise.resolve({ kind: 'text' as const, content: `content of ${path}` }))
+    const readFile = vi.fn((path: string) => Promise.resolve({
+      kind: 'text' as const, content: `content of ${path}`, version: 'test-version' as WorkspaceFileVersion,
+    }))
     const { rerender } = render(<FileView {...baseProps({ openFilePath: '/ws/one.txt', readFile })} />)
     await screen.findByText('content of /ws/one.txt')
     rerender(<FileView {...baseProps({ openFilePath: '/ws/two.txt', readFile })} />)
@@ -190,7 +209,7 @@ describe('FileView', () => {
       <FileView
         {...baseProps({
           openFilePath: '/ws/clean.txt',
-          readFile: readFileOnce({ kind: 'text', content: 'clean' }),
+          readFile: readFileOnce({ kind: 'text', content: 'clean', version: 'test-version' as WorkspaceFileVersion }),
         })}
       />,
     )
@@ -205,7 +224,7 @@ describe('FileView', () => {
       <FileView
         {...baseProps({
           openFilePath: '/ws/changed.txt',
-          readFile: readFileOnce({ kind: 'text', content: 'new line' }),
+          readFile: readFileOnce({ kind: 'text', content: 'new line', version: 'test-version' as WorkspaceFileVersion }),
           getGitStatus,
           getFileDiff,
         })}
@@ -225,7 +244,7 @@ describe('FileView', () => {
       <FileView
         {...baseProps({
           openFilePath: '/ws/same.txt',
-          readFile: readFileOnce({ kind: 'text', content: 'same' }),
+          readFile: readFileOnce({ kind: 'text', content: 'same', version: 'test-version' as WorkspaceFileVersion }),
           getGitStatus,
           getFileDiff,
         })}
@@ -234,5 +253,118 @@ describe('FileView', () => {
     const diffToggle = await screen.findByRole('button', { name: t('files.diff.diff') })
     await act(async () => { diffToggle.click() })
     await screen.findByText(t('files.diff.empty'))
+  })
+})
+
+/** Simulate typed input the way CodeMirror's own paste handler reads it — jsdom fires no native text-insertion events. */
+function pasteInto(content: Element, text: string): void {
+  fireEvent.paste(content, { clipboardData: { getData: () => text } })
+}
+
+describe('FileView editing', () => {
+  it('offers an Edit toggle for a text file and shows its content in the editor', async () => {
+    render(
+      <FileView
+        {...baseProps({
+          openFilePath: '/ws/notes.txt',
+          readFile: readFileOnce({ kind: 'text', content: 'hello', version: 'v1' as WorkspaceFileVersion }),
+        })}
+      />,
+    )
+    await screen.findByText('hello')
+    const editToggle = await screen.findByRole('button', { name: t('files.edit.edit') })
+    await act(async () => { editToggle.click() })
+    expect(document.querySelector('.cm-content')?.textContent).toBe('hello')
+  })
+
+  it('enables Save and shows the unsaved indicator once the buffer is edited', async () => {
+    render(
+      <FileView
+        {...baseProps({
+          openFilePath: '/ws/notes.txt',
+          readFile: readFileOnce({ kind: 'text', content: 'hello', version: 'v1' as WorkspaceFileVersion }),
+        })}
+      />,
+    )
+    await screen.findByText('hello')
+    await act(async () => { (await screen.findByRole('button', { name: t('files.edit.edit') })).click() })
+    const saveButton = await screen.findByRole('button', { name: t('files.edit.save') })
+    expect(saveButton.hasAttribute('disabled')).toBe(true)
+
+    const content = document.querySelector('.cm-content')
+    if (content === null) throw new Error('unreachable')
+    await act(async () => { pasteInto(content, '!') })
+    expect(saveButton.hasAttribute('disabled')).toBe(false)
+  })
+
+  it('saves the edited buffer through writeFile with the read version, then clears the unsaved state', async () => {
+    const writeFile = vi.fn(async () => 'v2' as WorkspaceFileVersion)
+    render(
+      <FileView
+        {...baseProps({
+          openFilePath: '/ws/notes.txt',
+          readFile: readFileOnce({ kind: 'text', content: 'hello', version: 'v1' as WorkspaceFileVersion }),
+          writeFile,
+        })}
+      />,
+    )
+    await screen.findByText('hello')
+    await act(async () => { (await screen.findByRole('button', { name: t('files.edit.edit') })).click() })
+    const content = document.querySelector('.cm-content')
+    if (content === null) throw new Error('unreachable')
+    await act(async () => { pasteInto(content, '!') })
+    const saveButton = await screen.findByRole('button', { name: t('files.edit.save') })
+    await act(async () => { saveButton.click() })
+
+    expect(writeFile).toHaveBeenCalledWith('/ws/notes.txt', expect.stringContaining('hello'), 'v1')
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t('files.edit.save') }).hasAttribute('disabled')).toBe(true)
+    })
+  })
+
+  it('shows a conflict notice with a reload action when the save is rejected as file-changed', async () => {
+    const rpcError: RpcError = { code: 'file-changed', message: 'changed', details: { path: '/ws/notes.txt' } }
+    const writeFile = vi.fn(async () => { throw new WorkspaceFileBrowseError(rpcError) })
+    const readFile = vi.fn(readFileOnce({ kind: 'text', content: 'hello', version: 'v1' as WorkspaceFileVersion }))
+    render(
+      <FileView
+        {...baseProps({ openFilePath: '/ws/notes.txt', readFile, writeFile })}
+      />,
+    )
+    await screen.findByText('hello')
+    await act(async () => { (await screen.findByRole('button', { name: t('files.edit.edit') })).click() })
+    const content = document.querySelector('.cm-content')
+    if (content === null) throw new Error('unreachable')
+    await act(async () => { pasteInto(content, '!') })
+    await act(async () => { (await screen.findByRole('button', { name: t('files.edit.save') })).click() })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toContain(t('files.edit.conflict'))
+
+    const reload = screen.getByRole('button', { name: t('files.edit.reload') })
+    await act(async () => { reload.click() })
+    // Reload discards the draft, re-fetches, and returns to View mode.
+    expect(readFile).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('button', { name: t('files.edit.save') })).toBeNull()
+  })
+
+  it('keeps an unsaved draft when switching to View and back to Edit', async () => {
+    render(
+      <FileView
+        {...baseProps({
+          openFilePath: '/ws/notes.txt',
+          readFile: readFileOnce({ kind: 'text', content: 'hello', version: 'v1' as WorkspaceFileVersion }),
+        })}
+      />,
+    )
+    await screen.findByText('hello')
+    await act(async () => { (await screen.findByRole('button', { name: t('files.edit.edit') })).click() })
+    const content = document.querySelector('.cm-content')
+    if (content === null) throw new Error('unreachable')
+    await act(async () => { pasteInto(content, '!') })
+
+    await act(async () => { (await screen.findByRole('button', { name: t('files.diff.view') })).click() })
+    await act(async () => { (await screen.findByRole('button', { name: t('files.edit.edit') })).click() })
+    expect(document.querySelector('.cm-content')?.textContent).toContain('!')
   })
 })

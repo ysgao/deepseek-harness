@@ -1,0 +1,44 @@
+/* Geometry mirrors ReadBlock/SideBySideDiff's code surface (same
+   --dsw-alias-markdown-code-block family) so the editable buffer and the
+   read-only preview read as one family. `kind: 'markdown'` splits into two
+   equal columns divided by a hairline (the panel's own background showing
+   through a 1px grid gap), matching SideBySideDiff's own divider trick. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.splitRoot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  min-height: 0;
+  height: 100%;
+  background: var(--dsw-alias-separator-primary);
+}
+
+.editorPane {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--dsw-alias-markdown-code-block);
+}
+
+.editorPane :global(.cm-editor) {
+  height: 100%;
+}
+
+.editorPane :global(.cm-scroller) {
+  overflow: auto;
+}
+
+.previewPane {
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  padding: 16px;
+  background: var(--dsw-alias-markdown-code-block);
+}

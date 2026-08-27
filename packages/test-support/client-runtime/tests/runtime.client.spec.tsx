@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { stubSettingsScope } from '../src/settings-scope.ts'
 import { cleanup } from '@testing-library/react'
 import { defineStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SessionId, WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId, WorkspaceFileVersion, WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { PropsRenderSlots, SessionStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
 
@@ -586,9 +586,19 @@ describe('workspaces action face', () => {
     await ws.archiveSession('s1' as SessionId)
     expect(ws.list.getSnapshot().archivedSessionIds).toEqual(['s1'])
     await expect(ws.getWorkspaceFileDiff('w1' as WorkspaceId, '/proj/file.ts')).resolves.toEqual({ oldText: null, newText: null })
+    await expect(ws.listWorkspaceEntries('w1' as WorkspaceId, '/proj')).resolves.toMatchObject({ path: '/proj', entries: [], truncated: false })
+    await expect(ws.readWorkspaceFile('w1' as WorkspaceId, '/proj/file.ts')).resolves.toEqual({
+      kind: 'text', content: '', version: 'test-version' as WorkspaceFileVersion,
+    })
+    await expect(ws.listWorkspaceGitStatus('w1' as WorkspaceId)).resolves.toEqual({ isRepo: false, branch: null, files: {} })
+    await ws.commitAllWorkspaceChanges('w1' as WorkspaceId, 'a commit')
+    await ws.discardAllWorkspaceChanges('w1' as WorkspaceId)
+    await expect(ws.writeWorkspaceFile('w1' as WorkspaceId, '/proj/file.ts', 'edited', 'v1' as WorkspaceFileVersion))
+      .resolves.toBe('test-version-6')
     expect(ws.calls.map(c => c.method)).toEqual([
       'create', 'create', 'pickDirectory', 'rename', 'delete', 'openPath', 'insertBefore', 'insertSessionBefore',
-      'archiveSession', 'getWorkspaceFileDiff',
+      'archiveSession', 'getWorkspaceFileDiff', 'listWorkspaceEntries', 'readWorkspaceFile', 'listWorkspaceGitStatus',
+      'commitAllWorkspaceChanges', 'discardAllWorkspaceChanges', 'writeWorkspaceFile',
     ])
 
     ws.stub('create', () => Promise.resolve({ workspaceId: 'ws-x', title: 'X', path: '/x', sessionIds: [] } as never))
@@ -601,6 +611,14 @@ describe('workspaces action face', () => {
     ws.stub('insertSessionBefore', () => Promise.resolve({ workspaceId: 'w1', title: '', path: '', sessionIds: [] } as never))
     ws.stub('archiveSession', () => Promise.resolve())
     ws.stub('getWorkspaceFileDiff', () => Promise.resolve({ oldText: 'old', newText: 'new' } as never))
+    ws.stub('listWorkspaceEntries', () => Promise.resolve({ path: '/stubbed', entries: [], truncated: true } as never))
+    ws.stub('readWorkspaceFile', () => Promise.resolve({ kind: 'text', content: 'stubbed', version: 'v2' } as never))
+    ws.stub('listWorkspaceGitStatus', () => Promise.resolve({ isRepo: true, branch: 'main', files: {} } as never))
+    const commitAll = vi.fn(() => Promise.resolve())
+    ws.stub('commitAllWorkspaceChanges', commitAll)
+    const discardAll = vi.fn(() => Promise.resolve())
+    ws.stub('discardAllWorkspaceChanges', discardAll)
+    ws.stub('writeWorkspaceFile', () => Promise.resolve('v3' as never))
     expect((await ws.create({ path: '/y' })).title).toBe('X')
     await expect(ws.pickDirectory()).resolves.toBe('/picked')
     expect((await ws.rename('w1' as WorkspaceId, 'z')).title).toBe('S')
@@ -613,6 +631,15 @@ describe('workspaces action face', () => {
     await ws.archiveSession('s2' as SessionId)
     expect(ws.list.getSnapshot().archivedSessionIds).toEqual(['s1'])
     await expect(ws.getWorkspaceFileDiff('w1' as WorkspaceId, '/proj/file.ts')).resolves.toEqual({ oldText: 'old', newText: 'new' })
+    await expect(ws.listWorkspaceEntries('w1' as WorkspaceId, '/proj')).resolves.toMatchObject({ path: '/stubbed', truncated: true })
+    await expect(ws.readWorkspaceFile('w1' as WorkspaceId, '/proj/file.ts')).resolves.toMatchObject({ content: 'stubbed' })
+    await expect(ws.listWorkspaceGitStatus('w1' as WorkspaceId)).resolves.toEqual({ isRepo: true, branch: 'main', files: {} })
+    await ws.commitAllWorkspaceChanges('w1' as WorkspaceId, 'another commit')
+    expect(commitAll).toHaveBeenCalledWith('w1', 'another commit', undefined)
+    await ws.discardAllWorkspaceChanges('w1' as WorkspaceId)
+    expect(discardAll).toHaveBeenCalledWith('w1', undefined)
+    await expect(ws.writeWorkspaceFile('w1' as WorkspaceId, '/proj/file.ts', 'edited', 'v1' as WorkspaceFileVersion))
+      .resolves.toBe('v3')
     await runtime.dispose()
   })
 })

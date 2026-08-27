@@ -48,6 +48,7 @@ import {
   workspaceListRequestSchema,
   workspaceReadFileRequestSchema,
   workspaceRenameRequestSchema,
+  workspaceWriteFileRequestSchema,
 } from '../api/workspace.schema.ts'
 import { skillListRequestSchema } from '../api/skills.schema.ts'
 import {
@@ -131,6 +132,7 @@ const UNARY_ROUTES: UnaryRoutes = {
   'workspace.gitCommitAll': { schema: workspaceGitCommitAllRequestSchema, invoke: (api, r, signal) => api.workspace.gitCommitAll(r, signal) },
   'workspace.gitDiscardAll': { schema: workspaceGitDiscardAllRequestSchema, invoke: (api, r, signal) => api.workspace.gitDiscardAll(r, signal) },
   'workspace.gitFileDiff': { schema: workspaceGitFileDiffRequestSchema, invoke: (api, r, signal) => api.workspace.gitFileDiff(r, signal) },
+  'workspace.writeFile': { schema: workspaceWriteFileRequestSchema, invoke: (api, r, signal) => api.workspace.writeFile(r, signal) },
   'skill.list': { schema: skillListRequestSchema, invoke: (api, r) => api.skills.list(r) },
   'agentPreset.list': { schema: agentPresetListRequestSchema, invoke: (api, r) => api.agentPresets.list(r) },
   'agentPreset.select': { schema: agentPresetSelectRequestSchema, invoke: (api, r) => api.agentPresets.select(r) },

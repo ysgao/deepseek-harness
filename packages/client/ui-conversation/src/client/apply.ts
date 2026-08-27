@@ -472,6 +472,13 @@ export function apply(ctx: Context): void {
         }
         return workspaces.getWorkspaceFileDiff(workspaceId, path, signal)
       },
+      writeFile: (path, content, expectedVersion, signal) => {
+        const workspaceId = resolveOwningWorkspaceId(sessionId)
+        if (workspaceId === undefined) {
+          return Promise.reject(new Error(`ui-conversation: session "${sessionId}" has no owning workspace`))
+        }
+        return workspaces.writeWorkspaceFile(workspaceId, path, content, expectedVersion, signal)
+      },
     }),
   }, FileView)
 

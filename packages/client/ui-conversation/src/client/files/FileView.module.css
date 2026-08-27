@@ -23,10 +23,37 @@
   word-break: break-all;
 }
 
+.headerActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .modeToggle {
   flex: none;
   display: flex;
   gap: 4px;
+}
+
+.unsaved {
+  color: var(--dsw-alias-state-warn-primary);
+}
+
+.conflict {
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 13px;
+}
+
+.conflictReload {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
 }
 
 .diffNotice {

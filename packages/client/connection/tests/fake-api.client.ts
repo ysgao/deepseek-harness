@@ -3,7 +3,7 @@
 // deferred-controlled timing). Streams are hand pumps: pushMux/pushHost.
 import type {
   HostFrame, IApiClient, ModelSelection, MuxFrame,
-  RpcRequest, RpcResponse, SessionId, SessionModels, SessionSearchItem, SkillEntry, WorkspaceId,
+  RpcRequest, RpcResponse, SessionId, SessionModels, SessionSearchItem, SkillEntry, WorkspaceFileVersion, WorkspaceId,
 } from '../src/client/api.ts'
 import { RpcId } from '../src/client/api.ts'
 
@@ -176,6 +176,7 @@ export class FakeApiClient implements IApiClient {
     readFile: (payload: unknown) => this.record('workspace.readFile', payload, Promise.resolve(ok({
       kind: 'text' as const,
       content: '',
+      version: 'test-version' as WorkspaceFileVersion,
     }))),
     gitStatus: (payload: unknown) => this.record('workspace.gitStatus', payload, Promise.resolve(ok({
       isRepo: false,
@@ -191,6 +192,9 @@ export class FakeApiClient implements IApiClient {
     gitFileDiff: (payload: unknown) => this.record('workspace.gitFileDiff', payload, Promise.resolve(ok({
       oldText: null,
       newText: null,
+    }))),
+    writeFile: (payload: unknown) => this.record('workspace.writeFile', payload, Promise.resolve(ok({
+      version: 'test-version' as WorkspaceFileVersion,
     }))),
   }
 

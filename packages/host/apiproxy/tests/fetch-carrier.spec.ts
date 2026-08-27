@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { ApiProxy, HostFrame, MuxFrame } from '../src/api/index.ts'
+import type { ApiProxy, HostFrame, MuxFrame, WorkspaceFileVersion } from '../src/api/index.ts'
 import type { ClientResponse, RpcMessage, RpcReceipt, RpcRequest } from '../src/api/rpc.ts'
 import { RpcId } from '../src/api/rpc.ts'
 import { toFetchHandler } from '../src/fetch/handler.ts'
@@ -195,7 +195,7 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
         return { rpcId: request.rpcId, result: { ok: true, value: { path: request.payload.path, entries: [], truncated: false } } }
       },
       async readFile(request) {
-        return { rpcId: request.rpcId, result: { ok: true, value: { kind: 'text' as const, content: '' } } }
+        return { rpcId: request.rpcId, result: { ok: true, value: { kind: 'text' as const, content: '', version: 'test-version' as WorkspaceFileVersion } } }
       },
       async gitStatus(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { isRepo: false, branch: null, files: {} } } }
@@ -208,6 +208,9 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
       },
       async gitFileDiff(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { oldText: null, newText: null } } }
+      },
+      async writeFile(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { version: 'test-version' as WorkspaceFileVersion } } }
       },
     },
     agentPresets: {

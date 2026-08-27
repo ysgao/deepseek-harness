@@ -1,18 +1,20 @@
 /**
- * Host-side workspace file browsing: one-level directory-and-file listing and
- * bounded single-file reads rooted under a workspace's own directory, for the
- * Web GUI's in-app Files tree (sibling to a workspace's session list). This is
- * a distinct primitive from `host.listDirectory`/`ctx.directoryPicker`, which
- * is the directory-ONLY workspace-root picker; nothing here touches that seam.
- * Root containment (`path` must be the workspace's own path or a descendant of
- * it) is the caller's job — this module lists and reads whatever absolute
- * path it is given.
+ * Host-side workspace file browsing: one-level directory-and-file listing,
+ * bounded single-file reads, and version-guarded atomic writes, rooted under
+ * a workspace's own directory, for the Web GUI's in-app Files tree and File
+ * tab editor (sibling to a workspace's session list). This is a distinct
+ * primitive from `host.listDirectory`/`ctx.directoryPicker`, which is the
+ * directory-ONLY workspace-root picker; nothing here touches that seam. Root
+ * containment (`path` must be the workspace's own path or a descendant of it)
+ * is the caller's job — this module lists, reads, and writes whatever
+ * absolute path it is given.
  * @module
  */
 
-import { opendir, readFile, stat } from 'node:fs/promises'
-import { extname, isAbsolute, join, relative, resolve } from 'node:path'
-import type { WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent } from './api/workspace.ts'
+import { createHash, randomUUID } from 'node:crypto'
+import { opendir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
+import type { WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileVersion } from './api/workspace.ts'
 
 /** Typed failure so the RPC layer can map business codes without string matching. */
 export class WorkspaceFileError extends Error {
@@ -20,10 +22,10 @@ export class WorkspaceFileError extends Error {
    * @param code - closed business code of the failure.
    * @param path - the absolute path the failure is about.
    * @param message - operator-facing description.
-   * @param maxBytes - the enforced read bound, present only for `file-too-large`.
+   * @param maxBytes - the enforced read/write bound, present only for `file-too-large`.
    */
   constructor(
-    readonly code: 'directory-unreadable' | 'file-too-large',
+    readonly code: 'directory-unreadable' | 'file-too-large' | 'file-changed',
     readonly path: string,
     message: string,
     readonly maxBytes?: number,
@@ -76,6 +78,18 @@ const MEDIA_TYPES_BY_EXTENSION: Readonly<Record<string, string>> = {
  */
 export function mediaTypeFor(path: string): string {
   return MEDIA_TYPES_BY_EXTENSION[extname(path).toLowerCase()] ?? 'application/octet-stream'
+}
+
+/**
+ * Opaque staleness-guard token for a text file's content: a SHA-256 hex
+ * digest over its raw bytes. Content-addressed rather than mtime-based so
+ * the guard is exact regardless of a filesystem's mtime-resolution
+ * coarseness (some tick only per-second).
+ * @param bytes - the file's raw bytes.
+ * @returns the content's version token.
+ */
+function hashContent(bytes: Uint8Array): WorkspaceFileVersion {
+  return createHash('sha256').update(bytes).digest('hex') as WorkspaceFileVersion
 }
 
 /**
@@ -206,7 +220,7 @@ export async function readWorkspaceFile(
   }
   const decoder = new TextDecoder('utf-8', { fatal: true })
   try {
-    return { kind: 'text', content: decoder.decode(bytes) }
+    return { kind: 'text', content: decoder.decode(bytes), version: hashContent(bytes) }
   } catch {
     return { kind: 'binary', mediaType: mediaTypeFor(path), data: bytes.toString('base64') }
   }
@@ -220,4 +234,71 @@ export async function readWorkspaceFile(
  */
 export function resolveWorkspacePath(path: string): string {
   return resolve(path)
+}
+
+/**
+ * Atomically overwrite one regular file's content, guarded by
+ * `expectedVersion` against a concurrent change: the current on-disk
+ * content is read and hashed immediately before the write, and a mismatch
+ * fails loud with `file-changed` rather than silently clobbering it. The
+ * write itself is atomic (a same-directory temp file, then `rename`), so a
+ * crash or a competing write never leaves a partially written file at
+ * `path`. This is the Web GUI in-app editor's save path — a distinct
+ * primitive from `dsh-fs`'s model-tool-facing `writeText` (not used here;
+ * see the owning Agent Note), built the same "guard + atomic publish" way.
+ * @param path - absolute file path (must already exist — this never creates a new file).
+ * @param content - the full new UTF-8 text content.
+ * @param expectedVersion - the version the caller last observed, from a prior `readFile`/`writeFile`.
+ * @param maxBytes - byte bound enforced on `content` before any write is attempted.
+ * @param signal - caller lifetime; abort rejects with the abort reason before publication.
+ * @returns the version the write produced (the new content's own hash).
+ * @throws {WorkspaceFileError} `directory-unreadable` when the file cannot
+ * be read or written, `file-too-large` when `content` exceeds `maxBytes`,
+ * `file-changed` when the current on-disk content's hash does not match
+ * `expectedVersion`.
+ */
+export async function writeWorkspaceFile(
+  path: string,
+  content: string,
+  expectedVersion: WorkspaceFileVersion,
+  maxBytes: number = DEFAULT_MAX_READ_BYTES,
+  signal?: AbortSignal,
+): Promise<WorkspaceFileVersion> {
+  signal?.throwIfAborted()
+  const nextBytes = Buffer.from(content, 'utf-8')
+  if (nextBytes.byteLength > maxBytes) {
+    throw new WorkspaceFileError(
+      'file-too-large', path, `write to "${path}" (${nextBytes.byteLength} bytes) exceeds the ${maxBytes}-byte bound`, maxBytes,
+    )
+  }
+  let currentBytes: Buffer
+  try {
+    currentBytes = await readFile(path, { signal })
+  } catch (error: unknown) {
+    signal?.throwIfAborted()
+    throw new WorkspaceFileError('directory-unreadable', path, `cannot read ${path}: ${messageOf(error)}`)
+  }
+  signal?.throwIfAborted()
+  if (hashContent(currentBytes) !== expectedVersion) {
+    throw new WorkspaceFileError('file-changed', path, `"${path}" changed on disk since it was last read`)
+  }
+  // A same-directory temp file (never crosses filesystems, so `rename` is
+  // atomic) published over the target: a crash or a competing write between
+  // the temp write and the rename never leaves a partial file at `path`.
+  const tempPath = join(dirname(path), `.${randomUUID()}.tmp`)
+  try {
+    await writeFile(tempPath, nextBytes, { signal })
+    signal?.throwIfAborted()
+    await rename(tempPath, path)
+  } catch (error: unknown) {
+    await unlink(tempPath).catch(() => {
+      // The temp file may never have been created (the writeFile itself
+      // failed) or may already be gone (a prior cleanup raced it) — either
+      // way there is nothing left to remove, and the original error above
+      // is the one that matters to the caller.
+    })
+    signal?.throwIfAborted()
+    throw new WorkspaceFileError('directory-unreadable', path, `cannot write ${path}: ${messageOf(error)}`)
+  }
+  return hashContent(nextBytes)
 }

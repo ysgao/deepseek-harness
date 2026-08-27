@@ -12,7 +12,7 @@
 
 视图环是一个 slot：严格会话主体注册在 `children` 表中声明会话作用域的 `'conversation.view'` 列表，并通过自身的 renderSlot share 渲染活跃配置项（`only: <active id>`）；视图标签页则从注册选项（`id`／`order`／`label`）投影而来。聊天视图是该包自身的配置项；ui-trajectory 等插件通过 `ctx.slots.register` 贡献标签页，每个视图负责自己的 chrome。
 
-本包自身的第二个视图（`id: 'file'`，order 5）是 `FileView`，一个基于 `dsh-client-ui-primitives` 共享组件 `FilePreview` 主体的预览面板——始终存在于标签环中，在有路径被打开之前显示空状态提示。任何持有工作区路径的插件——目前是 `ui-workspace` 的文件树——都通过可选的 `ctx.get('conversationFileOpener')` 服务触达它，而不是只能回退到宿主的系统默认应用交接：`openFile(sessionId, path)` 把请求写入一个按会话划分的注册表（`files/file-opener.ts`），`ConversationSession` 会把它消费进该会话自身的 chat store（`openFilePath` 字段，与 trajectory 的 `inspect` 交接一样是一次性的）并切换活跃标签——这才是实际的跨会话写入面，因为 `ui-slots` 只在某个已声明 store 自身的注册组件内部解析其绑定 actions，绝不会在渲染树之外解析。
+本包自身的第二个视图（`id: 'file'`，order 5）是 `FileView`，围绕会话当前打开的工作区路径提供三种模式——始终存在于标签环中，在有路径被打开之前显示空状态提示。View 渲染 `dsh-client-ui-primitives` 共享的 `FilePreview` 主体（只读）。当打开的路径是存在待处理 git 更改的文本类文件时（依据 `getGitStatus`）会出现 Diff：它惰性拉取 `getFileDiff`，并用 `SideBySideDiff` 取代原来的位置渲染。任何文本或 Markdown 文件都会出现 Edit，渲染 `dsh-client-ui-primitives` 的 `FileEditor`（一个 CodeMirror 6 缓冲区，`.md` 文件还带有实时 Markdown 预览面板）；一个 Save 按钮与一个 Cmd/Ctrl+S 绑定会调用注入的 `writeFile`，并以 `readFile` 返回的版本作为防护。未保存的编辑存放在一个按路径存放的内存草稿缓存中，而不是 React state，因此切换到另一个文件、或切到 View／Diff 再切回来，都绝不会悄悄丢失一次编辑；一次因 `file-changed`（文件在被读取之后已在磁盘上发生更改）而被拒绝的保存，会展示一条行内冲突提示并提供"放弃并重新加载"操作，而不是直接覆盖。任何持有工作区路径的插件——目前是 `ui-workspace` 的文件树——都通过可选的 `ctx.get('conversationFileOpener')` 服务触达这个标签页，而不是只能回退到宿主的系统默认应用交接：`openFile(sessionId, path)` 把请求写入一个按会话划分的注册表（`files/file-opener.ts`），`ConversationSession` 会把它消费进该会话自身的 chat store（`openFilePath` 字段，与 trajectory 的 `inspect` 交接一样是一次性的）并切换活跃标签——这才是实际的跨会话写入面，因为 `ui-slots` 只在某个已声明 store 自身的注册组件内部解析其绑定 actions，绝不会在渲染树之外解析。编辑器自身设计取舍的说明：见[应用内文件编辑 Agent Note](../../../.agents/notes/implemented/feature/2026-08-27-file-tab-in-app-editing.zh.md)。
 
 Chat 业务行是彼此独立的注册表贡献，不是封闭的内建联合。Client 插件通过 declaration merging 增加类型化 `ChatNodeDataMap` key，在 `ctx.conversationEvents` 上注册 `ConversationNodeDefinition`，再向 `conversation.chat.node` 注册匹配的 keyed renderer；它无须修改会话 fold 或中央 renderer switch。稳定事件 id、append/prepend 回放、Location data 与 renderer 约束见 [Conversation Node 实操手册](../../../docs/cookbook/adding-a-conversation-node.zh.md)。
 
@@ -67,3 +67,5 @@ Host 带 placement 的 `session/queue` 快照也会携带待处理 steering。Qu
 - **TodoPanel 将过长条目截成单行省略号**：figma 条没有换行或展开入口，完整文本无法在行内读完。
 - **Queue 编辑仅支持文本**：包含非文本块的行仍显示扁平化预览，但由于内联编辑器无法保留这些块，其编辑控件会被禁用。文本行进入编辑模式后，删除和严格 steering 操作会被保存和取消取代；Enter 保存，Escape 取消。
 - **Queue 严格 steering 会保留完整消息**：agent 运行期间，steering 操作会以原子方式把所寻址的 Queue 单次入队项转移到当前 next-step 窗口。包含混合内容的行仍可使用此操作，因为它会转发不可变消息，而非文本投影。带 placement 的 Host 快照会在会话流末尾渲染待处理 steering，直到已消费的 `user/message` 折叠进持久 transcript（文本记录），因此立即展示、重连和回放共享同一个线性权威。
+- **File 标签页的 Edit 模式仅限文本与 Markdown**：v1 版本中二进制与图片文件不提供 Edit 切换控件，与 Diff 切换控件本就划定的范围一致。
+- **未保存草稿在 `file-changed` 时会被丢弃，而不是合并**：冲突提示唯一的恢复方式是放弃并重新加载；冲突状态内部不提供三方合并或与磁盘内容的对比视图。

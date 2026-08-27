@@ -1,11 +1,19 @@
 /** Pure-function and real-filesystem branch coverage of workspace-files.ts. */
-import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import type { WorkspaceFileVersion } from '../src/api/workspace.ts'
 import {
   isWithinWorkspace, listWorkspaceEntries, mediaTypeFor, readWorkspaceFile, resolveWorkspacePath, WorkspaceFileError,
+  writeWorkspaceFile,
 } from '../src/workspace-files.ts'
+
+/** `hashContent` isn't exported (an implementation detail); tests derive the expected version independently the same way it would. */
+function versionOf(content: string): WorkspaceFileVersion {
+  return createHash('sha256').update(Buffer.from(content, 'utf-8')).digest('hex') as WorkspaceFileVersion
+}
 
 function tempDir(prefix: string): string {
   return realpathSync.native(mkdtempSync(join(tmpdir(), prefix)))
@@ -126,5 +134,65 @@ describe('readWorkspaceFile', () => {
     const root = tempDir('dsh-workspace-files-read-dir-')
     mkdirSync(join(root, 'not-a-file'))
     await expect(readWorkspaceFile(join(root, 'not-a-file'))).rejects.toThrow(WorkspaceFileError)
+  })
+
+  it('returns the content hash as version for a text read', async () => {
+    const root = tempDir('dsh-workspace-files-read-version-')
+    const path = join(root, 'notes.txt')
+    writeFileSync(path, 'hello')
+    const content = await readWorkspaceFile(path)
+    expect(content).toEqual({ kind: 'text', content: 'hello', version: versionOf('hello') })
+  })
+})
+
+describe('writeWorkspaceFile', () => {
+  it('overwrites an existing file and returns the new content\'s version', async () => {
+    const root = tempDir('dsh-workspace-files-write-ok-')
+    const path = join(root, 'notes.txt')
+    writeFileSync(path, 'old')
+    const version = await writeWorkspaceFile(path, 'new content', versionOf('old'))
+    expect(version).toBe(versionOf('new content'))
+    expect(readFileSync(path, 'utf-8')).toBe('new content')
+  })
+
+  it('rejects a stale expectedVersion with file-changed, leaving the file untouched', async () => {
+    const root = tempDir('dsh-workspace-files-write-stale-')
+    const path = join(root, 'notes.txt')
+    writeFileSync(path, 'current')
+    await expect(writeWorkspaceFile(path, 'new', versionOf('a different past content')))
+      .rejects.toMatchObject({ code: 'file-changed' })
+    expect(readFileSync(path, 'utf-8')).toBe('current')
+  })
+
+  it('rejects content exceeding maxBytes with file-too-large before touching the file', async () => {
+    const root = tempDir('dsh-workspace-files-write-too-large-')
+    const path = join(root, 'notes.txt')
+    writeFileSync(path, 'small')
+    await expect(writeWorkspaceFile(path, 'this is too long', versionOf('small'), 4))
+      .rejects.toMatchObject({ code: 'file-too-large', maxBytes: 4 })
+    expect(readFileSync(path, 'utf-8')).toBe('small')
+  })
+
+  it('rejects a missing target file (never creates a new file)', async () => {
+    const root = tempDir('dsh-workspace-files-write-missing-')
+    await expect(writeWorkspaceFile(join(root, 'missing.txt'), 'x', versionOf('')))
+      .rejects.toMatchObject({ code: 'directory-unreadable' })
+  })
+
+  it('rejects an already-aborted signal before any I/O', async () => {
+    const root = tempDir('dsh-workspace-files-write-preaborted-')
+    const path = join(root, 'notes.txt')
+    writeFileSync(path, 'current')
+    const controller = new AbortController()
+    controller.abort()
+    await expect(writeWorkspaceFile(path, 'new', versionOf('current'), undefined, controller.signal)).rejects.toThrow()
+  })
+
+  it('leaves no temp file behind after a successful write', async () => {
+    const root = tempDir('dsh-workspace-files-write-notemp-')
+    const path = join(root, 'notes.txt')
+    writeFileSync(path, 'old')
+    await writeWorkspaceFile(path, 'new', versionOf('old'))
+    expect(readdirSync(root).filter(name => name.endsWith('.tmp'))).toHaveLength(0)
   })
 })

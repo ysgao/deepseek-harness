@@ -65,6 +65,7 @@ import {
   readWorkspaceFile,
   resolveWorkspacePath,
   WorkspaceFileError,
+  writeWorkspaceFile,
 } from './workspace-files.ts'
 import {
   commitAllChanges, discardAllChanges, GitCommandError, GitNotARepositoryError, workspaceFileAtHead, workspaceGitStatus,
@@ -627,7 +628,7 @@ export interface ApiProxyDefaults {
   canOpenPath?: () => boolean
   /** Complete-result bound per bucket (directories, files) of one `workspace.listEntries` level. */
   workspaceFilesMaxEntries?: number
-  /** Byte bound of one `workspace.readFile` call; a larger file fails with `file-too-large`. */
+  /** Byte bound of one `workspace.readFile`/`workspace.writeFile` call; a larger file fails with `file-too-large`. */
   workspaceFilesMaxReadBytes?: number
 }
 
@@ -3061,6 +3062,40 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           newText = null
         }
         return ok(request, { oldText, newText })
+      },
+
+      async writeFile(request, signal) {
+        const { workspaceId, path, content, expectedVersion } = request.payload
+        const workspace = ctx.workspaceRegistry.get(brandWorkspaceId(workspaceId))
+        if (workspace === undefined) return workspaceNotFound(request, workspaceId)
+        const target = resolveWorkspacePath(path)
+        if (!isWithinWorkspace(workspace.path, target)) {
+          return err(request, {
+            code: 'directory-unreadable',
+            message: `"${path}" is outside workspace "${workspaceId}" (${workspace.path})`,
+            details: { path },
+          })
+        }
+        try {
+          const version = await writeWorkspaceFile(target, content, expectedVersion, workspaceFilesMaxReadBytes, signal)
+          return ok(request, { version })
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'workspace file write was aborted', details: {} })
+          }
+          if (!(error instanceof WorkspaceFileError)) throw error
+          if (error.code === 'file-too-large') {
+            return err(request, {
+              code: 'file-too-large',
+              message: error.message,
+              details: { path: error.path, maxBytes: error.maxBytes ?? workspaceFilesMaxReadBytes },
+            })
+          }
+          if (error.code === 'file-changed') {
+            return err(request, { code: 'file-changed', message: error.message, details: { path: error.path } })
+          }
+          return err(request, { code: 'directory-unreadable', message: error.message, details: { path: error.path } })
+        }
       },
     },
 

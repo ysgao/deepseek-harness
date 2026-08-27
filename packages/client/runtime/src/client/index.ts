@@ -74,7 +74,7 @@ export type { WorkspaceListPhase } from './workspaces/manager.ts'
 export type { WorkspaceListState } from './workspaces/service.ts'
 export type {
   DirectoryEntry, DirectoryListing, RpcError, WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff,
-  WorkspaceGitStatus, WorkspaceId, WorkspaceView,
+  WorkspaceFileVersion, WorkspaceGitStatus, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-client-connection/client'
 // Runtime owns the snapshot store; ui-renderer only binds it to React.
 export { createSnapshotStore, defineStore, shallowEqual } from './contract/store.ts'

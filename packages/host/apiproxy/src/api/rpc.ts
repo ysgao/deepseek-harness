@@ -46,8 +46,10 @@ export interface RpcErrorDetailsMap {
   'directory-exists': { path: string }
   'directory-create-failed': { path: string }
   'directory-picker-unavailable': { capability: string }
-  /** A `workspace.readFile` target exceeds the deployment's file-preview read bound. */
+  /** A `workspace.readFile`/`workspace.writeFile` target exceeds the deployment's file-preview/write bound. */
   'file-too-large': { path: string; maxBytes: number }
+  /** A `workspace.writeFile` target changed on disk since it was last read. */
+  'file-changed': { path: string }
   /** A `workspace.gitCommitAll`/`gitDiscardAll` target is outside any git working tree. */
   'git-not-a-repository': { path: string }
   /** A `workspace.gitCommitAll`/`gitDiscardAll` git command exited non-zero; the message is git's own output. */

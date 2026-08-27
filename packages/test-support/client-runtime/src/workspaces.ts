@@ -2,7 +2,7 @@
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
   DirectoryListing, IWorkspaces, SessionId, SnapshotStore, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff,
-  WorkspaceGitStatus, WorkspaceId, WorkspaceListState, WorkspaceView,
+  WorkspaceFileVersion, WorkspaceGitStatus, WorkspaceId, WorkspaceListState, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { workspaceListState } from './fixtures.ts'
 import type { Stabilizer } from './fixtures.ts'
@@ -241,7 +241,7 @@ export class TestWorkspaces implements IWorkspaces {
     this.calls.push({ method: 'readWorkspaceFile', args: [workspaceId, path, signal] })
     const stub = this.stubs.get('readWorkspaceFile')
     if (stub !== undefined) return await (stub(workspaceId, path, signal) as Promise<WorkspaceFileContent>)
-    return { kind: 'text', content: '' }
+    return { kind: 'text', content: '', version: 'test-version' as WorkspaceFileVersion }
   }
 
   /**
@@ -294,5 +294,24 @@ export class TestWorkspaces implements IWorkspaces {
     const stub = this.stubs.get('getWorkspaceFileDiff')
     if (stub !== undefined) return await (stub(workspaceId, path, signal) as Promise<WorkspaceFileDiff>)
     return { oldText: null, newText: null }
+  }
+
+  /**
+   * Overwrite one file's content (recorded). The default echoes a version
+   * derived from `content`; stub to simulate a `file-changed` rejection.
+   * @param workspaceId - owning workspace.
+   * @param path - absolute file path.
+   * @param content - the full new UTF-8 text content.
+   * @param expectedVersion - the version last observed for this path.
+   * @param signal - forwarded like the production face.
+   * @returns the version the write produced.
+   */
+  async writeWorkspaceFile(
+    workspaceId: WorkspaceId, path: string, content: string, expectedVersion: WorkspaceFileVersion, signal?: AbortSignal,
+  ): Promise<WorkspaceFileVersion> {
+    this.calls.push({ method: 'writeWorkspaceFile', args: [workspaceId, path, content, expectedVersion, signal] })
+    const stub = this.stubs.get('writeWorkspaceFile')
+    if (stub !== undefined) return await (stub(workspaceId, path, content, expectedVersion, signal) as Promise<WorkspaceFileVersion>)
+    return `test-version-${content.length}` as WorkspaceFileVersion
   }
 }

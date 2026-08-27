@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import type {
-  SessionId, SessionListState, SessionSummary, WorkspaceId, WorkspaceListState, WorkspaceView,
+  SessionId, SessionListState, SessionSummary, WorkspaceFileVersion, WorkspaceId, WorkspaceListState, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
@@ -80,7 +80,7 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
     insertSessionBefore: vi.fn(async () => {}),
     createWorkspace: vi.fn(async () => workspace('created', [])),
     listWorkspaceEntries: vi.fn(async (_workspaceId: WorkspaceId, path: string) => ({ path, entries: [], truncated: false })),
-    readWorkspaceFile: vi.fn(async () => ({ kind: 'text' as const, content: '' })),
+    readWorkspaceFile: vi.fn(async () => ({ kind: 'text' as const, content: '', version: 'test-version' as WorkspaceFileVersion })),
     listWorkspaceGitStatus: vi.fn(async () => ({ isRepo: false, branch: null, files: {} })),
     commitAllWorkspaceChanges: vi.fn(async () => {}),
     discardAllWorkspaceChanges: vi.fn(async () => {}),

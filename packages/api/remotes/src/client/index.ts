@@ -45,7 +45,8 @@ export type {
   RpcRequest, RpcResponse, RpcResult, SessionId, SessionModels, SessionSearchItem,
   SessionSummary, SettingsNamespaceView, SettingsPathOpView, SkillEntry, StreamChunk,
   SubagentAddress, SubagentCatalog, JobView, ToolCallView, ToolEventView, ToolResultView,
-  WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceGitStatus, WorkspaceId, WorkspaceView,
+  WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceFileVersion, WorkspaceGitStatus,
+  WorkspaceId, WorkspaceView,
   AuthorizationApi, AuthorizationEntry, AuthorizationMethod, AuthorizationNotice, AuthorizationPrompt,
   AuthorizationPromptOption, AuthorizationPromptResponsePayload, WireAuthorizationPrompt,
 } from '@deepseek-ai/dsh-client-connection/client'

@@ -4,7 +4,9 @@
  * directory-only `host.listDirectory`/`ctx.directoryPicker` seam.
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -20,6 +22,7 @@ import type { DirectoryPickerCapability } from '@deepseek-ai/dsh-host-directory-
 import WorkspaceRegistry from '@deepseek-ai/dsh-workspace'
 import type { RpcRequest, RpcResponse } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
+import type { WorkspaceFileVersion } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { createApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
 import { MemoryStorageBackend } from '../../../storage/storage-domain/tests/helpers/memory-backend.ts'
 
@@ -211,7 +214,7 @@ describe('workspace.readFile', () => {
       request({ workspaceId: created.workspaceId, path: join(root, 'notes.txt') }),
       new AbortController().signal,
     ))
-    expect(content).toEqual({ kind: 'text', content: '你好，fixture\n' })
+    expect(content).toEqual({ kind: 'text', content: '你好，fixture\n', version: expect.any(String) }) // oxlint-disable-line typescript/no-unsafe-assignment
   })
 
   it('reads a non-UTF-8 file as kind: binary with a media type from the extension', async () => {
@@ -267,6 +270,99 @@ describe('workspace.readFile', () => {
       new AbortController().signal,
     ))
     expect(error.code).toBe('directory-unreadable')
+  })
+})
+
+describe('workspace.writeFile', () => {
+  it('overwrites the file and returns a version a follow-up read agrees with', async () => {
+    const { api, root } = await harness()
+    const path = join(root, 'notes.txt')
+    writeFileSync(path, 'original')
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+    const read = expectOk(await api.workspace.readFile(
+      request({ workspaceId: created.workspaceId, path }), new AbortController().signal,
+    ))
+    if (read.kind !== 'text') throw new Error('unreachable')
+
+    const written = expectOk(await api.workspace.writeFile(
+      request({ workspaceId: created.workspaceId, path, content: 'edited content', expectedVersion: read.version }),
+      new AbortController().signal,
+    ))
+    expect(readFileSync(path, 'utf-8')).toBe('edited content')
+
+    const reread = expectOk(await api.workspace.readFile(
+      request({ workspaceId: created.workspaceId, path }), new AbortController().signal,
+    ))
+    if (reread.kind !== 'text') throw new Error('unreachable')
+    expect(reread.version).toBe(written.version)
+  })
+
+  it('rejects a stale expectedVersion with file-changed, leaving the file untouched', async () => {
+    const { api, root } = await harness()
+    const path = join(root, 'notes.txt')
+    writeFileSync(path, 'current on disk')
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+    const read = expectOk(await api.workspace.readFile(
+      request({ workspaceId: created.workspaceId, path }), new AbortController().signal,
+    ))
+    if (read.kind !== 'text') throw new Error('unreachable')
+
+    // The file changes on disk after the version was captured (a concurrent
+    // edit — by the agent, another tab, or an external editor).
+    writeFileSync(path, 'changed after the read')
+
+    const error = expectErr(await api.workspace.writeFile(
+      request({ workspaceId: created.workspaceId, path, content: 'my edit', expectedVersion: read.version }),
+      new AbortController().signal,
+    ))
+    expect(error.code).toBe('file-changed')
+    expect(readFileSync(path, 'utf-8')).toBe('changed after the read')
+  })
+
+  it('rejects a path outside the workspace root with directory-unreadable', async () => {
+    const outsideRoot = realpathSync.native(mkdtempSync(join(tmpdir(), 'dsh-apiproxy-workspace-files-write-outside-')))
+    const { api, root } = await harness()
+    mkdirSync(join(root, 'inside'))
+    writeFileSync(join(outsideRoot, 'sibling.txt'), 'nope')
+    const created = expectOk(await api.workspace.create(request({ path: join(root, 'inside') }))).workspace
+
+    const error = expectErr(await api.workspace.writeFile(
+      request({
+        workspaceId: created.workspaceId, path: join(outsideRoot, 'sibling.txt'), content: 'x',
+        expectedVersion: 'irrelevant' as WorkspaceFileVersion,
+      }),
+      new AbortController().signal,
+    ))
+    expect(error.code).toBe('directory-unreadable')
+    expect(readFileSync(join(outsideRoot, 'sibling.txt'), 'utf-8')).toBe('nope')
+  })
+
+  it('does not leave a partial file or a temp file when the write itself fails', async () => {
+    const { api, root } = await harness()
+    const path = join(root, 'notes.txt')
+    writeFileSync(path, 'original')
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+    const read = expectOk(await api.workspace.readFile(
+      request({ workspaceId: created.workspaceId, path }), new AbortController().signal,
+    ))
+    if (read.kind !== 'text') throw new Error('unreachable')
+
+    // Read-only directory: the version check (a read) still succeeds, but
+    // the temp-file write and rename that follow it cannot. Skipped when
+    // running as root, which ignores directory write permissions.
+    if (process.getuid?.() === 0) return
+    chmodSync(root, 0o500)
+    try {
+      const error = expectErr(await api.workspace.writeFile(
+        request({ workspaceId: created.workspaceId, path, content: 'new content', expectedVersion: read.version }),
+        new AbortController().signal,
+      ))
+      expect(error.code).toBe('directory-unreadable')
+    } finally {
+      chmodSync(root, 0o700)
+    }
+    expect(readFileSync(path, 'utf-8')).toBe('original')
+    expect(readdirSync(root).filter(name => name.endsWith('.tmp'))).toHaveLength(0)
   })
 })
 

@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-纯 React 原子组件（零 cordis）：StateDot、DisclosureRow、ic_ds_* 图标、Button/Pill/Menu/Modal/Input、Toast 短时横幅、OnboardingSurface 首次使用接管层（portal 到 body 的遮罩加不透明展示层，在且仅在自身生命周期内保持 `#root` 为 `inert`）、markdown 家族（MessageText/MarkdownText/JsonBlock）、只读 JsonTree 检查器、`useAnchoredMaxHeight` 钩子（把底部锚定的浮层高度收敛到锚点上方的视口空间，并在 resize、scroll 与调用方提供的依赖变化时重新测量）、`useAnchoredPosition` 钩子（让固定定位的浮动面板跟住锚点：测量、偏移、按视口边距钳制，并在捕获阶段滚动、窗口缩放与面板自身尺寸变化时重新定位）、TerminalBlock、DiffBlock、SideBySideDiff、ReadBlock、FilePreview、SearchBlock，以及 WebBlock。
+纯 React 原子组件（零 cordis）：StateDot、DisclosureRow、ic_ds_* 图标、Button/Pill/Menu/Modal/Input、Toast 短时横幅、OnboardingSurface 首次使用接管层（portal 到 body 的遮罩加不透明展示层，在且仅在自身生命周期内保持 `#root` 为 `inert`）、markdown 家族（MessageText/MarkdownText/JsonBlock）、只读 JsonTree 检查器、`useAnchoredMaxHeight` 钩子（把底部锚定的浮层高度收敛到锚点上方的视口空间，并在 resize、scroll 与调用方提供的依赖变化时重新测量）、`useAnchoredPosition` 钩子（让固定定位的浮动面板跟住锚点：测量、偏移、按视口边距钳制，并在捕获阶段滚动、窗口缩放与面板自身尺寸变化时重新定位）、TerminalBlock、DiffBlock、SideBySideDiff、ReadBlock、FilePreview、FileEditor、SearchBlock，以及 WebBlock。
 
 ## 悬浮卡片
 
@@ -27,6 +27,10 @@
 ## 文件预览
 
 `FilePreview` 渲染由调用方归一化后的文件预览主体：Markdown 走 `MarkdownText`，文本／代码走 `ReadBlock`（带行号、shiki 高亮），图片使用调用方提供的 blob URL，其余情况——外部类型（无法识别的扩展名，或调用方从不抓取的类型）、过大、错误，或分类结果期望文本但实际是二进制的读取——都渲染为一行提示。该组件是纯函数式的，不携带任何宿主或协议层词汇：调用方在渲染前，把各自的抓取／分类概念（工作区文件读取、工具 read 结果，或任何其他文件来源）归一为纯数据的 `FilePreviewState`／`FilePreviewKind` 联合类型，因此同一套主体既能组成 `Modal` 包裹的文件对话框，也能组成整版的标签页视图。`imageAlt` 默认取 `path`，`className` 默认取组件自身带滚动上限的外层样式；持有不同外层结构的调用方可分别覆盖。目前有两个消费方：`ui-workspace` 的 `FileViewer`（外面套一层 `Modal`）与 `ui-conversation` 的 `FileView`（外面套一层 `conversation.view` 标签页面板）——见 [File 标签页 Agent Note](../../../.agents/notes/implemented/feature/2026-08-26-file-preview-conversation-tab.zh.md)。
+
+## 文件编辑
+
+`FileEditor` 是 `ui-conversation` File 标签页 Edit 模式背后的应用内文本编辑器：一个 CodeMirror 6 缓冲区（`@codemirror/state`／`view`／`commands`，外加用于 Markdown 列表／引用块续行的 `@codemirror/lang-markdown`），主题完全通过 `ReadBlock`／`SideBySideDiff` 早已在用的同一套 `--dsw-*`／`--dsw-font-markdown-code-block` token 呈现。对于 `kind: 'markdown'`，它会拆分成两栏——编辑面板与一个以 150ms 防抖、通过 `MarkdownText` 重新渲染缓冲区的实时预览面板——为 Markdown 提供一个真正的实时预览编辑面，完全用这个包本就已有的组件搭建而成，而不是引入一个新的所见即所得依赖。对于 `kind: 'text'`，则是一个不做装饰的单栏等宽字体面板。该组件在挂载之后有意保持非受控：`path`／`text`／`kind` 只用于生成一次初始缓冲区，此后文档、撤销历史与光标的归属权都在 CodeMirror 手中，贯穿该文件的整个生命周期；想为不同文件获得全新缓冲区的调用方应以 path 作为 key 重新挂载（`ui-conversation` 的 `FileView` 正是这样做的）。每次编辑都会通过 `onChange` 上报完整缓冲区；`onSaveRequested` 在编辑器获得焦点时绑定 Cmd/Ctrl+S，抑制浏览器自身的"保存页面"对话框。设计取舍说明（选用 CodeMirror 而非 Monaco、编辑时不做逐语言语法高亮、挂载后非受控的约定）：见[应用内文件编辑 Agent Note](../../../.agents/notes/implemented/feature/2026-08-27-file-tab-in-app-editing.zh.md)。
 
 ## Diff 渲染
 
@@ -59,3 +63,5 @@
 - **StateDot 没有 `Active` 变体**：支持的状态为 done、warning、ongoing 和 error。
 - **面向用户的文案经 label props 本地化，默认值为原中文字面量**：这些原子组件是 zero-cordis 的，拿不到 `ctx.locale`，因此 `HoverCard`（`copyLabel`/`copiedLabel`）、`TerminalBlock`（`labels`）、`JsonTree`（`labels`）、`CodeBlock`（`copyLabel`/`copiedLabel`）、`MarkdownText`（`codeLabels`）、`JsonBlock`（`truncatedLabel`）、`ConnectionBanner`（`label`）和 `Modal`（`closeLabel`）都把文案作为可选 props 接收。已本地化的插件用自己的 `t` 席位传入字典驱动的 label；什么都不传的消费方得到的就是这些默认值。`WebBlock` 尚未跟进这一模式：它的来源列表截断提示与 fetch 截断提示、以及空搜索提示仍是内联中文，待同样的 label-prop 处理。
 - **`TerminalBlock` 不是终端模拟器**：它渲染已结束或仍在运行的命令输出，而不是交互式会话：SGR 颜色与属性会被遵循，进度行所用的行内光标移动同样被遵循——回车、退格、行内擦除、制表位与字符宽度。绝对光标定位、清屏与备用屏幕序列会被剥离。基础 16 色中的洋红与青色没有对应 token，保持字面 rgb。
+- **`FileEditor` 编辑时没有语法高亮**：应用中唯一的语法高亮实现（`markdown/highlight.ts`，基于 shiki）已经为只读的 `ReadBlock`／`FilePreview` View 模式覆盖了 `langFromPath` 支持的每一种语言；再为编辑面接入第二套 CodeMirror 原生的逐语言语法，会把这份覆盖——以及它的体积成本——重复一遍，却对编辑时的读者没有任何收益。这是一个有意划定的范围，不是遗漏。
+- **`FileEditor` 的 Markdown 双栏预览没有响应式回退方案**：双栏布局假定停靠面板足够宽，能同时容纳两栏；较窄的宿主环境（例如手机宽度的视口）尚未被处理。

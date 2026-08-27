@@ -17,6 +17,14 @@ import type { RpcRequest, RpcResponse } from './rpc.ts'
  */
 export type WorkspaceId = Branded<'WorkspaceId'>
 
+/**
+ * Wire-side opaque staleness-guard token for one text file's content (a
+ * content hash, not a timestamp): returned by `workspace.readFile` and a
+ * successful `workspace.writeFile`, and required as `workspace.writeFile`'s
+ * `expectedVersion` to guard against clobbering a concurrent change.
+ */
+export type WorkspaceFileVersion = Branded<'WorkspaceFileVersion'>
+
 /** One workspace row: the record projection every workspace.* value carries. */
 export interface WorkspaceView {
   workspaceId: WorkspaceId
@@ -61,8 +69,12 @@ export interface WorkspaceEntryListing {
 
 /** `workspace.readFile` response value: a size-bounded file read, decoded by content kind. */
 export type WorkspaceFileContent =
-  /** UTF-8 text, decoded to a string; the wire's native JSON string form. */
-  | { kind: 'text'; content: string }
+  /**
+   * UTF-8 text, decoded to a string; the wire's native JSON string form.
+   * `version` is the content's staleness-guard token, threaded back through
+   * a subsequent `workspace.writeFile` as `expectedVersion`.
+   */
+  | { kind: 'text'; content: string; version: WorkspaceFileVersion }
   /** Binary content the client cannot decode as text; base64-encoded on the wire. */
   | { kind: 'binary'; mediaType: string; data: string }
 
@@ -232,4 +244,20 @@ export interface WorkspaceApi {
    */
   gitFileDiff(request: RpcRequest<{ workspaceId: WorkspaceId; path: string }>, signal: AbortSignal):
   Promise<RpcResponse<WorkspaceFileDiff>>
+
+  /**
+   * Overwrites one existing regular file under a workspace root, for the
+   * File tab's in-app editor. `path` must be the workspace's own canonical
+   * path or a descendant of it; a request outside that root fails with
+   * `directory-unreadable`. `expectedVersion` must match the file's current
+   * on-disk content (from a prior `readFile`/`writeFile` response) — a
+   * concurrent change fails loud with `file-changed` rather than being
+   * silently overwritten. The write is atomic: a failure never leaves a
+   * partially written file. `content` exceeding the deployment's bound fails
+   * with `file-too-large` before anything is written.
+   */
+  writeFile(
+    request: RpcRequest<{ workspaceId: WorkspaceId; path: string; content: string; expectedVersion: WorkspaceFileVersion }>,
+    signal: AbortSignal,
+  ): Promise<RpcResponse<{ version: WorkspaceFileVersion }>>
 }

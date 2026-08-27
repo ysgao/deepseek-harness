@@ -67,9 +67,9 @@ export interface Config {
    */
   workspaceFilesMaxEntries?: number
   /**
-   * Byte bound of one `workspace.readFile` call (the Web GUI's in-app file
-   * preview); a larger file fails with `file-too-large` instead of leaving
-   * the host.
+   * Byte bound of one `workspace.readFile` or `workspace.writeFile` call (the
+   * Web GUI's in-app file preview and editor); content exceeding it fails
+   * with `file-too-large` instead of leaving/reaching the host.
    * @default 20971520
    */
   workspaceFilesMaxReadBytes?: number

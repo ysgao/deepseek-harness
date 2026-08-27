@@ -8,11 +8,14 @@ import { z } from 'zod'
 import type { RequestPayload, ResponseValue } from './rpc-map.ts'
 import type { Wire } from './rpc.schema.ts'
 import type {
-  WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceGitStatus, WorkspaceView,
+  WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceFileVersion, WorkspaceGitStatus, WorkspaceView,
 } from './workspace.ts'
 import { sessionIdSchema, workspaceIdSchema } from './sessions.schema.ts'
 
 export { workspaceIdSchema } from './sessions.schema.ts'
+
+/** WorkspaceFileVersion: one brand cast after non-empty string validation — an opaque staleness-guard token, not format-checked. */
+export const workspaceFileVersionSchema = z.string().min(1) as unknown as z.ZodType<WorkspaceFileVersion>
 
 /** WorkspaceView row of every workspace.* response. */
 export const workspaceViewSchema = z.object({
@@ -131,7 +134,7 @@ export const workspaceReadFileRequestSchema = z.object({
 
 /** workspace.readFile response value: text decodes as a plain JSON string; binary content is base64 with a media type. */
 export const workspaceReadFileValueSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('text'), content: z.string() }),
+  z.object({ kind: z.literal('text'), content: z.string(), version: workspaceFileVersionSchema }),
   z.object({ kind: z.literal('binary'), mediaType: z.string(), data: z.string() }),
 ]) satisfies z.ZodType<Wire<ResponseValue<'workspace.readFile'>>> satisfies z.ZodType<Wire<WorkspaceFileContent>>
 
@@ -182,3 +185,16 @@ export const workspaceGitFileDiffValueSchema = z.object({
   oldText: z.string().nullable(),
   newText: z.string().nullable(),
 }) satisfies z.ZodType<Wire<ResponseValue<'workspace.gitFileDiff'>>> satisfies z.ZodType<Wire<WorkspaceFileDiff>>
+
+/** workspace.writeFile request payload: the path must be the workspace root or a descendant, and must already exist. */
+export const workspaceWriteFileRequestSchema = z.object({
+  workspaceId: workspaceIdSchema,
+  path: z.string(),
+  content: z.string(),
+  expectedVersion: workspaceFileVersionSchema,
+}) satisfies z.ZodType<Wire<RequestPayload<'workspace.writeFile'>>>
+
+/** workspace.writeFile response value: the version the write produced. */
+export const workspaceWriteFileValueSchema = z.object({
+  version: workspaceFileVersionSchema,
+}) satisfies z.ZodType<Wire<ResponseValue<'workspace.writeFile'>>>

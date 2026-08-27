@@ -7,8 +7,8 @@
  * widening what features may do to the workspaces domain.
  */
 import type {
-  DirectoryListing, SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceGitStatus, WorkspaceId,
-  WorkspaceView,
+  DirectoryListing, SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceFileVersion,
+  WorkspaceGitStatus, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { WorkspaceListState } from '../workspaces/service.ts'
 import type { ObservableSnapshot } from './store.ts'
@@ -147,4 +147,20 @@ export interface IWorkspaces {
    * @returns the diff text; either side is `null` when there is nothing there (no `HEAD` blob, or deleted from the working tree).
    */
   getWorkspaceFileDiff(workspaceId: WorkspaceId, path: string, signal?: AbortSignal): Promise<WorkspaceFileDiff>
+
+  /**
+   * Overwrite one existing file under a Workspace root, for the File tab's
+   * in-app editor. `expectedVersion` must match the file's current on-disk
+   * content (from a prior `readWorkspaceFile`/`writeWorkspaceFile` result);
+   * a concurrent change is rejected rather than silently overwritten.
+   * @param workspaceId - owning workspace; `path` must be its own path or a descendant.
+   * @param path - absolute file path.
+   * @param content - the full new UTF-8 text content.
+   * @param expectedVersion - the version last observed for this path.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   * @returns the version the write produced.
+   */
+  writeWorkspaceFile(
+    workspaceId: WorkspaceId, path: string, content: string, expectedVersion: WorkspaceFileVersion, signal?: AbortSignal,
+  ): Promise<WorkspaceFileVersion>
 }

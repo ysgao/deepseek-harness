@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import type {
-  SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId,
+  SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileVersion, WorkspaceGitStatus, WorkspaceId,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { FilesNode } from '../src/client/files/FilesNode.tsx'
 import { zh } from '../src/client/locales.ts'
@@ -173,7 +173,7 @@ describe('FilesNode', () => {
       '/ws': [{ name: 'notes.txt', path: '/ws/notes.txt', type: 'file', hidden: false }],
     })
     const readWorkspaceFile = vi.fn((_workspaceId: WorkspaceId, path: string): Promise<WorkspaceFileContent> =>
-      Promise.resolve({ kind: 'text', content: `content of ${path}` }))
+      Promise.resolve({ kind: 'text', content: `content of ${path}`, version: 'test-version' as WorkspaceFileVersion }))
     render(
       <FilesNode
         workspaceId={wsId}
@@ -200,7 +200,7 @@ describe('FilesNode', () => {
     const listWorkspaceEntries = treeListWorkspaceEntries({
       '/ws': [{ name: 'notes.txt', path: '/ws/notes.txt', type: 'file', hidden: false }],
     })
-    const readWorkspaceFile = vi.fn((): Promise<WorkspaceFileContent> => Promise.resolve({ kind: 'text', content: 'body' }))
+    const readWorkspaceFile = vi.fn((): Promise<WorkspaceFileContent> => Promise.resolve({ kind: 'text', content: 'body', version: 'test-version' as WorkspaceFileVersion }))
     const sessionId = 'sess-1' as SessionId
     const openFileInSession = vi.fn(() => true)
     render(
@@ -230,7 +230,7 @@ describe('FilesNode', () => {
     const listWorkspaceEntries = treeListWorkspaceEntries({
       '/ws': [{ name: 'notes.txt', path: '/ws/notes.txt', type: 'file', hidden: false }],
     })
-    const readWorkspaceFile = vi.fn((): Promise<WorkspaceFileContent> => Promise.resolve({ kind: 'text', content: 'body' }))
+    const readWorkspaceFile = vi.fn((): Promise<WorkspaceFileContent> => Promise.resolve({ kind: 'text', content: 'body', version: 'test-version' as WorkspaceFileVersion }))
     const sessionId = 'sess-1' as SessionId
     const openFileInSession = vi.fn(() => false)
     render(
@@ -312,7 +312,7 @@ describe('FilesNode', () => {
     const listWorkspaceEntries = treeListWorkspaceEntries({
       '/ws': [{ name: 'notes.txt', path: '/ws/notes.txt', type: 'file', hidden: false }],
     })
-    const readWorkspaceFile = vi.fn((): Promise<WorkspaceFileContent> => Promise.resolve({ kind: 'text', content: 'body' }))
+    const readWorkspaceFile = vi.fn((): Promise<WorkspaceFileContent> => Promise.resolve({ kind: 'text', content: 'body', version: 'test-version' as WorkspaceFileVersion }))
     render(
       <FilesNode
         workspaceId={wsId}

@@ -34,7 +34,7 @@ import { deriveEventMessage, foldSurface } from '@deepseek-ai/dsh-session/surfac
 import type {
   ApiProxy, ClientRequest, ClientResponse, HistoryEntry, HostFrame, MuxFrame, RpcReceipt,
   ModelProviderGroup, ModelSelection, RpcRequest, RpcResponse, RpcResult, ServerRequest, ServerResponse, SessionSummary,
-  ToolCallView, ToolEventView, ToolResultView, WorkspaceEntry, WorkspaceFileContent, WorkspaceId, WorkspaceView,
+  ToolCallView, ToolEventView, ToolResultView, WorkspaceEntry, WorkspaceFileContent, WorkspaceFileVersion, WorkspaceId, WorkspaceView,
 } from './api.ts'
 import type { RequestPayload, ResponseValue, RpcMethodMap } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { AbstractApiClient, RpcId, SESSION_SEARCH_RESULT_LIMIT } from './api.ts'
@@ -1632,6 +1632,19 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
   ])
   /** 1x1 transparent PNG, base64: a deterministic non-empty binary fixture payload. */
   const FIXTURE_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+  /**
+   * Deterministic stand-in for the real host's SHA-256 content hash
+   * (`workspace.readFile`/`writeFile`'s staleness-guard token): the fixture
+   * runs in the browser with no `node:crypto`, and only needs a value that
+   * changes when the content does — not real collision resistance.
+   */
+  const fixtureFileVersion = (content: string): WorkspaceFileVersion => {
+    let hash = 0
+    for (let i = 0; i < content.length; i++) {
+      hash = (Math.imul(31, hash) + content.charCodeAt(i)) | 0
+    }
+    return `fixture-${(hash >>> 0).toString(16)}` as WorkspaceFileVersion
+  }
   const workspaceEntriesOf = (path: string): WorkspaceEntry[] | undefined => {
     const known = workspaceFileTree.get(path)
     if (known === undefined) return undefined
@@ -1650,7 +1663,30 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
     )
     if (entry === undefined) return undefined
     if ('binary' in entry) return { kind: 'binary', mediaType: entry.mediaType, data: FIXTURE_PNG_BASE64 }
-    return { kind: 'text', content: entry.content }
+    return { kind: 'text', content: entry.content, version: fixtureFileVersion(entry.content) }
+  }
+  /**
+   * Overwrite one existing text file in the fixture tree, guarded by
+   * `expectedVersion` the same way the real host's `writeWorkspaceFile` is —
+   * mirrors its result/failure shapes so the File tab editor exercises the
+   * same client-side branches against the fixture as against a real host.
+   */
+  const writeWorkspaceFileAt = (
+    path: string, content: string, expectedVersion: WorkspaceFileVersion,
+  ): { kind: 'ok'; version: WorkspaceFileVersion } | { kind: 'not-found' } | { kind: 'binary' } | { kind: 'stale' } => {
+    const parent = path.slice(0, path.lastIndexOf('/'))
+    const name = path.slice(path.lastIndexOf('/') + 1)
+    const siblings = workspaceFileTree.get(parent)
+    const index = siblings?.findIndex(child => child.name === name && child.type === 'file') ?? -1
+    if (siblings === undefined || index < 0) return { kind: 'not-found' }
+    const entry = siblings[index]
+    if (entry === undefined || entry.type !== 'file') return { kind: 'not-found' }
+    if ('binary' in entry) return { kind: 'binary' }
+    if (fixtureFileVersion(entry.content) !== expectedVersion) return { kind: 'stale' }
+    const nextSiblings = siblings.slice()
+    nextSiblings[index] = { name, type: 'file', content }
+    workspaceFileTree.set(parent, nextSiblings)
+    return { kind: 'ok', version: fixtureFileVersion(content) }
   }
   const crumbsOf = (path: string): { name: string; path: string; hidden: boolean }[] => {
     const crumbs = [{ name: '/', path: '/', hidden: false }]
@@ -2875,6 +2911,18 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         message: `"${request.payload.workspaceId}" is not inside a git working tree`,
         details: { path: '' },
       }),
+      writeFile: (request) => {
+        const { path, content, expectedVersion } = request.payload
+        const result = writeWorkspaceFileAt(path, content, expectedVersion)
+        if (result.kind === 'ok') return ok(request, { version: result.version })
+        if (result.kind === 'stale') {
+          return err(request, { code: 'file-changed', message: `"${path}" changed since it was last read`, details: { path } })
+        }
+        // 'not-found' and 'binary' share one wire code: neither is a valid
+        // write target, the same as readFile's own "not in the fixture
+        // workspace tree" fallback above.
+        return err(request, { code: 'directory-unreadable', message: `cannot write ${path}: not in the fixture workspace tree`, details: { path } })
+      },
     },
     agentPresets: {
       // Both trusts appear, because a surface must present a locally authored
@@ -3309,6 +3357,7 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'workspace.gitCommitAll': return this.api.workspace.gitCommitAll(request, signal)
       case 'workspace.gitDiscardAll': return this.api.workspace.gitDiscardAll(request, signal)
       case 'workspace.gitFileDiff': return this.api.workspace.gitFileDiff(request, signal)
+      case 'workspace.writeFile': return this.api.workspace.writeFile(request, signal)
       case 'skill.list': return this.api.skills.list(request)
       case 'agentPreset.list': return this.api.agentPresets.list(request)
       case 'agentPreset.select': return this.api.agentPresets.select(request)
