@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-纯 React 原子组件（零 cordis）：StateDot、DisclosureRow、ic_ds_* 图标、Button/Pill/Menu/Modal/Input、Toast 短时横幅、OnboardingSurface 首次使用接管层（portal 到 body 的遮罩加不透明展示层，在且仅在自身生命周期内保持 `#root` 为 `inert`）、markdown 家族（MessageText/MarkdownText/JsonBlock）、只读 JsonTree 检查器、`useAnchoredMaxHeight` 钩子（把底部锚定的浮层高度收敛到锚点上方的视口空间，并在 resize、scroll 与调用方提供的依赖变化时重新测量）、`useAnchoredPosition` 钩子（让固定定位的浮动面板跟住锚点：测量、偏移、按视口边距钳制，并在捕获阶段滚动、窗口缩放与面板自身尺寸变化时重新定位）、TerminalBlock、DiffBlock、ReadBlock、FilePreview、SearchBlock，以及 WebBlock。
+纯 React 原子组件（零 cordis）：StateDot、DisclosureRow、ic_ds_* 图标、Button/Pill/Menu/Modal/Input、Toast 短时横幅、OnboardingSurface 首次使用接管层（portal 到 body 的遮罩加不透明展示层，在且仅在自身生命周期内保持 `#root` 为 `inert`）、markdown 家族（MessageText/MarkdownText/JsonBlock）、只读 JsonTree 检查器、`useAnchoredMaxHeight` 钩子（把底部锚定的浮层高度收敛到锚点上方的视口空间，并在 resize、scroll 与调用方提供的依赖变化时重新测量）、`useAnchoredPosition` 钩子（让固定定位的浮动面板跟住锚点：测量、偏移、按视口边距钳制，并在捕获阶段滚动、窗口缩放与面板自身尺寸变化时重新定位）、TerminalBlock、DiffBlock、SideBySideDiff、ReadBlock、FilePreview、SearchBlock，以及 WebBlock。
 
 ## 悬浮卡片
 
@@ -31,6 +31,8 @@
 ## Diff 渲染
 
 `DiffBlock` 将一次文件改动渲染为内联 diff 表层：每个文件一个粗体路径头、删除行（`- `，error token）在新增行（`+ `，success token）之上、同文件第二个 hunk 前一个 `⋯` gap，以及暗色 `└ +A -R · N file(s)` 页脚。各行使用 `white-space: pre` 并横向滚动，因此源码行保留其缩进而不软换行；超过 `maxLines`（默认 16，与 `TerminalBlock` 相同的切分算法）时折叠为头部切片加尾部切片，由展开按钮控制。新建（`oldText: null`）没有删除侧。复制控件写入带前缀的 diff 文本（路径头、`- `/`+ ` 行、gap），使多文件复制保持可归属，并浮在右上角而非占据自己的 banner 行。几何结构与 `CodeBlock`/`TerminalBlock` 一致。原理：[Web diff 卡片笔记](../../../.agents/notes/implemented/feature/2026-07-30-web-diff-card.zh.md)。
+
+`SideBySideDiff` 将一个文件的 `HEAD`-与-工作树文本对比渲染为两栏 diff：旧内容在左、新内容在右，各自带独立的行号槽——是 `DiffBlock` 堆叠式聊天卡片的 git 风格对应物，用于 `ui-conversation` 的 File 标签页 diff 视图。它把 `diffLines`（`diff` 包）的输出对齐为行：紧随其后的删除块与新增块（一次替换）会逐行配对，较长一侧多出的行独自占一行、另一栏留空；其余仅删除或仅新增的块，会让另一栏在对应行留空；未改动的行在两栏中保持同步。`oldText`／`newText` 可分别为 `null`（没有 `HEAD` blob，或文件已从工作树中消失），并按空文本处理。与 `DiffBlock`／`ReadBlock` 不同，它展示整个文件、没有高度上限——本身就是专用的整文件视图——也不带语法高亮，与 `DiffBlock` 的选择一致。banner 始终渲染（省略 `path` 时标签为空），并始终携带复制控件，写入统一 diff 风格的 `-`/`+`/空格前缀文本。
 
 ## 搜索结果
 

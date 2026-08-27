@@ -48,6 +48,8 @@ Workspace 列表与 Session 列表是相互独立的重连基线。`workspace.cr
 
 `workspace.gitStatus({ workspaceId })` 为同一个文件树报告分支标签与逐文件更改标记：当前分支（分离头指针时为 `"HEAD"`）与一个"绝对路径 → 单字母 porcelain 状态码"（`M`／`A`／`D`／`R`／`C`／`U`）的映射，扫描范围是包含该工作区自身目录的 git 仓库（可能是其祖先目录，不一定是工作区根目录本身）——在 `src/workspace-git.ts` 中实现，通过调用宿主机自身的 `git` 可执行文件（`status --porcelain=v1 -z`，从不对路径加引号，因此非 ASCII 文件名能原样往返）。一个不在任何 git 工作树内的目录、或宿主机上没有 `git`，都回答 `isRepo: false` 而非业务错误；只有未知的 `workspaceId` 才回答 `workspace-not-found`。
 
+`workspace.gitFileDiff({ workspaceId, path })` 读取一个文件的 `HEAD` 内容与工作树文本，供会话 `File` 标签页的并排 diff 视图使用。`oldText` 来自 `git show HEAD:<相对仓库根的路径>`（`src/workspace-git.ts` 中的 `workspaceFileAtHead`），当该路径在 `HEAD` 处没有已提交的 blob 时为 `null`（新建、未跟踪、从别处重命名而来的文件，或尚无提交的分支）；`newText` 复用同一个受限界的 `readWorkspaceFile`／`workspace.readFile` 调用，当文件已不存在于磁盘上（已删除）或其工作树内容被解码为二进制时为 `null`（客户端只对文本类文件提供 diff 切换开关）。`path` 的包含性判断与 `file-too-large` 遵循 `workspace.readFile` 自身的规则；工作区目录不在任何 git 工作树内时，这里会以 `git-not-a-repository` 直接失败（不同于 `gitStatus` 静默的 `isRepo: false`），因为没有仓库的 diff 毫无意义。
+
 `session.search` 是以 `session.list` 所列会话为范围的有界内容搜索投影。网关向可选的 `ctx.sessionQuery` 服务请求全局排序后的当前内容视图中的 user、assistant 和 steering 匹配项，并持续消费该结果流，直到获得至多 20 个可见会话／snippet 对及一个前瞻项；返回前仍会依据从列表推导的授权集合重新校验每个命中。提供方分页初始请求 20 个命中；如果第一页请求因这一上限被拒绝，网关会依次探测 10、5、2、1，并在续传和陈旧世代重启中沿用探测所得的页面大小。返回的 snippet 最多包含 240 个 Unicode 码点，响应 schema 则会在每个客户端边界独立强制执行该上限。将授权集合保留在宿主内存中，可在不削弱可见性或排序的前提下避开有效大型语料库的 SQLite 变量上限。
 
 陈旧的续传会丢弃该提供方尝试中的所有部分结果、去重条目和游标，然后依据最初从列表推导的可见性快照从第一页重新开始，但不会丢弃探测所得的提供方页面大小。上限探测与陈旧重试共用最多 100 次提供方调用的限制（因此最多检查 2,000 个命中）；如果某页命中数超过其请求的上限、续传游标重复，或用尽该调用预算后结果流仍未耗尽，都会直接返回 `internal` 业务错误，不返回部分结果。载体请求信号可取消持久化列表枚举、冷会话摘要收集和每一次搜索调用；即使同时收到上限拒绝或陈旧拒绝，也以取消为准。部署若未挂载该服务，或索引／查询故障无法恢复，也会返回 `internal` 业务错误，以便客户端保留仅基于元数据的匹配项。
@@ -87,4 +89,6 @@ Workspace 列表与 Session 列表是相互独立的重连基线。`workspace.cr
 - **没有协议版本字段**：客户端与宿主一同发布；只有出现独立发布的客户端后，`host.describe` 才会增加版本协商字段。
 - **搜索失败会包含提供方诊断信息**：网关是单用户本地服务。将其暴露给多名用户的载体必须用可安全公开的诊断信息替代内部搜索细节。
 - **Linux 原生选择器依赖桌面工具**：在 `native` 能力下，Zenity 和 KDialog 均未安装时，`host.pickDirectory` 会给出包含解决建议的错误提示；组合层面的回退是 browse 后端（见 [native 后端 README](../directory-picker-native/README.zh.md)）。
+- **`workspace.gitFileDiff` 无法追踪重命名**：重命名／复制（`R`／`C` 状态）文件在其新路径下没有 `HEAD` blob，因此 `git show HEAD:<新路径>` 会失败，渲染为整体新增，而不会追踪到其旧路径（未查询 `git status` 配对的重命名记录）。解析旧路径此项暂缓。
+- **File 标签页的 diff 切换仅支持文本文件**：v1 版本中二进制、Markdown 与图片文件都不提供 Diff 模式；工作树读取解码为二进制时，`newText` 会与已删除文件一样报告为 `null`，而不是一个独立的协议状态。
 - **冷列表提示只向“保持可见、排序偏旧”降级**：projection cache miss 或陈旧的 `lastPromptAt` 会回退到 `createdAt`，除非符合资格的小工件提供精确折叠，因此最近工作过的大 Session 可能在下一个 checkpoint 前排得偏低。大于 `coldBlankProbeMaxBytes` 的空白工件，或来自不提供 `locate()` 的后端的空白工件会保持可见。该阈值在 `readFrom()` 前检查，而非由 persistence 强制，因此工件并发增长可能增加一次探测的读取成本，但不会改变空白状态的安全方向。[有界空白验证决策](../../../.agents/notes/implemented/bug-fix/2026-08-13-bounded-cold-blank-verification.zh.md)规定了这个安全方向；权威且精确的最近时间索引仍属于[最后活动索引提案](../../../.agents/notes/proposed/architecture/2026-07-29-durable-last-activity-index.zh.md)的范围。

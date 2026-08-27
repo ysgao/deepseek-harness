@@ -2,6 +2,8 @@
 
 Status: implemented
 
+English | [中文](2026-08-27-file-tab-git-diff.zh.md)
+
 ## Problem
 
 The session File tab ([File preview as a conversation tab](2026-08-26-file-preview-conversation-tab.md)) always shows a file's current content, with no awareness of git at all — even though the Files tree sibling ([per-file git status](2026-08-27-workspace-files-git-status.md), built on the [sibling-browser](2026-08-24-workspace-files-sibling-browser.md) foundation) already tracks and surfaces which files are changed. There was also no diff computation anywhere in `host-apiproxy`: the one existing diff surface, `DiffBlock` in `ui-primitives`, renders a stacked removed-then-added chat card from model-tool-call `FileDiff` hunks (`packages/fs/tool-fs/src/diff.ts`'s `computeHunkDiffs`), not from git, and is built for a compact inline card rather than a dedicated full-file view.
