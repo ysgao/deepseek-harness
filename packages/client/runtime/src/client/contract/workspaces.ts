@@ -7,7 +7,7 @@
  * widening what features may do to the workspaces domain.
  */
 import type {
-  DirectoryListing, SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceId, WorkspaceView,
+  DirectoryListing, SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { WorkspaceListState } from '../workspaces/service.ts'
 import type { ObservableSnapshot } from './store.ts'
@@ -112,4 +112,13 @@ export interface IWorkspaces {
    * @returns the decoded content (text, or base64 binary with a media type).
    */
   readWorkspaceFile(workspaceId: WorkspaceId, path: string, signal?: AbortSignal): Promise<WorkspaceFileContent>
+  /**
+   * Report a Workspace's current git branch and pending file changes, from
+   * the repository enclosing its own directory (the Files tree sibling's
+   * header and per-row change markers).
+   * @param workspaceId - target workspace.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   * @returns the workspace's git status; `isRepo: false` when its directory is outside any git working tree.
+   */
+  listWorkspaceGitStatus(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<WorkspaceGitStatus>
 }

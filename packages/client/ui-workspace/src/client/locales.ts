@@ -81,6 +81,15 @@ export const zh = {
   'files.viewer.close': '关闭',
   'files.viewer.copy': '复制',
   'files.viewer.copied': '已复制',
+  'files.git.branch': '分支：{branch}',
+  'files.git.dirty': '有未提交的更改',
+  'files.git.folderDirty': '内部含有更改的文件',
+  'files.git.status.M': '已修改',
+  'files.git.status.A': '已添加',
+  'files.git.status.D': '已删除',
+  'files.git.status.R': '已重命名',
+  'files.git.status.C': '已复制',
+  'files.git.status.U': '未跟踪',
 } satisfies Record<string, string>
 
 /** The workspace namespace key union. */
@@ -163,4 +172,13 @@ export const en = {
   'files.viewer.close': 'Close',
   'files.viewer.copy': 'Copy',
   'files.viewer.copied': 'Copied',
+  'files.git.branch': 'Branch: {branch}',
+  'files.git.dirty': 'Has uncommitted changes',
+  'files.git.folderDirty': 'Contains changed files',
+  'files.git.status.M': 'Modified',
+  'files.git.status.A': 'Added',
+  'files.git.status.D': 'Deleted',
+  'files.git.status.R': 'Renamed',
+  'files.git.status.C': 'Copied',
+  'files.git.status.U': 'Untracked',
 } satisfies Record<WorkspaceKey, string>

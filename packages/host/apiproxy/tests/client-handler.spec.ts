@@ -91,6 +91,7 @@ function scriptedApi(overrides: {
       archiveSession: r => ok(r, { archivedSessionIds: [r.payload.sessionId] }),
       listEntries: r => ok(r, { path: r.payload.path, entries: [], truncated: false }),
       readFile: r => ok(r, { kind: 'text' as const, content: '' }),
+      gitStatus: r => ok(r, { isRepo: false, branch: null, files: {} }),
     },
     skills: { list: r => ok(r, { skills: [] }), ...overrides.skills },
     agentPresets: {
@@ -246,6 +247,16 @@ describe('unary round trip', () => {
     expect(anchored.result.ok).toBe(true)
     const appended = await c.workspace.insertSessionBefore({ workspaceId: 'w1' as never, sessionId: sid('s1') })
     expect(appended.result.ok).toBe(true)
+  })
+
+  it('routes the Files tree\'s listing, read, and git status calls through the wire', async () => {
+    const c = client(scriptedApi())
+    const listing = await c.workspace.listEntries({ workspaceId: 'w1' as never, path: '/t' })
+    expect(listing.result).toEqual({ ok: true, value: { path: '/t', entries: [], truncated: false } })
+    const content = await c.workspace.readFile({ workspaceId: 'w1' as never, path: '/t/a.txt' })
+    expect(content.result).toEqual({ ok: true, value: { kind: 'text', content: '' } })
+    const status = await c.workspace.gitStatus({ workspaceId: 'w1' as never })
+    expect(status.result).toEqual({ ok: true, value: { isRepo: false, branch: null, files: {} } })
   })
 
   it('routes the agent-preset roster and switch through the wire', async () => {

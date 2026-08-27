@@ -9,7 +9,7 @@ export type {
   ApiProxy, SessionsApi, SessionSearchItem, SessionSummary, PromptContentPart, HostApi, EventsApi, MuxFrame, HostFrame,
   ApprovalResponsePayload, QuestionResponsePayload, HistoryEntry, ToolEventView,
   DirectoryEntry, DirectoryListing,
-  ResponseValue, WorkspaceApi, WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceId, WorkspaceView,
+  ResponseValue, WorkspaceApi, WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId, WorkspaceView,
   SkillsApi, SkillEntry,
   ModelCatalogFailure, ModelCatalogModel, ModelProviderGroup, ModelReasoning,
   ModelReasoningEffort, ModelSelection, QueueAction, QueuedInboxItem, SessionModels,

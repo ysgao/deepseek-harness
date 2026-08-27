@@ -61,3 +61,56 @@
   line-height: 20px;
   color: var(--dsw-alias-label-tertiary);
 }
+
+.gitSummary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  max-width: 40%;
+}
+
+.gitBranch {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.gitDirtyDot {
+  display: inline-flex;
+  flex: none;
+}
+
+.gitStatusBadge {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--dsw-alias-label-tertiary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.gitStatusM {
+  color: var(--dsw-alias-state-warn-primary);
+}
+
+.gitStatusA,
+.gitStatusU {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.gitStatusD {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.gitStatusR,
+.gitStatusC {
+  color: var(--dsw-alias-state-business-primary);
+}

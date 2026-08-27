@@ -2,7 +2,7 @@
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
   DirectoryListing, IWorkspaces, SessionId, SnapshotStore, WorkspaceEntryListing, WorkspaceFileContent,
-  WorkspaceId, WorkspaceListState, WorkspaceView,
+  WorkspaceGitStatus, WorkspaceId, WorkspaceListState, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { workspaceListState } from './fixtures.ts'
 import type { Stabilizer } from './fixtures.ts'
@@ -242,5 +242,19 @@ export class TestWorkspaces implements IWorkspaces {
     const stub = this.stubs.get('readWorkspaceFile')
     if (stub !== undefined) return await (stub(workspaceId, path, signal) as Promise<WorkspaceFileContent>)
     return { kind: 'text', content: '' }
+  }
+
+  /**
+   * Report a Workspace's git status (recorded). The default reports no
+   * repository; stub to shape a branch and pending changes.
+   * @param workspaceId - owning workspace.
+   * @param signal - forwarded like the production face.
+   * @returns the workspace's git status.
+   */
+  async listWorkspaceGitStatus(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<WorkspaceGitStatus> {
+    this.calls.push({ method: 'listWorkspaceGitStatus', args: [workspaceId, signal] })
+    const stub = this.stubs.get('listWorkspaceGitStatus')
+    if (stub !== undefined) return await (stub(workspaceId, signal) as Promise<WorkspaceGitStatus>)
+    return { isRepo: false, branch: null, files: {} }
   }
 }

@@ -2,7 +2,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import type { SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
+import type {
+  SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId,
+} from '@deepseek-ai/dsh-client-runtime/client'
 import { FilesNode } from '../src/client/files/FilesNode.tsx'
 import { zh } from '../src/client/locales.ts'
 
@@ -10,6 +12,9 @@ afterEach(cleanup)
 
 const t = makeTranslate(zh)
 const wsId = 'ws-1' as WorkspaceId
+
+/** No-repo default for tests that don't exercise the git status display. */
+const noGitStatus = (): Promise<WorkspaceGitStatus> => Promise.resolve({ isRepo: false, branch: null, files: {} })
 
 /** A tiny fixed two-level tree keyed by directory path, mirroring the fixture's own shape. */
 function treeListWorkspaceEntries(tree: Record<string, WorkspaceEntryListing['entries']>) {
@@ -30,6 +35,7 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -53,6 +59,7 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -73,6 +80,7 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -93,6 +101,7 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -111,6 +120,7 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -132,6 +142,7 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -158,6 +169,7 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={readWorkspaceFile}
         openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -184,6 +196,7 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={readWorkspaceFile}
         openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={sessionId}
         openFileInSession={openFileInSession}
         t={t}
@@ -211,6 +224,7 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={readWorkspaceFile}
         openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={sessionId}
         openFileInSession={openFileInSession}
         t={t}
@@ -233,6 +247,7 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -258,6 +273,7 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -282,6 +298,7 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={readWorkspaceFile}
         openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -306,6 +323,7 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -316,5 +334,191 @@ describe('FilesNode', () => {
     await screen.findByText('a.txt')
     await act(async () => { header.click() })
     expect(screen.queryByText('a.txt')).toBeNull()
+  })
+
+  it('shows the current branch in the header for a workspace inside a git repository', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByText('main')
+  })
+
+  it('shows no branch display for a workspace outside any git working tree', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await waitFor(() => { expect(screen.queryByText('main')).toBeNull() })
+    expect(screen.queryByTitle(t('files.git.dirty'))).toBeNull()
+  })
+
+  it('marks a changed file with its git status letter after the file name', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({
+      '/ws': [
+        { name: 'changed.txt', path: '/ws/changed.txt', type: 'file', hidden: false },
+        { name: 'clean.txt', path: '/ws/clean.txt', type: 'file', hidden: false },
+      ],
+    })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
+          isRepo: true, branch: 'main', files: { '/ws/changed.txt': 'M' },
+        }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    const changedRow = (await screen.findByText('changed.txt')).closest('button')
+    const cleanRow = (await screen.findByText('clean.txt')).closest('button')
+    expect(changedRow?.textContent).toContain('M')
+    expect(cleanRow?.textContent).not.toContain('M')
+  })
+
+  it('omits the git status display when listWorkspaceGitStatus rejects', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.reject(new Error('denied')))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => {})
+    expect(screen.queryByText('main')).toBeNull()
+    expect(screen.queryByTitle(t('files.git.dirty'))).toBeNull()
+  })
+
+  it('ignores a git status settling after the node unmounts (superseded fetch)', async () => {
+    let resolveStatus: ((status: WorkspaceGitStatus) => void) | undefined
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const { unmount } = render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => new Promise<WorkspaceGitStatus>((resolve) => { resolveStatus = resolve }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    unmount()
+    // Must not throw (a setState-after-unmount would surface as a React warning/error).
+    await act(async () => { resolveStatus?.({ isRepo: true, branch: 'main', files: {} }) })
+  })
+
+  it('shows no title tooltip for an unrecognized git status code', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({
+      '/ws': [{ name: 'changed.txt', path: '/ws/changed.txt', type: 'file', hidden: false }],
+    })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
+          isRepo: true, branch: 'main', files: { '/ws/changed.txt': 'T' },
+        }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    const badge = await screen.findByText('T')
+    expect(badge.getAttribute('title')).toBeNull()
+  })
+
+  it('marks a directory row dirty when a descendant file has changed, even at an unexpanded deeper level', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({
+      '/ws': [
+        { name: 'src', path: '/ws/src', type: 'directory', hidden: false },
+        { name: 'docs', path: '/ws/docs', type: 'directory', hidden: false },
+      ],
+      // '/ws/src' is never fetched in this test — the dot must reflect the
+      // repo-wide status map alone, not a fetched listing.
+    })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
+          isRepo: true, branch: 'main', files: { '/ws/src/deep/nested.ts': 'M' },
+        }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    const srcRow = (await screen.findByText('src')).closest('button')
+    const docsRow = (await screen.findByText('docs')).closest('button')
+    expect(srcRow?.querySelector(`[title="${t('files.git.folderDirty')}"]`)).not.toBeNull()
+    expect(docsRow?.querySelector(`[title="${t('files.git.folderDirty')}"]`)).toBeNull()
+  })
+
+  it('does not mark a directory dirty from a same-prefix sibling (foo vs foobar)', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({
+      '/ws': [{ name: 'foo', path: '/ws/foo', type: 'directory', hidden: false }],
+    })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
+          isRepo: true, branch: 'main', files: { '/ws/foobar/x.txt': 'M' },
+        }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    const fooRow = (await screen.findByText('foo')).closest('button')
+    expect(fooRow?.querySelector(`[title="${t('files.git.folderDirty')}"]`)).toBeNull()
   })
 })

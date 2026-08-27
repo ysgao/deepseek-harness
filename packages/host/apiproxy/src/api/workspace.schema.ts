@@ -7,7 +7,7 @@
 import { z } from 'zod'
 import type { RequestPayload, ResponseValue } from './rpc-map.ts'
 import type { Wire } from './rpc.schema.ts'
-import type { WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceView } from './workspace.ts'
+import type { WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceView } from './workspace.ts'
 import { sessionIdSchema, workspaceIdSchema } from './sessions.schema.ts'
 
 export { workspaceIdSchema } from './sessions.schema.ts'
@@ -132,3 +132,15 @@ export const workspaceReadFileValueSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('text'), content: z.string() }),
   z.object({ kind: z.literal('binary'), mediaType: z.string(), data: z.string() }),
 ]) satisfies z.ZodType<Wire<ResponseValue<'workspace.readFile'>>> satisfies z.ZodType<Wire<WorkspaceFileContent>>
+
+/** workspace.gitStatus request payload. */
+export const workspaceGitStatusRequestSchema = z.object({
+  workspaceId: workspaceIdSchema,
+}) satisfies z.ZodType<Wire<RequestPayload<'workspace.gitStatus'>>>
+
+/** workspace.gitStatus response value. */
+export const workspaceGitStatusValueSchema = z.object({
+  isRepo: z.boolean(),
+  branch: z.string().nullable(),
+  files: z.record(z.string(), z.string()),
+}) satisfies z.ZodType<Wire<ResponseValue<'workspace.gitStatus'>>> satisfies z.ZodType<Wire<WorkspaceGitStatus>>

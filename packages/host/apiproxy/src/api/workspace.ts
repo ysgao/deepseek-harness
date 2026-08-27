@@ -66,6 +66,20 @@ export type WorkspaceFileContent =
   /** Binary content the client cannot decode as text; base64-encoded on the wire. */
   | { kind: 'binary'; mediaType: string; data: string }
 
+/** `workspace.gitStatus` response value: current branch and pending file changes of a workspace's enclosing git repository. */
+export interface WorkspaceGitStatus {
+  /** Whether the workspace's own directory is inside a git working tree. */
+  isRepo: boolean
+  /** Current branch name (`HEAD` when detached); null when `isRepo` is false. */
+  branch: string | null
+  /**
+   * Absolute path (matching `WorkspaceEntry.path`) -> single-letter git
+   * status code (`M`/`A`/`D`/`R`/`C`/`U`), one entry per path with a
+   * pending change.
+   */
+  files: Record<string, string>
+}
+
 /** Workspace-domain unary methods (the map keys workspace.* of RpcMethodMap). */
 export interface WorkspaceApi {
   /**
@@ -161,4 +175,16 @@ export interface WorkspaceApi {
    */
   readFile(request: RpcRequest<{ workspaceId: WorkspaceId; path: string }>, signal: AbortSignal):
   Promise<RpcResponse<WorkspaceFileContent>>
+
+  /**
+   * Reports the current branch and pending file changes of the git
+   * repository enclosing a workspace's own directory (which may be an
+   * ancestor of it — the workspace need not be the repository root). A
+   * workspace directory outside any git working tree reports `isRepo:
+   * false`; this is normal state, not a business error. `files` keys are
+   * always absolute, matching `WorkspaceEntry.path`, regardless of which
+   * directory level of the workspace tree they belong to.
+   */
+  gitStatus(request: RpcRequest<{ workspaceId: WorkspaceId }>, signal: AbortSignal):
+  Promise<RpcResponse<WorkspaceGitStatus>>
 }

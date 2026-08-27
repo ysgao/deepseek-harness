@@ -3,6 +3,7 @@
  * Files tree's host primitives, independent of and unaffected by the
  * directory-only `host.listDirectory`/`ctx.directoryPicker` seam.
  */
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -266,5 +267,57 @@ describe('workspace.readFile', () => {
       new AbortController().signal,
     ))
     expect(error.code).toBe('directory-unreadable')
+  })
+})
+
+describe('workspace.gitStatus', () => {
+  it('reports the branch and pending changes of a workspace inside a git repository', async () => {
+    const { api, root } = await harness()
+    execFileSync('git', ['init', '-q', '-b', 'main', root])
+    execFileSync('git', ['-C', root, 'config', 'user.email', 'test@example.com'])
+    execFileSync('git', ['-C', root, 'config', 'user.name', 'Test'])
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    execFileSync('git', ['-C', root, 'add', '-A'])
+    execFileSync('git', ['-C', root, 'commit', '-q', '-m', 'init'])
+    writeFileSync(join(root, 'a.txt'), 'changed')
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+
+    const status = expectOk(await api.workspace.gitStatus(
+      request({ workspaceId: created.workspaceId }),
+      new AbortController().signal,
+    ))
+    expect(status).toEqual({ isRepo: true, branch: 'main', files: { [join(root, 'a.txt')]: 'M' } })
+  })
+
+  it('reports isRepo: false for a workspace outside any git working tree', async () => {
+    const { api, root } = await harness()
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+
+    const status = expectOk(await api.workspace.gitStatus(
+      request({ workspaceId: created.workspaceId }),
+      new AbortController().signal,
+    ))
+    expect(status).toEqual({ isRepo: false, branch: null, files: {} })
+  })
+
+  it('rejects an unknown workspace id with workspace-not-found', async () => {
+    const { api } = await harness()
+    const error = expectErr(await api.workspace.gitStatus(
+      request({ workspaceId: 'no-such-workspace' as never }),
+      new AbortController().signal,
+    ))
+    expect(error.code).toBe('workspace-not-found')
+  })
+
+  it('aborts and reports cancelled when the caller signal fires', async () => {
+    const { api, root } = await harness()
+    execFileSync('git', ['init', '-q', '-b', 'main', root])
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+    const controller = new AbortController()
+    controller.abort()
+    const error = expectErr(await api.workspace.gitStatus(
+      request({ workspaceId: created.workspaceId }), controller.signal,
+    ))
+    expect(error.code).toBe('cancelled')
   })
 })

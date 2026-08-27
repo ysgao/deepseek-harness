@@ -4,7 +4,7 @@
 import type {
   AuthorizationEntry, ClientResponse, HostFrame, IApiClient, ModelSelection, MuxFrame,
   RpcError, RpcReceipt, RpcRequest, RpcResponse, SessionId, SessionModels, SessionSearchItem, SkillEntry,
-  WorkspaceId, WorkspaceView,
+  WorkspaceGitStatus, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import { RpcId } from '@deepseek-ai/dsh-client-connection/client'
 import type { SessionRemotes } from '../src/client/sessions/remotes.ts'
@@ -211,6 +211,9 @@ export class FakeApiClient implements IApiClient {
   onWorkspaceReadFile: (payload: unknown) => Promise<RpcResponse<{ kind: 'text'; content: string }>> =
     () => Promise.resolve(ok({ kind: 'text' as const, content: '' }))
 
+  onWorkspaceGitStatus: (payload: unknown) => Promise<RpcResponse<WorkspaceGitStatus>> =
+    () => Promise.resolve(ok({ isRepo: false, branch: null, files: {} }))
+
   readonly workspace: IApiClient['workspace'] = {
     list: (payload: unknown) => this.record('workspace.list', payload, this.onWorkspaceList(payload).then(response => (
       response.result.ok
@@ -230,6 +233,8 @@ export class FakeApiClient implements IApiClient {
       this.record('workspace.listEntries', payload, this.onWorkspaceListEntries(payload)),
     readFile: (payload: unknown) =>
       this.record('workspace.readFile', payload, this.onWorkspaceReadFile(payload)),
+    gitStatus: (payload: unknown) =>
+      this.record('workspace.gitStatus', payload, this.onWorkspaceGitStatus(payload)),
   }
 
   // Payloads stay `unknown` (lint-lane note above); response rows are the real

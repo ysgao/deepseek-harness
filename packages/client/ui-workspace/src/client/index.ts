@@ -106,6 +106,7 @@ export function apply(ctx: ClientContext): void {
     createWorkspace: input => ctx.workspaces.create(input),
     listWorkspaceEntries: (workspaceId, path, signal) => ctx.workspaces.listWorkspaceEntries(workspaceId, path, signal),
     readWorkspaceFile: (workspaceId, path, signal) => ctx.workspaces.readWorkspaceFile(workspaceId, path, signal),
+    listWorkspaceGitStatus: (workspaceId, signal) => ctx.workspaces.listWorkspaceGitStatus(workspaceId, signal),
     openPath: path => ctx.workspaces.openPath(path),
     openFileInSession: (sessionId, path) => ctx.get('conversationFileOpener')?.openFile(sessionId, path) ?? false,
     hooks: { directoryFlow: browserFlowSource, hostDescription },

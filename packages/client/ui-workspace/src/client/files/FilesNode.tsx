@@ -15,9 +15,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import clsx from 'clsx'
 import {
-  IconFilePlaceholder16, IconFolderClose16, IconFolderOpen16, IconTriangleRightFill14,
+  IconFilePlaceholder16, IconFolderClose16, IconFolderOpen16, IconTriangleRightFill14, StateDot,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { SessionId, WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
+import type {
+  SessionId, WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId,
+} from '@deepseek-ai/dsh-client-runtime/client'
 import type { WorkspaceKey } from '../locales.ts'
 import { FileViewer } from './FileViewer.tsx'
 import css from './FilesNode.module.css'
@@ -33,6 +35,8 @@ export interface FilesNodeProps {
   listWorkspaceEntries: (workspaceId: WorkspaceId, path: string, signal?: AbortSignal) => Promise<WorkspaceEntryListing>
   /** Read one file's content for in-app preview. */
   readWorkspaceFile: (workspaceId: WorkspaceId, path: string, signal?: AbortSignal) => Promise<WorkspaceFileContent>
+  /** Report the Workspace's current git branch and pending file changes, if its directory is inside a git working tree. */
+  listWorkspaceGitStatus: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<WorkspaceGitStatus>
   /** Open a file with the Host OS default application (the preview's external fallback). */
   openPath: (path: string) => Promise<void>
   /** The currently selected session, if any (the file-tab open route's target). */
@@ -44,6 +48,106 @@ export interface FilesNodeProps {
    */
   openFileInSession: (sessionId: SessionId, path: string) => boolean
   t: FilesTranslate
+}
+
+/** Locale key naming one git porcelain status code's full-word label. */
+const GIT_STATUS_LABEL_KEYS: Readonly<Record<string, WorkspaceKey>> = {
+  M: 'files.git.status.M',
+  A: 'files.git.status.A',
+  D: 'files.git.status.D',
+  R: 'files.git.status.R',
+  C: 'files.git.status.C',
+  U: 'files.git.status.U',
+}
+
+/**
+ * Fetch a Workspace's git status once per mount (and per `workspaceId`
+ * change), aborting on unmount/change; a request superseded before it
+ * settles is dropped rather than committed. Returns `undefined` until the
+ * first fetch settles and stays `undefined` on failure — the header simply
+ * omits the branch/status display rather than showing an error notice, since
+ * "no git status available" is not a failure state a user needs to act on.
+ */
+function useGitStatus(
+  workspaceId: WorkspaceId,
+  listWorkspaceGitStatus: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<WorkspaceGitStatus>,
+): WorkspaceGitStatus | undefined {
+  const [status, setStatus] = useState<WorkspaceGitStatus | undefined>(undefined)
+  useEffect(() => {
+    setStatus(undefined)
+    const controller = new AbortController()
+    listWorkspaceGitStatus(workspaceId, controller.signal).then((result) => {
+      if (controller.signal.aborted) return
+      setStatus(result)
+    }).catch(() => {
+      // Superseded (aborted) or failed: leave the header without a git display.
+    })
+    return () => { controller.abort() }
+  }, [workspaceId, listWorkspaceGitStatus])
+  return status
+}
+
+/** The Files header's branch name and dirty indicator; renders nothing outside a git working tree. */
+function GitStatusSummary({ status, t }: { status: WorkspaceGitStatus | undefined; t: FilesTranslate }) {
+  if (status === undefined || !status.isRepo || status.branch === null) return null
+  const dirty = Object.keys(status.files).length > 0
+  return (
+    <span className={css.gitSummary} title={t('files.git.branch', { branch: status.branch })}>
+      <span className={css.gitBranch}>{status.branch}</span>
+      {dirty && (
+        <span className={css.gitDirtyDot} title={t('files.git.dirty')}>
+          <StateDot state="warning" size={6} />
+        </span>
+      )}
+    </span>
+  )
+}
+
+/** One file row's git status badge (a single letter, color-coded by change kind); renders nothing for an unchanged file. */
+function GitStatusBadge({ code, t }: { code: string | undefined; t: FilesTranslate }) {
+  if (code === undefined) return null
+  const labelKey = GIT_STATUS_LABEL_KEYS[code]
+  return (
+    <span className={clsx(css.gitStatusBadge, css[`gitStatus${code}`])} title={labelKey === undefined ? undefined : t(labelKey)}>
+      {code}
+    </span>
+  )
+}
+
+/**
+ * True when `path` is a filesystem descendant of `dirPath` — a host-native
+ * path prefix match (either `/` or `\` separator) requiring a full
+ * path-segment boundary, not a bare string prefix (`/ws/foo` must not
+ * match `/ws/foobar/x`).
+ */
+function isUnderDirectory(path: string, dirPath: string): boolean {
+  if (!path.startsWith(dirPath)) return false
+  const boundary = path.charAt(dirPath.length)
+  return boundary === '/' || boundary === '\\'
+}
+
+/**
+ * Whether any path in the git status map falls under `dirPath`, at any
+ * depth — the status map covers the whole repository from one fetch, so
+ * this answers correctly even for a directory level the tree has not
+ * fetched (or expanded) yet.
+ */
+function hasChangesUnder(dirPath: string, files: Readonly<Record<string, string>>): boolean {
+  return Object.keys(files).some(path => isUnderDirectory(path, dirPath))
+}
+
+/** A directory row's aggregate dirty marker: shown when any file under it, at any depth, has a pending git change. */
+function GitStatusFolderDot({ dirPath, gitStatusFiles, t }: {
+  dirPath: string
+  gitStatusFiles: Readonly<Record<string, string>> | undefined
+  t: FilesTranslate
+}) {
+  if (gitStatusFiles === undefined || !hasChangesUnder(dirPath, gitStatusFiles)) return null
+  return (
+    <span className={css.gitDirtyDot} title={t('files.git.folderDirty')}>
+      <StateDot state="warning" size={6} />
+    </span>
+  )
 }
 
 /** One level's fetch state, keyed by directory path so a collapse-then-reopen refetches. */
@@ -79,11 +183,12 @@ function useLevel(
 }
 
 /** One directory row: chevron + folder glyph + name; expands its own nested level in place. */
-function DirectoryRow({ entry, depth, onOpenFile, listWorkspaceEntries, t }: {
+function DirectoryRow({ entry, depth, onOpenFile, listWorkspaceEntries, gitStatusFiles, t }: {
   entry: WorkspaceEntry
   depth: number
   onOpenFile: (path: string) => void
   listWorkspaceEntries: (path: string, signal?: AbortSignal) => Promise<WorkspaceEntryListing>
+  gitStatusFiles: Readonly<Record<string, string>> | undefined
   t: FilesTranslate
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -103,6 +208,7 @@ function DirectoryRow({ entry, depth, onOpenFile, listWorkspaceEntries, t }: {
           {expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
         </span>
         <span className={css.name}>{entry.name}</span>
+        <GitStatusFolderDot dirPath={entry.path} gitStatusFiles={gitStatusFiles} t={t} />
       </button>
       {expanded && (
         <FilesLevel
@@ -110,6 +216,7 @@ function DirectoryRow({ entry, depth, onOpenFile, listWorkspaceEntries, t }: {
           depth={depth + 1}
           onOpenFile={onOpenFile}
           listWorkspaceEntries={listWorkspaceEntries}
+          gitStatusFiles={gitStatusFiles}
           t={t}
         />
       )}
@@ -117,8 +224,18 @@ function DirectoryRow({ entry, depth, onOpenFile, listWorkspaceEntries, t }: {
   )
 }
 
-/** One file row: file glyph + name; opens the current session's File tab, or the in-app preview modal as fallback. */
-function FileRow({ entry, depth, onOpen }: { entry: WorkspaceEntry; depth: number; onOpen: (path: string) => void }) {
+/**
+ * One file row: file glyph + name + a git status badge for a pending
+ * change; opens the current session's File tab, or the in-app preview
+ * modal as fallback.
+ */
+function FileRow({ entry, depth, onOpen, gitStatusFiles, t }: {
+  entry: WorkspaceEntry
+  depth: number
+  onOpen: (path: string) => void
+  gitStatusFiles: Readonly<Record<string, string>> | undefined
+  t: FilesTranslate
+}) {
   return (
     <button
       type="button"
@@ -131,16 +248,18 @@ function FileRow({ entry, depth, onOpen }: { entry: WorkspaceEntry; depth: numbe
         <IconFilePlaceholder16 />
       </span>
       <span className={css.name}>{entry.name}</span>
+      <GitStatusBadge code={gitStatusFiles?.[entry.path]} t={t} />
     </button>
   )
 }
 
 /** One fetched level's rows: loading/error/empty states, else directory rows before file rows. */
-function FilesLevel({ path, depth, onOpenFile, listWorkspaceEntries, t }: {
+function FilesLevel({ path, depth, onOpenFile, listWorkspaceEntries, gitStatusFiles, t }: {
   path: string
   depth: number
   onOpenFile: (path: string) => void
   listWorkspaceEntries: (path: string, signal?: AbortSignal) => Promise<WorkspaceEntryListing>
+  gitStatusFiles: Readonly<Record<string, string>> | undefined
   t: FilesTranslate
 }) {
   const state = useLevel(path, listWorkspaceEntries)
@@ -165,10 +284,11 @@ function FilesLevel({ path, depth, onOpenFile, listWorkspaceEntries, t }: {
               depth={depth}
               onOpenFile={onOpenFile}
               listWorkspaceEntries={listWorkspaceEntries}
+              gitStatusFiles={gitStatusFiles}
               t={t}
             />
           )
-          : <FileRow key={entry.path} entry={entry} depth={depth} onOpen={onOpenFile} />
+          : <FileRow key={entry.path} entry={entry} depth={depth} onOpen={onOpenFile} gitStatusFiles={gitStatusFiles} t={t} />
       ))}
       {state.truncated && <div className={css.notice} style={{ paddingLeft: indent }}>{t('files.truncated')}</div>}
     </>
@@ -183,10 +303,12 @@ function FilesLevel({ path, depth, onOpenFile, listWorkspaceEntries, t }: {
  * @returns the node's rows (header plus, while expanded, its fetched level).
  */
 export function FilesNode({
-  workspaceId, rootPath, listWorkspaceEntries, readWorkspaceFile, openPath, currentSessionId, openFileInSession, t,
+  workspaceId, rootPath, listWorkspaceEntries, readWorkspaceFile, listWorkspaceGitStatus,
+  openPath, currentSessionId, openFileInSession, t,
 }: FilesNodeProps) {
   const [expanded, setExpanded] = useState(false)
   const [previewPath, setPreviewPath] = useState<string | null>(null)
+  const gitStatus = useGitStatus(workspaceId, listWorkspaceGitStatus)
   // Stable across the viewer-open/close re-renders that would otherwise
   // recreate these closures and re-arm useLevel's effect (its dependency
   // array includes `list`, so an unstable closure would refetch the level on
@@ -221,6 +343,7 @@ export function FilesNode({
           {expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
         </span>
         <span className={css.name}>{t('files.label')}</span>
+        <GitStatusSummary status={gitStatus} t={t} />
       </button>
       {expanded && (
         <FilesLevel
@@ -228,6 +351,7 @@ export function FilesNode({
           depth={1}
           onOpenFile={handleOpenFile}
           listWorkspaceEntries={list}
+          gitStatusFiles={gitStatus?.files}
           t={t}
         />
       )}

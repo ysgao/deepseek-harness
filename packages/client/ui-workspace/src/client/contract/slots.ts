@@ -29,7 +29,7 @@ import type { HostObservable, PropsHooks, PropsLocale, PropsRenderSlots, PropsRu
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {
-  SessionId, SessionSearchResultItem, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceId, WorkspaceView,
+  SessionId, SessionSearchResultItem, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type { createWorkspaceViewStore } from '../stores.ts'
 
@@ -144,6 +144,12 @@ export type WorkspaceBrowserInjected = {
   listWorkspaceEntries: (workspaceId: WorkspaceId, path: string, signal?: AbortSignal) => Promise<WorkspaceEntryListing>
   /** Read one Workspace file's content for in-app preview. */
   readWorkspaceFile: (workspaceId: WorkspaceId, path: string, signal?: AbortSignal) => Promise<WorkspaceFileContent>
+  /**
+   * Report a Workspace's current git branch and pending file changes (the
+   * Files tree sibling's header branch/dirty display and per-row change
+   * markers).
+   */
+  listWorkspaceGitStatus: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<WorkspaceGitStatus>
   /** Open a Workspace file with the Host OS default application (the Files tree's external-preview fallback). */
   openPath: (path: string) => Promise<void>
   /**

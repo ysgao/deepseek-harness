@@ -35,6 +35,7 @@ import {
   workspaceArchiveSessionValueSchema,
   workspaceCreateValueSchema,
   workspaceDeleteValueSchema,
+  workspaceGitStatusValueSchema,
   workspaceInsertBeforeValueSchema,
   workspaceInsertSessionBeforeValueSchema,
   workspaceListEntriesValueSchema,
@@ -127,6 +128,7 @@ export interface IApiClient {
     archiveSession(payload: RequestPayload<'workspace.archiveSession'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.archiveSession'>>>
     listEntries(payload: RequestPayload<'workspace.listEntries'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.listEntries'>>>
     readFile(payload: RequestPayload<'workspace.readFile'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.readFile'>>>
+    gitStatus(payload: RequestPayload<'workspace.gitStatus'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitStatus'>>>
   }
   skills: {
     list(payload: RequestPayload<'skill.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'skill.list'>>>
@@ -212,6 +214,7 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'workspace.archiveSession': workspaceArchiveSessionValueSchema,
   'workspace.listEntries': workspaceListEntriesValueSchema,
   'workspace.readFile': workspaceReadFileValueSchema,
+  'workspace.gitStatus': workspaceGitStatusValueSchema,
   'skill.list': skillListValueSchema,
   'agentPreset.list': agentPresetListValueSchema,
   'agentPreset.select': agentPresetSelectValueSchema,
@@ -470,6 +473,7 @@ export abstract class AbstractApiClient implements IApiClient {
     archiveSession: (payload, signal) => this.callUnary('workspace.archiveSession', payload, signal),
     listEntries: (payload, signal) => this.callUnary('workspace.listEntries', payload, signal),
     readFile: (payload, signal) => this.callUnary('workspace.readFile', payload, signal),
+    gitStatus: (payload, signal) => this.callUnary('workspace.gitStatus', payload, signal),
   }
 
   readonly skills: IApiClient['skills'] = {

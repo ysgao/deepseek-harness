@@ -2856,6 +2856,9 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         }
         return ok(request, content)
       },
+      // The fixture's workspace tree is synthetic, never a real git working
+      // tree, so every workspace reports as not a repo.
+      gitStatus: request => ok(request, { isRepo: false, branch: null, files: {} }),
     },
     agentPresets: {
       // Both trusts appear, because a surface must present a locally authored
@@ -3286,6 +3289,7 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'workspace.archiveSession': return this.api.workspace.archiveSession(request)
       case 'workspace.listEntries': return this.api.workspace.listEntries(request, signal)
       case 'workspace.readFile': return this.api.workspace.readFile(request, signal)
+      case 'workspace.gitStatus': return this.api.workspace.gitStatus(request, signal)
       case 'skill.list': return this.api.skills.list(request)
       case 'agentPreset.list': return this.api.agentPresets.list(request)
       case 'agentPreset.select': return this.api.agentPresets.select(request)

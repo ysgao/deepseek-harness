@@ -3,7 +3,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {
   DirectoryListing, IApiClient, RpcError,
-  SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceId, WorkspaceView,
+  SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SnapshotStore } from '../contract/store.ts'
 import { createSnapshotStore } from '../contract/store.ts'
@@ -322,6 +322,18 @@ export class WorkspaceRuntime implements IWorkspaces {
    */
   async readWorkspaceFile(workspaceId: WorkspaceId, path: string, signal?: AbortSignal): Promise<WorkspaceFileContent> {
     const response = await this.api.workspace.readFile({ workspaceId, path }, signal)
+    if (!response.result.ok) throw new WorkspaceFileBrowseError(response.result.error)
+    return response.result.value
+  }
+
+  /**
+   * Report a Workspace's current git branch and pending file changes through `workspace.gitStatus`.
+   * @param workspaceId - target workspace.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   * @returns the workspace's git status; `isRepo: false` when its directory is outside any git working tree.
+   */
+  async listWorkspaceGitStatus(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<WorkspaceGitStatus> {
+    const response = await this.api.workspace.gitStatus({ workspaceId }, signal)
     if (!response.result.ok) throw new WorkspaceFileBrowseError(response.result.error)
     return response.result.value
   }

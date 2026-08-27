@@ -197,6 +197,9 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
       async readFile(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { kind: 'text' as const, content: '' } } }
       },
+      async gitStatus(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { isRepo: false, branch: null, files: {} } } }
+      },
     },
     agentPresets: {
       list(request: RpcRequest<{}>) {

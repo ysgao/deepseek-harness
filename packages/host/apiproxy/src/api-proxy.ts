@@ -66,6 +66,7 @@ import {
   resolveWorkspacePath,
   WorkspaceFileError,
 } from './workspace-files.ts'
+import { workspaceGitStatus } from './workspace-git.ts'
 import type { SessionRawArtifact } from '@deepseek-ai/dsh-session-persistence'
 import {
   SESSION_SEARCH_RESULT_LIMIT,
@@ -2947,6 +2948,20 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             })
           }
           return err(request, { code: 'directory-unreadable', message: error.message, details: { path: error.path } })
+        }
+      },
+
+      async gitStatus(request, signal) {
+        const { workspaceId } = request.payload
+        const workspace = ctx.workspaceRegistry.get(brandWorkspaceId(workspaceId))
+        if (workspace === undefined) return workspaceNotFound(request, workspaceId)
+        try {
+          return ok(request, await workspaceGitStatus(workspace.path, signal))
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'workspace git status was aborted', details: {} })
+          }
+          throw error
         }
       },
     },
