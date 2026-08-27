@@ -5,16 +5,19 @@
  * one-level-at-a-time directory listing that includes files as well as
  * subdirectories (unlike the workspace-root picker's directory-only browse);
  * a directory row expands in place (indented, nested `FilesLevel`
- * recursion), and a file row opens the `FileViewer` in-app preview. Purely
- * local component state — no store, no persistence across remounts, mirroring
- * `ui-directory-picker-browse`'s "no search, no persistence" posture.
+ * recursion), and a file row opens the current session's File tab via the
+ * `conversationFileOpener` optional service, falling back to the `FileViewer`
+ * in-app preview modal when there is no current session or the service isn't
+ * composed in. Purely local component state — no store, no persistence
+ * across remounts, mirroring `ui-directory-picker-browse`'s "no search, no
+ * persistence" posture.
  */
 import { useCallback, useEffect, useState } from 'react'
 import clsx from 'clsx'
 import {
   IconFilePlaceholder16, IconFolderClose16, IconFolderOpen16, IconTriangleRightFill14,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId, WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { WorkspaceKey } from '../locales.ts'
 import { FileViewer } from './FileViewer.tsx'
 import css from './FilesNode.module.css'
@@ -32,6 +35,14 @@ export interface FilesNodeProps {
   readWorkspaceFile: (workspaceId: WorkspaceId, path: string, signal?: AbortSignal) => Promise<WorkspaceFileContent>
   /** Open a file with the Host OS default application (the preview's external fallback). */
   openPath: (path: string) => Promise<void>
+  /** The currently selected session, if any (the file-tab open route's target). */
+  currentSessionId: SessionId | undefined
+  /**
+   * Try opening a file in the current session's in-app File tab. False (no
+   * current session, no live binding, or the service isn't composed in)
+   * falls back to the in-app preview modal.
+   */
+  openFileInSession: (sessionId: SessionId, path: string) => boolean
   t: FilesTranslate
 }
 
@@ -106,7 +117,7 @@ function DirectoryRow({ entry, depth, onOpenFile, listWorkspaceEntries, t }: {
   )
 }
 
-/** One file row: file glyph + name; opens the in-app preview (or the OS default app, decided by FileViewer). */
+/** One file row: file glyph + name; opens the current session's File tab, or the in-app preview modal as fallback. */
 function FileRow({ entry, depth, onOpen }: { entry: WorkspaceEntry; depth: number; onOpen: (path: string) => void }) {
   return (
     <button
@@ -171,7 +182,9 @@ function FilesLevel({ path, depth, onOpenFile, listWorkspaceEntries, t }: {
  * @param props - see {@link FilesNodeProps}.
  * @returns the node's rows (header plus, while expanded, its fetched level).
  */
-export function FilesNode({ workspaceId, rootPath, listWorkspaceEntries, readWorkspaceFile, openPath, t }: FilesNodeProps) {
+export function FilesNode({
+  workspaceId, rootPath, listWorkspaceEntries, readWorkspaceFile, openPath, currentSessionId, openFileInSession, t,
+}: FilesNodeProps) {
   const [expanded, setExpanded] = useState(false)
   const [previewPath, setPreviewPath] = useState<string | null>(null)
   // Stable across the viewer-open/close re-renders that would otherwise
@@ -186,6 +199,12 @@ export function FilesNode({ workspaceId, rootPath, listWorkspaceEntries, readWor
     (path: string, signal?: AbortSignal): Promise<WorkspaceFileContent> => readWorkspaceFile(workspaceId, path, signal),
     [readWorkspaceFile, workspaceId],
   )
+  // Tab-dock first: only fall back to the in-app preview modal when there is
+  // no current session or the conversationFileOpener service isn't composed in.
+  const handleOpenFile = useCallback((path: string) => {
+    if (currentSessionId !== undefined && openFileInSession(currentSessionId, path)) return
+    setPreviewPath(path)
+  }, [currentSessionId, openFileInSession])
   return (
     <>
       <button
@@ -207,7 +226,7 @@ export function FilesNode({ workspaceId, rootPath, listWorkspaceEntries, readWor
         <FilesLevel
           path={rootPath}
           depth={1}
-          onOpenFile={setPreviewPath}
+          onOpenFile={handleOpenFile}
           listWorkspaceEntries={list}
           t={t}
         />

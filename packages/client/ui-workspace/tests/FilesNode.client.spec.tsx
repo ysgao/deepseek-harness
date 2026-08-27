@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import type { WorkspaceEntryListing, WorkspaceFileContent, WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
 import { FilesNode } from '../src/client/files/FilesNode.tsx'
 import { zh } from '../src/client/locales.ts'
 
@@ -30,6 +30,8 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
         t={t}
       />,
     )
@@ -51,6 +53,8 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
         t={t}
       />,
     )
@@ -69,6 +73,8 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
         t={t}
       />,
     )
@@ -87,6 +93,8 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
         t={t}
       />,
     )
@@ -103,6 +111,8 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
         t={t}
       />,
     )
@@ -122,6 +132,8 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
         t={t}
       />,
     )
@@ -146,6 +158,8 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={readWorkspaceFile}
         openPath={vi.fn()}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
         t={t}
       />,
     )
@@ -154,6 +168,59 @@ describe('FilesNode', () => {
     await act(async () => { fileRow.click() })
     await waitFor(() => { expect(readWorkspaceFile).toHaveBeenCalledWith(wsId, '/ws/notes.txt', expect.anything()) })
     await screen.findByText('content of /ws/notes.txt')
+  })
+
+  it('opens a clicked file in the current session\'s File tab instead of the in-app preview, when the opener accepts it', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({
+      '/ws': [{ name: 'notes.txt', path: '/ws/notes.txt', type: 'file', hidden: false }],
+    })
+    const readWorkspaceFile = vi.fn((): Promise<WorkspaceFileContent> => Promise.resolve({ kind: 'text', content: 'body' }))
+    const sessionId = 'sess-1' as SessionId
+    const openFileInSession = vi.fn(() => true)
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={readWorkspaceFile}
+        openPath={vi.fn()}
+        currentSessionId={sessionId}
+        openFileInSession={openFileInSession}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    const fileRow = await screen.findByText('notes.txt')
+    await act(async () => { fileRow.click() })
+    expect(openFileInSession).toHaveBeenCalledWith(sessionId, '/ws/notes.txt')
+    expect(readWorkspaceFile).not.toHaveBeenCalled()
+    expect(screen.queryByText('body')).toBeNull()
+  })
+
+  it('falls back to the in-app preview when the current session rejects the File-tab open', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({
+      '/ws': [{ name: 'notes.txt', path: '/ws/notes.txt', type: 'file', hidden: false }],
+    })
+    const readWorkspaceFile = vi.fn((): Promise<WorkspaceFileContent> => Promise.resolve({ kind: 'text', content: 'body' }))
+    const sessionId = 'sess-1' as SessionId
+    const openFileInSession = vi.fn(() => false)
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={readWorkspaceFile}
+        openPath={vi.fn()}
+        currentSessionId={sessionId}
+        openFileInSession={openFileInSession}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    const fileRow = await screen.findByText('notes.txt')
+    await act(async () => { fileRow.click() })
+    expect(openFileInSession).toHaveBeenCalledWith(sessionId, '/ws/notes.txt')
+    await screen.findByText('body')
   })
 
   it('ignores a level settling after the header collapsed again (superseded fetch)', async () => {
@@ -166,6 +233,8 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
         t={t}
       />,
     )
@@ -189,6 +258,8 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
         t={t}
       />,
     )
@@ -211,6 +282,8 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={readWorkspaceFile}
         openPath={vi.fn()}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
         t={t}
       />,
     )
@@ -233,6 +306,8 @@ describe('FilesNode', () => {
         listWorkspaceEntries={listWorkspaceEntries}
         readWorkspaceFile={vi.fn()}
         openPath={vi.fn()}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
         t={t}
       />,
     )

@@ -13,6 +13,8 @@ import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+// Type-only: pulls the conversationFileOpener optional-service Context merge.
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from './contract/slots.ts'
 import { createWorkspaceViewStore } from './stores.ts'
 import { WorkspaceBrowser } from './WorkspaceBrowser.tsx'
@@ -105,6 +107,7 @@ export function apply(ctx: ClientContext): void {
     listWorkspaceEntries: (workspaceId, path, signal) => ctx.workspaces.listWorkspaceEntries(workspaceId, path, signal),
     readWorkspaceFile: (workspaceId, path, signal) => ctx.workspaces.readWorkspaceFile(workspaceId, path, signal),
     openPath: path => ctx.workspaces.openPath(path),
+    openFileInSession: (sessionId, path) => ctx.get('conversationFileOpener')?.openFile(sessionId, path) ?? false,
     hooks: { directoryFlow: browserFlowSource, hostDescription },
   })
   const pickerInjected = (): WorkspacePickerInjected => ({

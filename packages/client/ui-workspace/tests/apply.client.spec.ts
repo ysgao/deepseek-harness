@@ -117,6 +117,20 @@ describe('ui-workspace apply', () => {
     expect(b.create).toHaveBeenCalledWith({ path: '/tmp/project' })
   })
 
+  it('routes openFileInSession to the optional conversationFileOpener service, false when absent', async () => {
+    const b = await bench()
+    declare(b.slots, 'sidebar.workspaces')
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const browser = (b.slots.entries('sidebar.workspaces')[0]!.inject as () => WorkspaceBrowserInjected)()
+
+    expect(browser.openFileInSession('session' as never, '/ws/a.txt')).toBe(false)
+
+    const openFile = vi.fn(() => true)
+    b.ctx.provide('conversationFileOpener', { openFile } as never)
+    expect(browser.openFileInSession('session' as never, '/ws/a.txt')).toBe(true)
+    expect(openFile).toHaveBeenCalledWith('session', '/ws/a.txt')
+  })
+
   it('declares the two directory-flow holes and reports their occupancy per surface', async () => {
     const b = await bench()
     declare(b.slots, 'sidebar.workspaces', 'conversation.hero.workspace')

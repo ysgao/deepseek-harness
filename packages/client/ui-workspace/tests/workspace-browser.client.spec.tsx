@@ -82,6 +82,7 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
     listWorkspaceEntries: vi.fn(async (_workspaceId: WorkspaceId, path: string) => ({ path, entries: [], truncated: false })),
     readWorkspaceFile: vi.fn(async () => ({ kind: 'text' as const, content: '' })),
     openPath: vi.fn(async () => {}),
+    openFileInSession: vi.fn(() => false),
     useDirectoryFlow: bindSnapshotSelector({ getSnapshot: () => true, subscribe: () => () => {} }),
     useHostDescription: selector => selector(undefined),
     renderSlot: ((_name: string, owner: { open: boolean }) => (owner.open ? <div data-testid="directory-flow" /> : null)) as never,

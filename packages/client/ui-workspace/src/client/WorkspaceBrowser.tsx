@@ -218,7 +218,7 @@ type SessionTreeProps = Pick<
   WorkspaceBrowserProps,
   'useSessions' | 'startSession' | 'open' | 'forkSession'
   | 'insertWorkspaceBefore' | 'insertSessionBefore' | 't'
-  | 'listWorkspaceEntries' | 'readWorkspaceFile' | 'openPath'
+  | 'listWorkspaceEntries' | 'readWorkspaceFile' | 'openPath' | 'openFileInSession'
 > & {
   /** Host account home for POSIX hover-path abbreviation. */
   home?: string | undefined
@@ -256,7 +256,7 @@ function SessionTree({
   insertWorkspaceBefore, insertSessionBefore, orderBy,
   groupExpansion, setGroupExpanded,
   sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t,
-  listWorkspaceEntries, readWorkspaceFile, openPath,
+  listWorkspaceEntries, readWorkspaceFile, openPath, openFileInSession,
 }: SessionTreeProps) {
   const list = useSessions(s => s)
   const current = list.current
@@ -493,6 +493,8 @@ function SessionTree({
                   listWorkspaceEntries={listWorkspaceEntries}
                   readWorkspaceFile={readWorkspaceFile}
                   openPath={openPath}
+                  currentSessionId={current}
+                  openFileInSession={openFileInSession}
                   t={t}
                 />
               )}
@@ -777,6 +779,7 @@ export function WorkspaceBrowser({
   listWorkspaceEntries,
   readWorkspaceFile,
   openPath,
+  openFileInSession,
   searchSessions,
   searchResultLimit,
   useDirectoryFlow,
@@ -1211,6 +1214,7 @@ export function WorkspaceBrowser({
                 listWorkspaceEntries={listWorkspaceEntries}
                 readWorkspaceFile={readWorkspaceFile}
                 openPath={openPath}
+                openFileInSession={openFileInSession}
                 onRenameRequest={(workspaceId, currentTitle) => {
                   setRenameTarget({ workspaceId, currentTitle })
                   setRenameDraft(currentTitle)
