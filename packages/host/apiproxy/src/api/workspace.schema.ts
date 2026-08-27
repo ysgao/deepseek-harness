@@ -7,7 +7,9 @@
 import { z } from 'zod'
 import type { RequestPayload, ResponseValue } from './rpc-map.ts'
 import type { Wire } from './rpc.schema.ts'
-import type { WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceView } from './workspace.ts'
+import type {
+  WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceGitStatus, WorkspaceView,
+} from './workspace.ts'
 import { sessionIdSchema, workspaceIdSchema } from './sessions.schema.ts'
 
 export { workspaceIdSchema } from './sessions.schema.ts'
@@ -168,3 +170,15 @@ export const workspaceGitDiscardAllRequestSchema = z.object({
 export const workspaceGitDiscardAllValueSchema = z.object({
   discarded: z.literal(true),
 }) satisfies z.ZodType<Wire<ResponseValue<'workspace.gitDiscardAll'>>>
+
+/** workspace.gitFileDiff request payload: the path must be the workspace root or a descendant. */
+export const workspaceGitFileDiffRequestSchema = z.object({
+  workspaceId: workspaceIdSchema,
+  path: z.string(),
+}) satisfies z.ZodType<Wire<RequestPayload<'workspace.gitFileDiff'>>>
+
+/** workspace.gitFileDiff response value: HEAD and working-tree text, either side nullable. */
+export const workspaceGitFileDiffValueSchema = z.object({
+  oldText: z.string().nullable(),
+  newText: z.string().nullable(),
+}) satisfies z.ZodType<Wire<ResponseValue<'workspace.gitFileDiff'>>> satisfies z.ZodType<Wire<WorkspaceFileDiff>>

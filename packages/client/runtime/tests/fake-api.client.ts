@@ -4,7 +4,7 @@
 import type {
   AuthorizationEntry, ClientResponse, HostFrame, IApiClient, ModelSelection, MuxFrame,
   RpcError, RpcReceipt, RpcRequest, RpcResponse, SessionId, SessionModels, SessionSearchItem, SkillEntry,
-  WorkspaceGitStatus, WorkspaceId, WorkspaceView,
+  WorkspaceFileDiff, WorkspaceGitStatus, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import { RpcId } from '@deepseek-ai/dsh-client-connection/client'
 import type { SessionRemotes } from '../src/client/sessions/remotes.ts'
@@ -220,6 +220,9 @@ export class FakeApiClient implements IApiClient {
   onWorkspaceGitDiscardAll: (payload: unknown) => Promise<RpcResponse<{ discarded: true }>> =
     () => Promise.resolve(ok({ discarded: true }))
 
+  onWorkspaceGitFileDiff: (payload: unknown) => Promise<RpcResponse<WorkspaceFileDiff>> =
+    () => Promise.resolve(ok({ oldText: null, newText: null }))
+
   readonly workspace: IApiClient['workspace'] = {
     list: (payload: unknown) => this.record('workspace.list', payload, this.onWorkspaceList(payload).then(response => (
       response.result.ok
@@ -245,6 +248,8 @@ export class FakeApiClient implements IApiClient {
       this.record('workspace.gitCommitAll', payload, this.onWorkspaceGitCommitAll(payload)),
     gitDiscardAll: (payload: unknown) =>
       this.record('workspace.gitDiscardAll', payload, this.onWorkspaceGitDiscardAll(payload)),
+    gitFileDiff: (payload: unknown) =>
+      this.record('workspace.gitFileDiff', payload, this.onWorkspaceGitFileDiff(payload)),
   }
 
   // Payloads stay `unknown` (lint-lane note above); response rows are the real

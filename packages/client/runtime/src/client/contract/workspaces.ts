@@ -7,7 +7,8 @@
  * widening what features may do to the workspaces domain.
  */
 import type {
-  DirectoryListing, SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId, WorkspaceView,
+  DirectoryListing, SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceGitStatus, WorkspaceId,
+  WorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { WorkspaceListState } from '../workspaces/service.ts'
 import type { ObservableSnapshot } from './store.ts'
@@ -137,4 +138,13 @@ export interface IWorkspaces {
    * @param signal - aborts the wire request when the caller supersedes it.
    */
   discardAllWorkspaceChanges(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void>
+  /**
+   * Read one file's `HEAD` and current working-tree text, for the File
+   * tab's side-by-side diff view.
+   * @param workspaceId - owning workspace; `path` must be its own path or a descendant.
+   * @param path - absolute file path.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   * @returns the diff text; either side is `null` when there is nothing there (no `HEAD` blob, or deleted from the working tree).
+   */
+  getWorkspaceFileDiff(workspaceId: WorkspaceId, path: string, signal?: AbortSignal): Promise<WorkspaceFileDiff>
 }

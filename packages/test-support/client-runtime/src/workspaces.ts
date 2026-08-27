@@ -1,7 +1,7 @@
 /** Test-owned workspaces face: the renderer standard-kit observable plus recorded actions. */
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
-  DirectoryListing, IWorkspaces, SessionId, SnapshotStore, WorkspaceEntryListing, WorkspaceFileContent,
+  DirectoryListing, IWorkspaces, SessionId, SnapshotStore, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff,
   WorkspaceGitStatus, WorkspaceId, WorkspaceListState, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { workspaceListState } from './fixtures.ts'
@@ -279,5 +279,20 @@ export class TestWorkspaces implements IWorkspaces {
     this.calls.push({ method: 'discardAllWorkspaceChanges', args: [workspaceId, signal] })
     const stub = this.stubs.get('discardAllWorkspaceChanges')
     if (stub !== undefined) await (stub(workspaceId, signal) as Promise<void>)
+  }
+
+  /**
+   * Read one file's `HEAD` and working-tree text (recorded). The default
+   * reports neither side present; stub to shape a diff.
+   * @param workspaceId - owning workspace.
+   * @param path - absolute file path.
+   * @param signal - forwarded like the production face.
+   * @returns the diff text.
+   */
+  async getWorkspaceFileDiff(workspaceId: WorkspaceId, path: string, signal?: AbortSignal): Promise<WorkspaceFileDiff> {
+    this.calls.push({ method: 'getWorkspaceFileDiff', args: [workspaceId, path, signal] })
+    const stub = this.stubs.get('getWorkspaceFileDiff')
+    if (stub !== undefined) return await (stub(workspaceId, path, signal) as Promise<WorkspaceFileDiff>)
+    return { oldText: null, newText: null }
   }
 }

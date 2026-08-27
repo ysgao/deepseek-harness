@@ -42,6 +42,11 @@ function readFileOnce(content: WorkspaceFileContent): (path: string, signal?: Ab
   return () => Promise.resolve(content)
 }
 
+/** Default double: no owning workspace has any pending git change, so the Diff toggle never shows. */
+function noGitStatus() {
+  return vi.fn(async () => ({ isRepo: false, branch: null, files: {} }))
+}
+
 /** Deterministic blob URL doubles: jsdom has no real Blob decode/object-URL pipeline. */
 function stubBlobUrl(): () => void {
   const created = URL.createObjectURL.bind(URL)
@@ -66,6 +71,8 @@ function baseProps(overrides: Partial<FileViewProps> = {}): FileViewProps {
     onFileOpened: vi.fn(),
     readFile: vi.fn(),
     openPath: vi.fn(async () => {}),
+    getGitStatus: noGitStatus(),
+    getFileDiff: vi.fn(async () => ({ oldText: null, newText: null })),
     t,
     ...overrides,
   } as unknown as FileViewProps
@@ -176,5 +183,56 @@ describe('FileView', () => {
     await screen.findByText('content of /ws/one.txt')
     rerender(<FileView {...baseProps({ openFilePath: '/ws/two.txt', readFile })} />)
     await waitFor(() => { expect(screen.getByText('content of /ws/two.txt')).not.toBeNull() })
+  })
+
+  it('offers no Diff toggle for a clean tracked file', async () => {
+    render(
+      <FileView
+        {...baseProps({
+          openFilePath: '/ws/clean.txt',
+          readFile: readFileOnce({ kind: 'text', content: 'clean' }),
+        })}
+      />,
+    )
+    await screen.findByText('clean')
+    expect(screen.queryByRole('button', { name: t('files.diff.diff') })).toBeNull()
+  })
+
+  it('shows a Diff toggle for a changed text file and renders the side-by-side diff on switch', async () => {
+    const getGitStatus = vi.fn(async () => ({ isRepo: true, branch: 'main', files: { '/ws/changed.txt': 'M' } }))
+    const getFileDiff = vi.fn(async () => ({ oldText: 'old line', newText: 'new line' }))
+    render(
+      <FileView
+        {...baseProps({
+          openFilePath: '/ws/changed.txt',
+          readFile: readFileOnce({ kind: 'text', content: 'new line' }),
+          getGitStatus,
+          getFileDiff,
+        })}
+      />,
+    )
+    const diffToggle = await screen.findByRole('button', { name: t('files.diff.diff') })
+    await act(async () => { diffToggle.click() })
+    expect(getFileDiff).toHaveBeenCalledWith('/ws/changed.txt', expect.anything())
+    await screen.findByText('old line')
+    await screen.findByText('new line')
+  })
+
+  it('shows the empty-diff notice when the fetched diff sides are identical', async () => {
+    const getGitStatus = vi.fn(async () => ({ isRepo: true, branch: 'main', files: { '/ws/same.txt': 'M' } }))
+    const getFileDiff = vi.fn(async () => ({ oldText: 'same', newText: 'same' }))
+    render(
+      <FileView
+        {...baseProps({
+          openFilePath: '/ws/same.txt',
+          readFile: readFileOnce({ kind: 'text', content: 'same' }),
+          getGitStatus,
+          getFileDiff,
+        })}
+      />,
+    )
+    const diffToggle = await screen.findByRole('button', { name: t('files.diff.diff') })
+    await act(async () => { diffToggle.click() })
+    await screen.findByText(t('files.diff.empty'))
   })
 })

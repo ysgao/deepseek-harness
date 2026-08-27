@@ -440,6 +440,9 @@ export function apply(ctx: Context): void {
 
   // The File view: second entry of the ring, populated only through the
   // conversationFileOpener service below (fileOpenRegistry → ConversationSession).
+  const resolveOwningWorkspaceId = (targetSessionId: SessionId) =>
+    workspaces.list.getSnapshot().items.find(item => item.sessionIds.includes(targetSessionId))?.workspaceId
+
   slots.register({
     name: 'conversation.view',
     id: 'file',
@@ -448,14 +451,27 @@ export function apply(ctx: Context): void {
     locale: NS,
     inject: (sessionId: SessionId): FileViewInjected => ({
       readFile: (path, signal) => {
-        const workspaceId = workspaces.list.getSnapshot().items
-          .find(item => item.sessionIds.includes(sessionId))?.workspaceId
+        const workspaceId = resolveOwningWorkspaceId(sessionId)
         if (workspaceId === undefined) {
           return Promise.reject(new Error(`ui-conversation: session "${sessionId}" has no owning workspace`))
         }
         return workspaces.readWorkspaceFile(workspaceId, path, signal)
       },
       openPath: path => workspaces.openPath(path),
+      getGitStatus: (signal) => {
+        const workspaceId = resolveOwningWorkspaceId(sessionId)
+        if (workspaceId === undefined) {
+          return Promise.reject(new Error(`ui-conversation: session "${sessionId}" has no owning workspace`))
+        }
+        return workspaces.listWorkspaceGitStatus(workspaceId, signal)
+      },
+      getFileDiff: (path, signal) => {
+        const workspaceId = resolveOwningWorkspaceId(sessionId)
+        if (workspaceId === undefined) {
+          return Promise.reject(new Error(`ui-conversation: session "${sessionId}" has no owning workspace`))
+        }
+        return workspaces.getWorkspaceFileDiff(workspaceId, path, signal)
+      },
     }),
   }, FileView)
 

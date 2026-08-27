@@ -39,6 +39,8 @@ export { FilePreview } from './FilePreview.tsx'
 export type { FilePreviewKind, FilePreviewProps, FilePreviewState } from './FilePreview.tsx'
 export { DiffBlock, DEFAULT_DIFF_MAX_LINES } from './DiffBlock.tsx'
 export type { DiffBlockProps, DiffHunk } from './DiffBlock.tsx'
+export { SideBySideDiff } from './SideBySideDiff.tsx'
+export type { SideBySideDiffProps } from './SideBySideDiff.tsx'
 export { SearchBlock, DEFAULT_SEARCH_MAX_LINES } from './SearchBlock.tsx'
 export type {
   SearchBlockProps, SearchMatchesBlockProps, SearchPathsBlockProps, SearchFileGroup, SearchBlockLineMatch,

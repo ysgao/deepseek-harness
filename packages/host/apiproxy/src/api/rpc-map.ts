@@ -56,6 +56,7 @@ export interface RpcMethodMap {
   'workspace.gitStatus': WorkspaceApi['gitStatus']
   'workspace.gitCommitAll': WorkspaceApi['gitCommitAll']
   'workspace.gitDiscardAll': WorkspaceApi['gitDiscardAll']
+  'workspace.gitFileDiff': WorkspaceApi['gitFileDiff']
   'skill.list': SkillsApi['list']
   'agentPreset.list': AgentPresetsApi['list']
   'agentPreset.select': AgentPresetsApi['select']

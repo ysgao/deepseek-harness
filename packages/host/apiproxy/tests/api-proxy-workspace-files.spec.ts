@@ -4,7 +4,7 @@
  * directory-only `host.listDirectory`/`ctx.directoryPicker` seam.
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -446,6 +446,145 @@ describe('workspace.gitDiscardAll', () => {
     controller.abort()
     const error = expectErr(await api.workspace.gitDiscardAll(
       request({ workspaceId: created.workspaceId }), controller.signal,
+    ))
+    expect(error.code).toBe('cancelled')
+  })
+})
+
+describe('workspace.gitFileDiff', () => {
+  it('reads a modified tracked file\'s HEAD and working-tree text', async () => {
+    const { api, root } = await harness()
+    execFileSync('git', ['init', '-q', '-b', 'main', root])
+    execFileSync('git', ['-C', root, 'config', 'user.email', 'test@example.com'])
+    execFileSync('git', ['-C', root, 'config', 'user.name', 'Test'])
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    execFileSync('git', ['-C', root, 'add', '-A'])
+    execFileSync('git', ['-C', root, 'commit', '-q', '-m', 'init'])
+    writeFileSync(join(root, 'a.txt'), 'changed')
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+
+    const value = expectOk(await api.workspace.gitFileDiff(
+      request({ workspaceId: created.workspaceId, path: join(root, 'a.txt') }),
+      new AbortController().signal,
+    ))
+    expect(value).toEqual({ oldText: 'hello', newText: 'changed' })
+  })
+
+  it('reports oldText: null for an untracked file with no HEAD blob', async () => {
+    const { api, root } = await harness()
+    execFileSync('git', ['init', '-q', '-b', 'main', root])
+    execFileSync('git', ['-C', root, 'config', 'user.email', 'test@example.com'])
+    execFileSync('git', ['-C', root, 'config', 'user.name', 'Test'])
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    execFileSync('git', ['-C', root, 'add', '-A'])
+    execFileSync('git', ['-C', root, 'commit', '-q', '-m', 'init'])
+    writeFileSync(join(root, 'new.txt'), 'brand new')
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+
+    const value = expectOk(await api.workspace.gitFileDiff(
+      request({ workspaceId: created.workspaceId, path: join(root, 'new.txt') }),
+      new AbortController().signal,
+    ))
+    expect(value).toEqual({ oldText: null, newText: 'brand new' })
+  })
+
+  it('reports newText: null for a file deleted from the working tree', async () => {
+    const { api, root } = await harness()
+    execFileSync('git', ['init', '-q', '-b', 'main', root])
+    execFileSync('git', ['-C', root, 'config', 'user.email', 'test@example.com'])
+    execFileSync('git', ['-C', root, 'config', 'user.name', 'Test'])
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    execFileSync('git', ['-C', root, 'add', '-A'])
+    execFileSync('git', ['-C', root, 'commit', '-q', '-m', 'init'])
+    rmSync(join(root, 'a.txt'))
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+
+    const value = expectOk(await api.workspace.gitFileDiff(
+      request({ workspaceId: created.workspaceId, path: join(root, 'a.txt') }),
+      new AbortController().signal,
+    ))
+    expect(value).toEqual({ oldText: 'hello', newText: null })
+  })
+
+  it('reports newText: null for a working-tree read that decodes as binary', async () => {
+    const { api, root } = await harness()
+    execFileSync('git', ['init', '-q', '-b', 'main', root])
+    execFileSync('git', ['-C', root, 'config', 'user.email', 'test@example.com'])
+    execFileSync('git', ['-C', root, 'config', 'user.name', 'Test'])
+    writeFileSync(join(root, 'a.bin'), 'hello')
+    execFileSync('git', ['-C', root, 'add', '-A'])
+    execFileSync('git', ['-C', root, 'commit', '-q', '-m', 'init'])
+    writeFileSync(join(root, 'a.bin'), Buffer.from([0xff, 0xfe, 0x00, 0x01]))
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+
+    const value = expectOk(await api.workspace.gitFileDiff(
+      request({ workspaceId: created.workspaceId, path: join(root, 'a.bin') }),
+      new AbortController().signal,
+    ))
+    expect(value).toEqual({ oldText: 'hello', newText: null })
+  })
+
+  it('rejects a working-tree read over the byte bound with file-too-large', async () => {
+    const { api, root } = await harness({ workspaceFilesMaxReadBytes: 4 })
+    execFileSync('git', ['init', '-q', '-b', 'main', root])
+    execFileSync('git', ['-C', root, 'config', 'user.email', 'test@example.com'])
+    execFileSync('git', ['-C', root, 'config', 'user.name', 'Test'])
+    writeFileSync(join(root, 'a.txt'), 'a')
+    execFileSync('git', ['-C', root, 'add', '-A'])
+    execFileSync('git', ['-C', root, 'commit', '-q', '-m', 'init'])
+    writeFileSync(join(root, 'a.txt'), 'much too long for the bound')
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+
+    const error = expectErr(await api.workspace.gitFileDiff(
+      request({ workspaceId: created.workspaceId, path: join(root, 'a.txt') }),
+      new AbortController().signal,
+    ))
+    expect(error.code).toBe('file-too-large')
+  })
+
+  it('rejects a path outside the workspace with directory-unreadable', async () => {
+    const outsideRoot = realpathSync.native(mkdtempSync(join(tmpdir(), 'dsh-apiproxy-workspace-files-outside-')))
+    const { api, root } = await harness()
+    mkdirSync(join(root, 'inside'))
+    writeFileSync(join(outsideRoot, 'sibling.txt'), 'nope')
+    const created = expectOk(await api.workspace.create(request({ path: join(root, 'inside') }))).workspace
+
+    const error = expectErr(await api.workspace.gitFileDiff(
+      request({ workspaceId: created.workspaceId, path: join(outsideRoot, 'sibling.txt') }),
+      new AbortController().signal,
+    ))
+    expect(error.code).toBe('directory-unreadable')
+  })
+
+  it('rejects an unknown workspace id with workspace-not-found', async () => {
+    const { api } = await harness()
+    const error = expectErr(await api.workspace.gitFileDiff(
+      request({ workspaceId: 'no-such-workspace' as never, path: '/x' }),
+      new AbortController().signal,
+    ))
+    expect(error.code).toBe('workspace-not-found')
+  })
+
+  it('rejects a workspace outside any git working tree with git-not-a-repository', async () => {
+    const { api, root } = await harness()
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+
+    const error = expectErr(await api.workspace.gitFileDiff(
+      request({ workspaceId: created.workspaceId, path: join(root, 'a.txt') }),
+      new AbortController().signal,
+    ))
+    expect(error.code).toBe('git-not-a-repository')
+  })
+
+  it('aborts and reports cancelled when the caller signal fires', async () => {
+    const { api, root } = await harness()
+    execFileSync('git', ['init', '-q', '-b', 'main', root])
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+    const controller = new AbortController()
+    controller.abort()
+    const error = expectErr(await api.workspace.gitFileDiff(
+      request({ workspaceId: created.workspaceId, path: join(root, 'a.txt') }), controller.signal,
     ))
     expect(error.code).toBe('cancelled')
   })

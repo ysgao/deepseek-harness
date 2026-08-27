@@ -66,6 +66,14 @@ export type WorkspaceFileContent =
   /** Binary content the client cannot decode as text; base64-encoded on the wire. */
   | { kind: 'binary'; mediaType: string; data: string }
 
+/** `workspace.gitFileDiff` response value: one file's `HEAD` and working-tree text, for a side-by-side diff. */
+export interface WorkspaceFileDiff {
+  /** Content at `HEAD`, or `null` when the file has no committed blob at this path (new, untracked, or renamed from elsewhere). */
+  oldText: string | null
+  /** Current working-tree content, or `null` when the file no longer exists on disk (deleted). */
+  newText: string | null
+}
+
 /** `workspace.gitStatus` response value: current branch and pending file changes of a workspace's enclosing git repository. */
 export interface WorkspaceGitStatus {
   /** Whether the workspace's own directory is inside a git working tree. */
@@ -210,4 +218,18 @@ export interface WorkspaceApi {
    */
   gitDiscardAll(request: RpcRequest<{ workspaceId: WorkspaceId }>, signal: AbortSignal):
   Promise<RpcResponse<{ discarded: true }>>
+
+  /**
+   * Reads one file's `HEAD` and current working-tree text, for the File
+   * tab's side-by-side diff. `path` must be the workspace's own canonical
+   * path or a descendant of it; a request outside that root fails with
+   * `directory-unreadable`. `oldText` is `null` when the file has no
+   * committed blob at this path (new/untracked/renamed); `newText` is
+   * `null` when the file no longer exists in the working tree (deleted).
+   * Fails `git-not-a-repository` when the workspace directory is outside
+   * any git working tree, `file-too-large` when the working-tree content
+   * exceeds the deployment's read bound.
+   */
+  gitFileDiff(request: RpcRequest<{ workspaceId: WorkspaceId; path: string }>, signal: AbortSignal):
+  Promise<RpcResponse<WorkspaceFileDiff>>
 }

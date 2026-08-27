@@ -73,7 +73,7 @@ export type { SubagentAddress, JobView } from '@deepseek-ai/dsh-client-connectio
 export type { WorkspaceListPhase } from './workspaces/manager.ts'
 export type { WorkspaceListState } from './workspaces/service.ts'
 export type {
-  DirectoryEntry, DirectoryListing, RpcError, WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent,
+  DirectoryEntry, DirectoryListing, RpcError, WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff,
   WorkspaceGitStatus, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-client-connection/client'
 // Runtime owns the snapshot store; ui-renderer only binds it to React.

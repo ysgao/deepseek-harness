@@ -7,15 +7,32 @@
 
 .header {
   flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--dsw-alias-border-l2);
 }
 
 .path {
+  min-width: 0;
   font-size: 13px;
   color: var(--dsw-alias-label-secondary);
   font-family: var(--ds-font-family-code);
   word-break: break-all;
+}
+
+.modeToggle {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+
+.diffNotice {
+  padding: 16px 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 14px;
 }
 
 .body {

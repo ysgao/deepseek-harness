@@ -67,7 +67,7 @@ import {
   WorkspaceFileError,
 } from './workspace-files.ts'
 import {
-  commitAllChanges, discardAllChanges, GitCommandError, GitNotARepositoryError, workspaceGitStatus,
+  commitAllChanges, discardAllChanges, GitCommandError, GitNotARepositoryError, workspaceFileAtHead, workspaceGitStatus,
 } from './workspace-git.ts'
 import type { SessionRawArtifact } from '@deepseek-ai/dsh-session-persistence'
 import {
@@ -3007,6 +3007,60 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           }
           throw error
         }
+      },
+
+      async gitFileDiff(request, signal) {
+        const { workspaceId, path } = request.payload
+        const workspace = ctx.workspaceRegistry.get(brandWorkspaceId(workspaceId))
+        if (workspace === undefined) return workspaceNotFound(request, workspaceId)
+        const target = resolveWorkspacePath(path)
+        if (!isWithinWorkspace(workspace.path, target)) {
+          return err(request, {
+            code: 'directory-unreadable',
+            message: `"${path}" is outside workspace "${workspaceId}" (${workspace.path})`,
+            details: { path },
+          })
+        }
+        let oldText: string | null
+        try {
+          oldText = await workspaceFileAtHead(workspace.path, target, signal)
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'workspace git diff was aborted', details: {} })
+          }
+          if (error instanceof GitNotARepositoryError) {
+            return err(request, { code: 'git-not-a-repository', message: error.message, details: { path: error.path } })
+          }
+          throw error
+        }
+        let newText: string | null
+        try {
+          const content = await readWorkspaceFile(target, workspaceFilesMaxReadBytes, signal)
+          // A binary working-tree read has no text diff to show; the client
+          // only offers the diff toggle for a text-kind file, so this folds
+          // the same as "absent" here rather than earning its own wire state.
+          newText = content.kind === 'text' ? content.content : null
+        } catch (error: unknown) {
+          /* v8 ignore next 3 -- needs the caller signal to abort in the narrow
+             window between the oldText fetch settling and this one settling;
+             not reliably raceable in a portable test (see workspace-git.ts's
+             own narrow-window guards). */
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'workspace git diff was aborted', details: {} })
+          }
+          if (!(error instanceof WorkspaceFileError)) throw error
+          if (error.code === 'file-too-large') {
+            return err(request, {
+              code: 'file-too-large',
+              message: error.message,
+              details: { path: error.path, maxBytes: error.maxBytes ?? workspaceFilesMaxReadBytes },
+            })
+          }
+          // directory-unreadable here means the file is gone from the
+          // working tree (deleted) — an expected diff state, not a failure.
+          newText = null
+        }
+        return ok(request, { oldText, newText })
       },
     },
 

@@ -206,6 +206,9 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
       async gitDiscardAll(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { discarded: true as const } } }
       },
+      async gitFileDiff(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { oldText: null, newText: null } } }
+      },
     },
     agentPresets: {
       list(request: RpcRequest<{}>) {

@@ -94,6 +94,7 @@ function scriptedApi(overrides: {
       gitStatus: r => ok(r, { isRepo: false, branch: null, files: {} }),
       gitCommitAll: r => ok(r, { committed: true as const }),
       gitDiscardAll: r => ok(r, { discarded: true as const }),
+      gitFileDiff: r => ok(r, { oldText: null, newText: null }),
     },
     skills: { list: r => ok(r, { skills: [] }), ...overrides.skills },
     agentPresets: {
@@ -263,6 +264,8 @@ describe('unary round trip', () => {
     expect(committed.result).toEqual({ ok: true, value: { committed: true } })
     const discarded = await c.workspace.gitDiscardAll({ workspaceId: 'w1' as never })
     expect(discarded.result).toEqual({ ok: true, value: { discarded: true } })
+    const diff = await c.workspace.gitFileDiff({ workspaceId: 'w1' as never, path: '/t/a.txt' })
+    expect(diff.result).toEqual({ ok: true, value: { oldText: null, newText: null } })
   })
 
   it('rejects a blank commit message with bad-request', async () => {

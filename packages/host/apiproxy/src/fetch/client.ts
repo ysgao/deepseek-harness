@@ -37,6 +37,7 @@ import {
   workspaceDeleteValueSchema,
   workspaceGitCommitAllValueSchema,
   workspaceGitDiscardAllValueSchema,
+  workspaceGitFileDiffValueSchema,
   workspaceGitStatusValueSchema,
   workspaceInsertBeforeValueSchema,
   workspaceInsertSessionBeforeValueSchema,
@@ -133,6 +134,7 @@ export interface IApiClient {
     gitStatus(payload: RequestPayload<'workspace.gitStatus'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitStatus'>>>
     gitCommitAll(payload: RequestPayload<'workspace.gitCommitAll'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitCommitAll'>>>
     gitDiscardAll(payload: RequestPayload<'workspace.gitDiscardAll'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitDiscardAll'>>>
+    gitFileDiff(payload: RequestPayload<'workspace.gitFileDiff'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitFileDiff'>>>
   }
   skills: {
     list(payload: RequestPayload<'skill.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'skill.list'>>>
@@ -221,6 +223,7 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'workspace.gitStatus': workspaceGitStatusValueSchema,
   'workspace.gitCommitAll': workspaceGitCommitAllValueSchema,
   'workspace.gitDiscardAll': workspaceGitDiscardAllValueSchema,
+  'workspace.gitFileDiff': workspaceGitFileDiffValueSchema,
   'skill.list': skillListValueSchema,
   'agentPreset.list': agentPresetListValueSchema,
   'agentPreset.select': agentPresetSelectValueSchema,
@@ -485,6 +488,7 @@ export abstract class AbstractApiClient implements IApiClient {
     // unary deadline. Caller/connection aborts remain.
     gitCommitAll: (payload, signal) => this.callUnary('workspace.gitCommitAll', payload, signal, 'caller-signal-only'),
     gitDiscardAll: (payload, signal) => this.callUnary('workspace.gitDiscardAll', payload, signal, 'caller-signal-only'),
+    gitFileDiff: (payload, signal) => this.callUnary('workspace.gitFileDiff', payload, signal),
   }
 
   readonly skills: IApiClient['skills'] = {

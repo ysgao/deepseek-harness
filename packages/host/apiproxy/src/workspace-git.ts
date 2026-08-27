@@ -1,9 +1,10 @@
 /**
- * Host-side git operations for the Web GUI's Files tree: status (branch and
- * pending-change classification), and the Commit-all/Discard-all write
- * actions, all scanned or applied against the git repository enclosing a
- * workspace's own directory (which may be an ancestor of it). Shells out to
- * the host's own `git` binary; there is no bundled git implementation.
+ * Host-side git operations for the Web GUI's Files tree and File tab: status
+ * (branch and pending-change classification), a file's `HEAD` content (for
+ * the File tab's diff view), and the Commit-all/Discard-all write actions,
+ * all scanned or applied against the git repository enclosing a workspace's
+ * own directory (which may be an ancestor of it). Shells out to the host's
+ * own `git` binary; there is no bundled git implementation.
  *
  * `workspaceGitStatus` treats a directory outside any working tree, or a
  * host with no `git` binary at all, as `isRepo: false` rather than a thrown
@@ -15,7 +16,7 @@
  */
 
 import { execFile } from 'node:child_process'
-import { resolve } from 'node:path'
+import { relative, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import type { WorkspaceGitStatus } from './api/workspace.ts'
 
@@ -199,6 +200,36 @@ export async function discardAllChanges(path: string, signal?: AbortSignal): Pro
     /* v8 ignore next -- same narrow-window rationale as commitAllChanges's own catch blocks. */
     if (signal?.aborted) throw error
     throw new GitCommandError('checkout', messageOf(error))
+  }
+}
+
+/**
+ * Reads one file's content at `HEAD`, in the git repository enclosing `path`.
+ * Fails loud with {@link GitNotARepositoryError} when `path` is outside any
+ * git working tree — a diff without a repository is meaningless, the same
+ * "must not silently no-op" stance the write actions take. Any OTHER `git
+ * show` failure — no committed blob at this path (a new, untracked, or
+ * renamed-from-elsewhere file), or an unborn branch (no commits yet) — folds
+ * to `null`: the only thing this distinguishes is "no HEAD blob", not
+ * general git health.
+ * @param path - workspace's own directory (absolute), used only to resolve the enclosing repository.
+ * @param filePath - the file's absolute path, resolved relative to the repository root for `git show`.
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @returns the file's `HEAD` content, or `null` when it has no committed blob at this path.
+ * @throws {GitNotARepositoryError} when `path` is outside any git working tree.
+ */
+export async function workspaceFileAtHead(path: string, filePath: string, signal?: AbortSignal): Promise<string | null> {
+  const repoRoot = await repoRootOrThrow(path, signal)
+  const relativePath = relative(repoRoot, filePath)
+  try {
+    const { stdout } = await execFileAsync('git', ['-C', repoRoot, 'show', `HEAD:${relativePath}`], { signal })
+    return stdout
+  } catch (error: unknown) {
+    /* v8 ignore next -- needs the caller signal to abort in the narrow window
+       between the repo-root check settling and this call settling; not
+       reliably raceable in a portable test (see currentBranch's own guard). */
+    if (signal?.aborted) throw error
+    return null
   }
 }
 

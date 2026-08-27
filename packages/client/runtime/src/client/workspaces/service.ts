@@ -3,7 +3,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {
   DirectoryListing, IApiClient, RpcError,
-  SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId, WorkspaceView,
+  SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceGitStatus, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SnapshotStore } from '../contract/store.ts'
 import { createSnapshotStore } from '../contract/store.ts'
@@ -357,6 +357,19 @@ export class WorkspaceRuntime implements IWorkspaces {
   async discardAllWorkspaceChanges(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void> {
     const response = await this.api.workspace.gitDiscardAll({ workspaceId }, signal)
     if (!response.result.ok) throw new WorkspaceFileBrowseError(response.result.error)
+  }
+
+  /**
+   * Read one file's `HEAD` and current working-tree text through `workspace.gitFileDiff`.
+   * @param workspaceId - owning workspace; `path` must be its own path or a descendant.
+   * @param path - absolute file path.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   * @returns the diff text; either side is `null` when there is nothing there (no `HEAD` blob, or deleted from the working tree).
+   */
+  async getWorkspaceFileDiff(workspaceId: WorkspaceId, path: string, signal?: AbortSignal): Promise<WorkspaceFileDiff> {
+    const response = await this.api.workspace.gitFileDiff({ workspaceId, path }, signal)
+    if (!response.result.ok) throw new WorkspaceFileBrowseError(response.result.error)
+    return response.result.value
   }
 
   /**

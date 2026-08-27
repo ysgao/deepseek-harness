@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
-  commitAllChanges, discardAllChanges, GitCommandError, GitNotARepositoryError, workspaceGitStatus,
+  commitAllChanges, discardAllChanges, GitCommandError, GitNotARepositoryError, workspaceFileAtHead, workspaceGitStatus,
 } from '../src/workspace-git.ts'
 
 function tempDir(prefix: string): string {
@@ -164,6 +164,54 @@ describe('commitAllChanges', () => {
     controller.abort()
     const error = await commitAllChanges(root, 'msg', controller.signal).catch((reason: unknown) => reason)
     expect(error).not.toBeInstanceOf(GitCommandError)
+    expect(error).not.toBeInstanceOf(GitNotARepositoryError)
+  })
+})
+
+describe('workspaceFileAtHead', () => {
+  it('reads a tracked file\'s committed content, independent of later working-tree edits', async () => {
+    const root = tempDir('dsh-workspace-git-head-')
+    initRepo(root)
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    commitAll(root, 'init')
+    writeFileSync(join(root, 'a.txt'), 'changed')
+
+    const content = await workspaceFileAtHead(root, join(root, 'a.txt'))
+    expect(content).toBe('hello')
+  })
+
+  it('resolves to null for an untracked file (no HEAD blob at this path)', async () => {
+    const root = tempDir('dsh-workspace-git-head-untracked-')
+    initRepo(root)
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    commitAll(root, 'init')
+    writeFileSync(join(root, 'new.txt'), 'brand new')
+
+    const content = await workspaceFileAtHead(root, join(root, 'new.txt'))
+    expect(content).toBeNull()
+  })
+
+  it('resolves to null on an unborn branch (no commits yet)', async () => {
+    const root = tempDir('dsh-workspace-git-head-unborn-')
+    initRepo(root)
+    writeFileSync(join(root, 'a.txt'), 'staged before any commit')
+    execFileSync('git', ['-C', root, 'add', 'a.txt'])
+
+    const content = await workspaceFileAtHead(root, join(root, 'a.txt'))
+    expect(content).toBeNull()
+  })
+
+  it('rejects a directory outside any git working tree with GitNotARepositoryError', async () => {
+    const root = tempDir('dsh-workspace-git-head-none-')
+    await expect(workspaceFileAtHead(root, join(root, 'a.txt'))).rejects.toThrow(GitNotARepositoryError)
+  })
+
+  it('propagates an abort instead of collapsing into GitNotARepositoryError', async () => {
+    const root = tempDir('dsh-workspace-git-head-abort-')
+    initRepo(root)
+    const controller = new AbortController()
+    controller.abort()
+    const error = await workspaceFileAtHead(root, join(root, 'a.txt'), controller.signal).catch((reason: unknown) => reason)
     expect(error).not.toBeInstanceOf(GitNotARepositoryError)
   })
 })
