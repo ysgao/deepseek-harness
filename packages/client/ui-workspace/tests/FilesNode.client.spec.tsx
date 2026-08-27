@@ -521,4 +521,80 @@ describe('FilesNode', () => {
     const fooRow = (await screen.findByText('foo')).closest('button')
     expect(fooRow?.querySelector(`[title="${t('files.git.folderDirty')}"]`)).toBeNull()
   })
+
+  it('refetches git status when the explicit refresh control is clicked', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const listWorkspaceGitStatus = vi.fn()
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} })
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={listWorkspaceGitStatus}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByText('main')
+    expect(screen.queryByTitle(t('files.git.dirty'))).toBeNull()
+    await act(async () => { screen.getByTitle(t('files.git.refresh')).click() })
+    expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(2)
+    await waitFor(() => { expect(screen.queryByTitle(t('files.git.dirty'))).not.toBeNull() })
+  })
+
+  it('does not toggle the Files tree when the refresh control inside the header is clicked', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({
+      '/ws': [{ name: 'a.txt', path: '/ws/a.txt', type: 'file', hidden: false }],
+    })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByText('main')
+    await act(async () => { screen.getByTitle(t('files.git.refresh')).click() })
+    expect(screen.queryByText('a.txt')).toBeNull()
+    expect(listWorkspaceEntries).not.toHaveBeenCalled()
+  })
+
+  it('refetches git status when the Files tree is collapsed and reopened', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const listWorkspaceGitStatus = vi.fn()
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} })
+      .mockResolvedValueOnce({ isRepo: true, branch: 'feature-branch', files: {} })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={listWorkspaceGitStatus}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByText('main')
+    expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(1)
+    const header = screen.getByText(t('files.label'))
+    await act(async () => { header.click() }) // expand: collapsed -> expanded, refetches
+    expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(2)
+    await act(async () => { header.click() }) // collapse: no refetch
+    expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(2)
+    await screen.findByText('feature-branch')
+  })
 })

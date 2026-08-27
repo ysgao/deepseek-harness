@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import clsx from 'clsx'
 import {
-  IconFilePlaceholder16, IconFolderClose16, IconFolderOpen16, IconTriangleRightFill14, StateDot,
+  IconFilePlaceholder16, IconFolderClose16, IconFolderOpen16, IconRefreshOutline14, IconTriangleRightFill14, StateDot,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   SessionId, WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId,
@@ -61,44 +61,65 @@ const GIT_STATUS_LABEL_KEYS: Readonly<Record<string, WorkspaceKey>> = {
 }
 
 /**
- * Fetch a Workspace's git status once per mount (and per `workspaceId`
- * change), aborting on unmount/change; a request superseded before it
- * settles is dropped rather than committed. Returns `undefined` until the
- * first fetch settles and stays `undefined` on failure — the header simply
- * omits the branch/status display rather than showing an error notice, since
- * "no git status available" is not a failure state a user needs to act on.
+ * Fetch a Workspace's git status on mount (and per `workspaceId` change),
+ * aborting on unmount/change; a request superseded before it settles is
+ * dropped rather than committed. The returned `refresh` re-triggers the
+ * fetch on demand (an explicit refresh control, or the caller's own
+ * collapse-then-reopen gesture) without clearing the current status first —
+ * the display holds its last known value during a refresh rather than
+ * flickering empty. Returns `undefined` until the first fetch settles and
+ * stays `undefined` on failure — the header simply omits the branch/status
+ * display rather than showing an error notice, since "no git status
+ * available" is not a failure state a user needs to act on.
  */
 function useGitStatus(
   workspaceId: WorkspaceId,
   listWorkspaceGitStatus: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<WorkspaceGitStatus>,
-): WorkspaceGitStatus | undefined {
+): readonly [WorkspaceGitStatus | undefined, () => void] {
   const [status, setStatus] = useState<WorkspaceGitStatus | undefined>(undefined)
+  const [refreshToken, setRefreshToken] = useState(0)
+  // A workspace-identity change drops the previous workspace's status
+  // immediately, distinct from a same-workspace refresh (refreshToken),
+  // which keeps showing the last known status until the new fetch settles.
+  useEffect(() => { setStatus(undefined) }, [workspaceId])
   useEffect(() => {
-    setStatus(undefined)
     const controller = new AbortController()
     listWorkspaceGitStatus(workspaceId, controller.signal).then((result) => {
       if (controller.signal.aborted) return
       setStatus(result)
     }).catch(() => {
-      // Superseded (aborted) or failed: leave the header without a git display.
+      // Superseded (aborted) or failed: leave the header showing whatever it last had.
     })
     return () => { controller.abort() }
-  }, [workspaceId, listWorkspaceGitStatus])
-  return status
+  }, [workspaceId, listWorkspaceGitStatus, refreshToken])
+  const refresh = useCallback(() => { setRefreshToken(token => token + 1) }, [])
+  return [status, refresh] as const
 }
 
-/** The Files header's branch name and dirty indicator; renders nothing outside a git working tree. */
-function GitStatusSummary({ status, t }: { status: WorkspaceGitStatus | undefined; t: FilesTranslate }) {
+/** The Files header's branch name, dirty indicator, and refresh control; renders nothing outside a git working tree. */
+function GitStatusSummary({ status, onRefresh, t }: {
+  status: WorkspaceGitStatus | undefined
+  onRefresh: () => void
+  t: FilesTranslate
+}) {
   if (status === undefined || !status.isRepo || status.branch === null) return null
   const dirty = Object.keys(status.files).length > 0
   return (
-    <span className={css.gitSummary} title={t('files.git.branch', { branch: status.branch })}>
-      <span className={css.gitBranch}>{status.branch}</span>
+    <span className={css.gitSummary}>
+      <span className={css.gitBranch} title={t('files.git.branch', { branch: status.branch })}>{status.branch}</span>
       {dirty && (
         <span className={css.gitDirtyDot} title={t('files.git.dirty')}>
           <StateDot state="warning" size={6} />
         </span>
       )}
+      <button
+        type="button"
+        className={css.gitRefreshButton}
+        title={t('files.git.refresh')}
+        onClick={(e) => { e.stopPropagation(); onRefresh() }}
+      >
+        <IconRefreshOutline14 />
+      </button>
     </span>
   )
 }
@@ -308,7 +329,7 @@ export function FilesNode({
 }: FilesNodeProps) {
   const [expanded, setExpanded] = useState(false)
   const [previewPath, setPreviewPath] = useState<string | null>(null)
-  const gitStatus = useGitStatus(workspaceId, listWorkspaceGitStatus)
+  const [gitStatus, refreshGitStatus] = useGitStatus(workspaceId, listWorkspaceGitStatus)
   // Stable across the viewer-open/close re-renders that would otherwise
   // recreate these closures and re-arm useLevel's effect (its dependency
   // array includes `list`, so an unstable closure would refetch the level on
@@ -327,24 +348,36 @@ export function FilesNode({
     if (currentSessionId !== undefined && openFileInSession(currentSessionId, path)) return
     setPreviewPath(path)
   }, [currentSessionId, openFileInSession])
+  // A collapse-then-reopen also refreshes git status (mirroring the level
+  // fetch's own "collapse-then-reopen refetches" posture) — a second, no-UI
+  // route to fresh status alongside the explicit refresh control.
+  const toggleExpanded = useCallback(() => {
+    setExpanded((value) => {
+      const next = !value
+      if (next) refreshGitStatus()
+      return next
+    })
+  }, [refreshGitStatus])
   return (
     <>
-      <button
-        type="button"
-        className={css.row}
-        style={{ paddingLeft: 8 }}
-        aria-expanded={expanded}
-        onClick={() => { setExpanded(value => !value) }}
-      >
-        <span className={clsx(css.slot, css.chevron)}>
-          <IconTriangleRightFill14 className={clsx(css.arrow, expanded && css.arrowOpen)} />
-        </span>
-        <span className={css.slot}>
-          {expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
-        </span>
-        <span className={css.name}>{t('files.label')}</span>
-        <GitStatusSummary status={gitStatus} t={t} />
-      </button>
+      <div className={css.headerRow}>
+        <button
+          type="button"
+          className={clsx(css.row, css.headerToggle)}
+          style={{ paddingLeft: 8 }}
+          aria-expanded={expanded}
+          onClick={toggleExpanded}
+        >
+          <span className={clsx(css.slot, css.chevron)}>
+            <IconTriangleRightFill14 className={clsx(css.arrow, expanded && css.arrowOpen)} />
+          </span>
+          <span className={css.slot}>
+            {expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
+          </span>
+          <span className={css.name}>{t('files.label')}</span>
+        </button>
+        <GitStatusSummary status={gitStatus} onRefresh={refreshGitStatus} t={t} />
+      </div>
       {expanded && (
         <FilesLevel
           path={rootPath}

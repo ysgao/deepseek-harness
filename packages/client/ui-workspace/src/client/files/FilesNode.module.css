@@ -23,6 +23,21 @@
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
+.headerRow {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding-right: 8px;
+  box-sizing: border-box;
+}
+
+.headerToggle {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  padding-right: 0;
+}
+
 .slot {
   display: inline-flex;
   align-items: center;
@@ -82,6 +97,26 @@
 .gitDirtyDot {
   display: inline-flex;
   flex: none;
+}
+
+.gitRefreshButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 6px;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.gitRefreshButton:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
 }
 
 .gitStatusBadge {

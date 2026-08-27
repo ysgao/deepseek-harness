@@ -18,7 +18,9 @@ Status: implemented
 
 **分支名使用 `symbolic-ref --short HEAD`，而非 `rev-parse --abbrev-ref HEAD`。** 后者在一个"未出生"的分支（刚 `git init`、尚无任何提交的仓库——这是真实且常见的状态，并非罕见情形）上会直接失败，因为没有可解析的提交；`symbolic-ref` 直接读取 HEAD 指向的引用目标，在两种情况下都能解析成功。分离头指针（HEAD 直接指向一个提交而非某个引用）没有分支名，按 git 自身的约定报告为字面量 `"HEAD"`。
 
-**客户端与 UI 层的贯穿方式与相邻 props 完全一致。** `IWorkspaces` 新增 `listWorkspaceGitStatus`；`WorkspaceRuntime` 将其实现为一次简单的 `this.api.workspace.gitStatus(...)` 调用；`WorkspaceBrowserInjected`／`WorkspaceBrowser`／`SessionTree`／`FilesNodeProps` 均在 `listWorkspaceEntries`／`readWorkspaceFile` 旁新增匹配的 prop。`FilesNode` 在挂载时（以及 `workspaceId` 变化时）拉取一次 git 状态，卸载时中止——与 `useLevel` 目录列表钩子已有的"折叠后重新展开即重新拉取"生命周期完全相同，因为 `FilesNode` 本身会在其所属 Workspace 分组每次重新展开时重新挂载。始终可见的头部行（不受文件树自身内部展开开关的控制）在 `files` 非空时显示分支名与一个脏状态指示点（复用 `ui-primitives` 的 `StateDot`）；每一行文件在有待处理更改时，会在文件名后显示其状态字母，颜色沿用既有的 `--dsw-alias-state-{warn,success,error,business}-primary` 令牌区分。
+**客户端与 UI 层的贯穿方式与相邻 props 完全一致。** `IWorkspaces` 新增 `listWorkspaceGitStatus`；`WorkspaceRuntime` 将其实现为一次简单的 `this.api.workspace.gitStatus(...)` 调用；`WorkspaceBrowserInjected`／`WorkspaceBrowser`／`SessionTree`／`FilesNodeProps` 均在 `listWorkspaceEntries`／`readWorkspaceFile` 旁新增匹配的 prop。`FilesNode` 在挂载时（以及 `workspaceId` 变化时）拉取 git 状态，卸载时中止。始终可见的头部行（不受文件树自身内部展开开关的控制）在 `files` 非空时显示分支名与一个脏状态指示点（复用 `ui-primitives` 的 `StateDot`）；每一行文件在有待处理更改时，会在文件名后显示其状态字母，颜色沿用既有的 `--dsw-alias-state-{warn,success,error,business}-primary` 令牌区分。
+
+**git 状态没有实时推送通道，因此改为两条拉取式刷新路径：头部一个显式的刷新图标，以及把文件树折叠后再重新展开**（与 `useLevel` 目录列表钩子已有的"折叠后重新展开即重新拉取"生命周期相同，且这里几乎是白得来的，因为 `FilesNode` 自身的展开处理函数本就在每次切换时执行）。`useGitStatus` 返回 `[status, refresh]`；`refresh` 只是让拉取 effect 依赖数组里的一个令牌自增，并不先清空当前的 `status`，因此一次刷新是原地更新显示，而不是先清空——这与 `workspaceId` 变化不同，后者仍会立即清空（不能让另一个工作区的旧状态残留）。刷新按钮是展开切换 `<button>` 的一个 flex 同级元素，而不是嵌套在其内部——`<button>` 内嵌 `<button>` 是无效的 HTML，且会同时错误地触发两个处理函数——因此头部的外层元素改为一个普通的 `<div>`（`.headerRow`），内含展开切换按钮（`.headerToggle`，`flex: 1`）与 `GitStatusSummary`（分支名、脏状态点、刷新按钮）两个 flex 子元素。
 
 `TestWorkspaces`（`test-support/client-runtime`）与 `FixtureApiClient`（`client/connection`）都实现了这个新方法——前者记录调用并默认返回 `isRepo: false`，后者由于其工作区树是合成的、从来不是真实的 git 工作树，因此始终报告 `isRepo: false`。
 
@@ -33,12 +35,14 @@ Status: implemented
 - **复用 `packages/fs` 或 `packages/subprocess` 而非直接调用 `node:child_process`。** 拒绝：`packages/fs` 是面向模型工具的文件系统能力（沙箱化的智能体读写工具），`packages/subprocess` 是完整的智能体工具子进程接缝（标准输入输出方式、凭证擦除、按进程树的信号升级）——二者都是为与这个宿主原生、非沙箱化的 Web GUI 界面不同的消费方而构建的；而 `workspace-files.ts` 已经为这个界面确立了直接调用 Node 原语的先例。
 - **目录行的聚合标记自带具体状态字母**（仿照文件行的徽标）而非一个单纯的脏状态圆点。拒绝：一个文件夹内可能同时存在新增、修改、删除等多种后代，选取某一个字母来代表这种混合状态会歪曲其余种类的存在；圆点只声明"内部有更改"，这一点在它显示时永远成立。
 - **发起第二个、按目录范围划分的 RPC 调用（或客户端递归拉取）来回答"这个目录内部是否有更改"。** 拒绝：覆盖整个仓库的 `files` 映射已经能通过一次对既有数据的简单前缀扫描（`isUnderDirectory`）来回答这个问题——目录行不需要任何额外的拉取、聚合查询，也不需要提前展开尚未拉取的层级。
+- **实时推送通道**（一个 SSE／文件监听式的 `host/workspace-git-changed` 帧，仿照 `host/workspace-changed`）而非拉取式刷新。作为不成比例而拒绝：git 状态随时可能由应用外部改变（另一个终端、另一个工具），推送通道就需要为每个打开的工作区在 `.git` 上持续运行一个文件系统监听器，而这只是一个非主视图的面板。两条廉价的、由用户主动触发的拉取路径（显式刷新、折叠后重新展开）已经覆盖同样的需求，且没有那份常驻开销。
+- **每次刷新开始时都把 `status` 清空为 `undefined`**，与最初"仅挂载时拉取一次"的重置方式保持一致。在真正接上手动刷新之后被拒绝：这会让分支标签与徽标在每次点击后、新结果到达前都先闪烁清空，而这些数据通常仍然是当前有效的。现在只有 `workspaceId` 变化才会立即清空；同一工作区内的一次刷新会保留上一个已知值，直到新结果到达。
 
 ## 影响
 
 - 新增文件：`packages/host/apiproxy/src/workspace-git.ts`，及其测试 `packages/host/apiproxy/tests/workspace-git.spec.ts`。
 - 新增 RPC 方法 `workspace.gitStatus`，请求为 `{ workspaceId }`，响应为 `WorkspaceGitStatus { isRepo, branch, files }`——一个正常（非错误）的 `isRepo: false` 结果同时覆盖"不是仓库"与"没有可用的 `git` 可执行文件"两种情形。
 - `IWorkspaces`、`WorkspaceBrowserInjected`、`FilesNodeProps` 均新增 `listWorkspaceGitStatus`；`TestWorkspaces` 与 `FixtureApiClient` 都实现了它（默认 `isRepo: false`）。
-- `zh`／`en` 两侧均新增本地化键 `files.git.branch`、`files.git.dirty`、`files.git.folderDirty`、`files.git.status.{M,A,D,R,C,U}`。
+- `zh`／`en` 两侧均新增本地化键 `files.git.branch`、`files.git.dirty`、`files.git.folderDirty`、`files.git.refresh`、`files.git.status.{M,A,D,R,C,U}`。
 - 每个改动到的文件在其所属包自身的测试套件中都达到 100% 的行／分支／函数覆盖率（`workspace-git.ts`、`FilesNode.tsx`、`api-proxy.ts`／`fetch/client.ts` 的接线部分）；`workspace-git.ts` 中有一条分支——调用方信号恰好在仓库根检查完成与分支名调用完成之间这段极窄的窗口内中止——被标记为 `v8 ignore`，理由是无法在测试中可移植地构造这种竞态，这与 `workspace-files.ts` 自身对其"扫描中途失败"分支已有的先例一致。`ui-workspace/src/client/index.ts` 与 `WorkspaceBrowser.tsx` 仍处于本次改动之前就已存在的 GUI 债务覆盖率豁免名单（`vitest.config.ts`）之内；本次在其中新增的仅是 prop 传递，不引入新分支。
 - 早期草稿中，调用方信号在仓库根检查阶段中止时会被吞掉、直接归入普通的 `isRepo: false` 结果（`catch` 块把包括中止在内的一切都吞掉了）——这一问题在落地前被一个测试捕捉并修复：中止现在会重新抛出，并向上传播到 RPC 处理器的 `cancelled` 响应，与 `listEntries`／`readFile` 报告取消的方式保持一致。

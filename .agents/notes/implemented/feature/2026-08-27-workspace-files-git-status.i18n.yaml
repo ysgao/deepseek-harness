@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-27-workspace-files-git-status.md
-2026-08-27-workspace-files-git-status.md: 98eaa491cc9fde8556092ca62538845615c92312
-2026-08-27-workspace-files-git-status.zh.md: 2b785b1af38bb8259ad194dedc4e74d281e9df4a
+2026-08-27-workspace-files-git-status.md: e83e4b6e9bdd63b6e93c3aae1dbacfedaf418ebb
+2026-08-27-workspace-files-git-status.zh.md: be9c38f83bcc751e2c1382e8123ce3cf0ecf4ef8
