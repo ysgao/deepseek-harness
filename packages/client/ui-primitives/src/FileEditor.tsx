@@ -23,6 +23,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import clsx from 'clsx'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers } from '@codemirror/view'
@@ -30,7 +31,11 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirro
 import { markdown } from '@codemirror/lang-markdown'
 import { MarkdownText } from './markdown/MarkdownText.tsx'
 import { editorTheme } from './codemirror/theme.ts'
+import { useSplitRatio } from './useSplitRatio.ts'
 import css from './FileEditor.module.css'
+
+/** `--ds-file-editor-ratio` holds a unitless number read back by {@link FileEditor.module.css}'s `calc()` column widths. */
+type SplitRootStyle = CSSProperties & { '--ds-file-editor-ratio': number }
 
 /** Debounce between a keystroke and the Markdown preview pane re-rendering it. */
 const MARKDOWN_PREVIEW_DEBOUNCE_MS = 150
@@ -65,6 +70,7 @@ export function FileEditor({ text, kind, onChange, onSaveRequested, className }:
   const onSaveRequestedRef = useRef(onSaveRequested)
   onSaveRequestedRef.current = onSaveRequested
   const [previewText, setPreviewText] = useState(kind === 'markdown' ? text : '')
+  const { ratio, dividerProps } = useSplitRatio()
 
   useEffect(() => {
     const host = hostRef.current
@@ -105,13 +111,31 @@ export function FileEditor({ text, kind, onChange, onSaveRequested, className }:
     // component doc comment) — CodeMirror owns the document from here.
   }, [])
 
+  const splitStyle: SplitRootStyle | undefined = kind === 'markdown'
+    ? { '--ds-file-editor-ratio': ratio }
+    : undefined
+
   return (
-    <div className={clsx(kind === 'markdown' ? css.splitRoot : css.root, className)}>
+    <div
+      className={clsx(kind === 'markdown' ? css.splitRoot : css.root, className)}
+      style={splitStyle}
+    >
       <div className={css.editorPane} ref={hostRef} />
       {kind === 'markdown' && (
-        <div className={css.previewPane}>
-          <MarkdownText text={previewText} />
-        </div>
+        <>
+          <div
+            className={css.divider}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize preview pane"
+            tabIndex={0}
+            title="Drag to resize. Double-click to reset."
+            {...dividerProps}
+          />
+          <div className={css.previewPane}>
+            <MarkdownText text={previewText} />
+          </div>
+        </>
       )}
     </div>
   )

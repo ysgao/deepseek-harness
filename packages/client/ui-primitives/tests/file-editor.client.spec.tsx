@@ -27,6 +27,13 @@ beforeEach(() => {
     unobserve(): void {}
     disconnect(): void {}
   })
+  Element.prototype.getBoundingClientRect = function () {
+    return { width: 400, height: 300, top: 0, left: 0, right: 400, bottom: 300, x: 0, y: 0, toJSON: () => ({}) }
+  }
+  const captured = new WeakSet<Element>()
+  Element.prototype.setPointerCapture = function () { captured.add(this) }
+  Element.prototype.releasePointerCapture = function () { captured.delete(this) }
+  Element.prototype.hasPointerCapture = function () { return captured.has(this) }
 })
 
 afterEach(() => {
@@ -104,6 +111,27 @@ describe('FileEditor', () => {
     content.dispatchEvent(event)
     expect(onSaveRequested).toHaveBeenCalledTimes(1)
     expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('renders no divider for a plain text file', () => {
+    const { container } = render(
+      <FileEditor path="/ws/notes.txt" text="hello" kind="text" onChange={vi.fn()} />,
+    )
+    expect(container.querySelector('[role="separator"]')).toBeNull()
+  })
+
+  it('drags the Markdown split divider to resize the ratio between panes', () => {
+    const { container } = render(
+      <FileEditor path="/ws/README.md" text="# Title" kind="markdown" onChange={vi.fn()} />,
+    )
+    const divider = container.querySelector('[role="separator"]')
+    const splitRoot = divider?.parentElement
+    if (divider === null || divider === undefined || splitRoot === null || splitRoot === undefined) throw new Error('unreachable')
+    expect(splitRoot.style.getPropertyValue('--ds-file-editor-ratio')).toBe('0.5')
+    act(() => { divider.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 200, bubbles: true, button: 0 })) })
+    act(() => { divider.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 240, bubbles: true })) })
+    act(() => { divider.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 240, bubbles: true })) })
+    expect(Number(splitRoot.style.getPropertyValue('--ds-file-editor-ratio'))).toBeCloseTo(0.6, 5)
   })
 
   it('tears the editor view down cleanly on unmount', () => {

@@ -9,10 +9,15 @@
 // for the reader's attention. Colors resolve through --dsw-* tokens.
 
 import { useCallback, useMemo, useState } from 'react'
+import type { CSSProperties } from 'react'
 import clsx from 'clsx'
 import { diffLines } from 'diff'
 import { writeClipboard } from './clipboard.ts'
+import { useSplitRatio } from './useSplitRatio.ts'
 import css from './SideBySideDiff.module.css'
+
+/** `--dsl-sbs-diff-ratio` holds a unitless number read back by {@link SideBySideDiff.module.css}'s `calc()` column widths. */
+type DiffBodyStyle = CSSProperties & { '--dsl-sbs-diff-ratio': number }
 
 /** One side's cell in a diff row: absent (no line here) is `number: null, text: null`. */
 interface DiffCell {
@@ -143,6 +148,7 @@ const CELL_CLASS: Record<DiffCell['tone'], string | undefined> = {
 export function SideBySideDiff({ path, oldText, newText, className }: SideBySideDiffProps) {
   const rows = useMemo(() => buildRows(oldText, newText), [oldText, newText])
   const [copied, setCopied] = useState(false)
+  const { ratio, dividerProps } = useSplitRatio()
 
   const onCopy = useCallback(() => {
     if (copied) return
@@ -155,6 +161,8 @@ export function SideBySideDiff({ path, oldText, newText, className }: SideBySide
 
   if (rows.length === 0) return null
 
+  const bodyStyle: DiffBodyStyle = { '--dsl-sbs-diff-ratio': ratio }
+
   return (
     <div className={clsx(css.block, className)} data-side-by-side-diff="">
       <div className={css.banner}>
@@ -163,7 +171,16 @@ export function SideBySideDiff({ path, oldText, newText, className }: SideBySide
           {copied ? '复制成功' : '复制'}
         </button>
       </div>
-      <div className={css.body}>
+      <div className={css.body} style={bodyStyle}>
+        <div
+          className={css.divider}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize diff columns"
+          tabIndex={0}
+          title="Drag to resize. Double-click to reset."
+          {...dividerProps}
+        />
         {rows.map((row, index) => (
           <div key={index} className={css.row}>
             <span className={css.gutter} aria-hidden>{row.old.number ?? ''}</span>

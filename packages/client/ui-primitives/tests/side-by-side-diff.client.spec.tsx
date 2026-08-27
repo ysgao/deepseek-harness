@@ -14,6 +14,13 @@ afterEach(cleanup)
 
 beforeEach(() => {
   vi.useRealTimers()
+  Element.prototype.getBoundingClientRect = function () {
+    return { width: 800, height: 200, top: 0, left: 0, right: 800, bottom: 200, x: 0, y: 0, toJSON: () => ({}) }
+  }
+  const captured = new WeakSet<Element>()
+  Element.prototype.setPointerCapture = function () { captured.add(this) }
+  Element.prototype.releasePointerCapture = function () { captured.delete(this) }
+  Element.prototype.hasPointerCapture = function () { return captured.has(this) }
 })
 
 interface Row {
@@ -114,6 +121,20 @@ describe('SideBySideDiff alignment', () => {
   it('treats a trailing newline as a terminator, not an extra blank line', () => {
     const { container } = render(<SideBySideDiff oldText={null} newText={'hello\n'} />)
     expect(rows(container)).toEqual([{ oldNum: '', oldText: '', newNum: '1', newText: 'hello' }])
+  })
+})
+
+describe('SideBySideDiff divider', () => {
+  it('drags the column divider to resize the ratio between the two sides', () => {
+    const { container } = render(<SideBySideDiff oldText={'a\nb'} newText={'p\nq'} />)
+    const divider = container.querySelector('[role="separator"]')
+    const body = divider?.parentElement
+    if (divider === null || divider === undefined || body === null || body === undefined) throw new Error('unreachable')
+    expect(body.style.getPropertyValue('--dsl-sbs-diff-ratio')).toBe('0.5')
+    act(() => { divider.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, clientX: 400, bubbles: true, button: 0 })) })
+    act(() => { divider.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 480, bubbles: true })) })
+    act(() => { divider.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 480, bubbles: true })) })
+    expect(Number(body.style.getPropertyValue('--dsl-sbs-diff-ratio'))).toBeCloseTo(0.6, 5)
   })
 })
 

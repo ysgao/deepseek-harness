@@ -1,14 +1,18 @@
 /* Geometry mirrors ReadBlock/DiffBlock (12px radius, code-block surface +
    banner row, markdown code-block font) so the diff view reads as the same
    family. Two independent gutter+content column pairs sit side by side in one
-   CSS grid, divided by a border on the new-side gutter; each row keeps
-   `white-space: pre` and the whole grid scrolls horizontally, since folding a
-   source line destroys the indentation a diff is read by. */
+   CSS grid, split by a draggable divider track (--dsl-sbs-diff-ratio, from
+   useSplitRatio) between them; each row keeps `white-space: pre` and the
+   whole grid scrolls horizontally, since folding a source line destroys the
+   indentation a diff is read by. The divider spans every row via
+   `grid-row: 1 / -1` so it scrolls with the columns it separates; rows
+   (`display: contents`) place their four cells explicitly around its track. */
 
 .block {
   --dsl-sbs-diff-radius: 12px;
   --dsl-sbs-diff-line-height: 22px;
   --dsl-sbs-diff-gutter: 48px;
+  --dsl-sbs-diff-divider-width: 8px;
 
   margin: 16px 0;
   color: var(--dsw-alias-label-primary);
@@ -51,7 +55,12 @@
 
 .body {
   display: grid;
-  grid-template-columns: var(--dsl-sbs-diff-gutter) 1fr var(--dsl-sbs-diff-gutter) 1fr;
+  grid-template-columns:
+    var(--dsl-sbs-diff-gutter)
+    calc((100% - 2 * var(--dsl-sbs-diff-gutter) - var(--dsl-sbs-diff-divider-width)) * var(--dsl-sbs-diff-ratio, 0.5))
+    var(--dsl-sbs-diff-divider-width)
+    var(--dsl-sbs-diff-gutter)
+    calc((100% - 2 * var(--dsl-sbs-diff-gutter) - var(--dsl-sbs-diff-divider-width)) * (1 - var(--dsl-sbs-diff-ratio, 0.5)));
   padding: 12px 0;
   font: var(--dsw-font-markdown-code-block);
   overflow-x: auto;
@@ -59,9 +68,52 @@
 }
 
 /* A row's four cells lay out directly in the body's grid tracks (no nested
-   box), so the old and new columns of every row stay pixel-aligned. */
+   box), so the old and new columns of every row stay pixel-aligned; the
+   divider's own track (3) sits between them, explicit here so row cells
+   don't drift into it. */
 .row {
   display: contents;
+}
+
+.row .gutter:first-child {
+  grid-column: 1;
+}
+
+.row .content:nth-child(2) {
+  grid-column: 2;
+}
+
+.row .gutter:nth-child(3) {
+  grid-column: 4;
+  padding-left: 14px;
+}
+
+.row .content:nth-child(4) {
+  grid-column: 5;
+}
+
+.divider {
+  grid-column: 3;
+  grid-row: 1 / -1;
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.divider::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--dsw-alias-separator-primary);
+}
+
+.divider:focus-visible {
+  outline: none;
 }
 
 .gutter {
@@ -74,12 +126,6 @@
   /* The gutter is chrome, not content: keep it out of a text selection so a
      copy of the visible rows carries the source, not the line numbers. */
   user-select: none;
-}
-
-/* The new side's gutter carries the divider between the two columns. */
-.row .gutter:nth-child(3) {
-  border-left: 1px solid var(--dsw-alias-separator-primary);
-  padding-left: 14px;
 }
 
 .content {
