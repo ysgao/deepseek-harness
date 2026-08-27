@@ -430,6 +430,33 @@ describe('ConversationRoot resident composer', () => {
     expect(b.view.getByText('Selected Folder')).toBeTruthy()
   })
 
+  it('hero phase: the File tab stays reachable, unlike Chat, once a file has been opened', () => {
+    const b = mount(
+      conversationSnapshot({ composerPhase: 'blank', blank: true }),
+      [{ ...workspace('one'), sessionIds: [SID] }],
+      undefined,
+      { viewTabs: [{ id: 'chat', label: 'Chat' }, { id: 'file', label: 'File' }] },
+    )
+    // Still hero-hidden while the default (Chat) view is selected.
+    const header = b.view.container.querySelector('header')
+    expect(header?.getAttribute('aria-hidden')).toBe('true')
+    expect(b.view.queryByTestId('view-file')).toBeNull()
+
+    // The file-open drain effect is what actually sets this in production
+    // (ConversationSession's pendingFileOpen effect); asserting the resulting
+    // state directly here, since usePendingFileOpen is stubbed to `undefined`
+    // in this harness (see mount()).
+    act(() => { b.chat.actions.setView('file') })
+    b.rerender()
+
+    const headerAfter = b.view.container.querySelector('header')
+    expect(headerAfter?.getAttribute('aria-hidden')).toBeNull()
+    expect(b.view.getByRole('tab', { name: 'File' })).toBeTruthy()
+    expect(b.view.getByTestId('view-file')).toBeTruthy()
+    // The hero welcome card still coexists below it — blank stays blank.
+    expect(b.view.getByText('探索未至之境')).toBeTruthy()
+  })
+
   it('settling phase: a summary that does not prove the session blank hides the composer while it opens', () => {
     const b = mount(conversationSnapshot({ composerPhase: 'blank', blank: true, openState: 'loading' }))
     const root = b.view.container.querySelector('[data-phase]')

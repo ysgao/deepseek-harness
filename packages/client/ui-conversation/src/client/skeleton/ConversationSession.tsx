@@ -61,7 +61,8 @@ function equalBreadcrumbs(left: readonly Breadcrumb[], right: readonly Breadcrum
 /**
  * Renders Session header chrome above the resident conversation scrollport.
  * @param props - Strict Session store, view ledger, navigation, render, and locale shares.
- * @returns the hidden blank-session header or visible title and tabs.
+ * @returns the hidden blank-session header, or visible title and tabs — shown
+ * regardless of blank status once the File tab is active.
  */
 export function ConversationSessionHeader({
   sessionId, useSession, useSessions, useStore, actions,
@@ -74,7 +75,13 @@ export function ConversationSessionHeader({
   const ancestry = useSessions(s => deriveAncestry(s, sessionId), equalBreadcrumbs)
   const composerPhase = useSession(s => s.composerPhase)
   const blank = useSession(s => s.blank)
-  const hideChrome = blank && composerPhase === 'blank'
+  // The File tab stays reachable even before the session's first turn: unlike
+  // Chat (no history yet) or Trajectory (no tool calls yet), browsing or
+  // editing a workspace file needs no turn to have run. Gated on the
+  // persisted view selection (`setView('file')`, set once by the file-open
+  // drain effect below and never reset elsewhere), not the one-shot
+  // `openFilePath` handoff, so the tab does not flash open and re-hide.
+  const hideChrome = blank && composerPhase === 'blank' && active?.id !== 'file'
 
   return (
     <header
@@ -168,7 +175,9 @@ export function ConversationSessionHeader({
  * Renders the active Session view inside the resident scrollport and keeps
  * the input draft mirrored while blank Hero chrome is visible.
  * @param props - Strict Session input/store, view ledger, and render shares.
- * @returns the active view area, or null while the Session remains blank.
+ * @returns the active view area, or null while the Session remains blank —
+ * except the File tab, reachable before the first turn since a workspace
+ * file needs no turn to browse or edit.
  */
 export function ConversationSession({
   sessionId, useSession, useInput, inputActions, useStore, actions,
@@ -210,7 +219,11 @@ export function ConversationSession({
     actions.setView('file')
   }, [pendingFileOpen, actions])
 
-  if (blank && composerPhase === 'blank') return null
+  // Same File-tab exception as the header's hideChrome (see there): the
+  // view area renders while blank exactly when the File tab is the active
+  // one, so a file opened via the Files tree before any turn has run is
+  // actually reachable instead of being hidden behind the Hero screen.
+  if (blank && composerPhase === 'blank' && active?.id !== 'file') return null
   return (
     <div className={css.viewArea}>
       {active !== undefined && renderSlot('conversation.view', {
