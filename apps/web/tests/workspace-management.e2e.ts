@@ -549,6 +549,22 @@ describe('web e2e: workspace management (create / rename / flat view / hover aff
     expect(tripwire.pageErrors).toEqual([])
   }, 60_000)
 
+  it('copies the raw session id from the row menu, not the display title', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-ws-copy-id'))
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+    const sessionRow = await seededSessionRow()
+    const trigger = sessionRow.locator('button[aria-label^="Session actions for "]')
+    const triggerName = await trigger.getAttribute('aria-label')
+    if (triggerName === null) throw new Error('seeded Session row has no actions label')
+    await clickHoverAction(sessionRow, triggerName)
+    await page.getByRole('menuitem', { name: 'Copy session ID' }).click()
+    // Fire-and-forget like Fork/Archive: the menu closes with no dialog and
+    // no confirmation toast (Copy has no menu-level success affordance).
+    await expect.poll(() => page.getByRole('menuitem').count(), { timeout: 5_000 }).toBe(0)
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(SEED_ID)
+    expect(tripwire.pageErrors).toEqual([])
+  }, 60_000)
+
   it('archives the seeded session from its row menu, hiding it durably across reload', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-ws-archive'))
     // The seeded session lives under Ungrouped (expanded by the hover-card

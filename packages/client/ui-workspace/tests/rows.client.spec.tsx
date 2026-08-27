@@ -429,6 +429,28 @@ describe('workspace browser rows', () => {
     expect(screen.queryByRole('menu')).toBeNull()
   })
 
+  it('session row menu copies the raw session id to the clipboard, fire-and-forget like fork/archive', async () => {
+    const writeText = vi.fn(async () => {})
+    const restoreClipboard = installClipboard(writeText)
+    try {
+      const onOpen = vi.fn()
+      const node: SessionNode = {
+        id: sid('s1'), title: 'One', blank: false, running: false,
+        runningSubagentCount: 0, completed: false, updatedAt: 0,
+      }
+      render(<SessionNodeItem node={node} currentId={undefined} now={0} onOpen={onOpen}
+        onRename={vi.fn()} onFork={vi.fn()} onArchive={vi.fn()} t={t} />)
+      fireEvent.click(screen.getByRole('button', { name: '会话“One”的操作' }))
+      await act(async () => { fireEvent.click(screen.getByRole('menuitem', { name: '复制会话 ID' })) })
+      expect(writeText).toHaveBeenCalledWith('s1')
+      // The raw id, not the display title, and no session-open side effect.
+      expect(screen.queryByRole('menu')).toBeNull()
+      expect(onOpen).not.toHaveBeenCalled()
+    } finally {
+      restoreClipboard()
+    }
+  })
+
 
   it('shows the hover card after the dwell and suppresses it while the row menu is open', () => {
     vi.useFakeTimers()
