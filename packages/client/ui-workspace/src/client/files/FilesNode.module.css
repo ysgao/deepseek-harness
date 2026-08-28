@@ -195,7 +195,8 @@
   color: var(--dsw-alias-state-success-primary);
 }
 
-.gitStatusD {
+.gitStatusD,
+.gitStatusX {
   color: var(--dsw-alias-state-error-primary);
 }
 

@@ -4,7 +4,9 @@
  * the File tab's diff view), and the Commit-all/Discard-all/Pull-rebase/Push
  * write actions, all scanned or applied against the git repository enclosing
  * a workspace's own directory (which may be an ancestor of it). Shells out to
- * the host's own `git` binary; there is no bundled git implementation.
+ * the host's own `git` binary via the shared {@link runNativeCommand} runner
+ * (no-shell `execFile`, Windows console hide, abort propagation); there is no
+ * bundled git implementation.
  *
  * `workspaceGitStatus` treats a directory outside any working tree, or a
  * host with no `git` binary at all, as `isRepo: false` rather than a thrown
@@ -16,12 +18,23 @@
  * @module
  */
 
-import { execFile } from 'node:child_process'
+import { stat } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
-import { promisify } from 'node:util'
+import { runNativeCommand } from '@deepseek-ai/dsh-native-command'
 import type { WorkspaceGitStatus } from './api/workspace.ts'
 
-const execFileAsync = promisify(execFile)
+/**
+ * Run one `git` subcommand through the shared no-shell runner. `signal` stays
+ * optional on every function in this module (an unset caller lifetime simply
+ * never aborts); {@link runNativeCommand} itself requires a signal, so an
+ * absent one is backed by a controller nothing ever triggers.
+ * @param args - argv after `git` (never a shell string).
+ * @param signal - caller lifetime; abort terminates the child and rejects with the abort reason.
+ * @returns captured stdout/stderr on exit 0.
+ */
+function runGit(args: readonly string[], signal: AbortSignal | undefined): Promise<{ stdout: string; stderr: string }> {
+  return runNativeCommand('git', args, signal ?? new AbortController().signal)
+}
 
 /** Thrown by a write action when its target directory is outside any git working tree. */
 export class GitNotARepositoryError extends Error {
@@ -35,7 +48,7 @@ export class GitNotARepositoryError extends Error {
 /** Thrown by a write action when the underlying git command exits non-zero (including a failing commit hook). */
 export class GitCommandError extends Error {
   /**
-   * @param command - short name of the failing step (`add`, `commit`, `reset`, `checkout`).
+   * @param command - short name of the failing step (`add`, `commit`, `reset`, `checkout`, `rebase-abort`, `pull`, `push`).
    * @param message - git's own stderr/stdout text.
    */
   constructor(readonly command: string, message: string) {
@@ -64,7 +77,7 @@ function messageOf(error: unknown): string {
  * @throws when `path` is not inside a working tree, or the caller aborts.
  */
 async function repoToplevel(path: string, signal: AbortSignal | undefined): Promise<string> {
-  const { stdout } = await execFileAsync('git', ['-C', path, 'rev-parse', '--show-toplevel'], { signal })
+  const { stdout } = await runGit(['-C', path, 'rev-parse', '--show-toplevel'], signal)
   return stdout.trim()
 }
 
@@ -72,12 +85,23 @@ async function repoToplevel(path: string, signal: AbortSignal | undefined): Prom
 const STATUS_PREFIX_LENGTH = 3
 
 /**
- * Single display code for one porcelain `XY` pair: the staged (index) letter
- * when set, else the worktree letter, else `U` for an untracked (`??`) entry.
+ * The porcelain `XY` pairs marking an unmerged path (a rebase or merge
+ * conflict), per `git-status`'s own documented table — every combination
+ * pairing `D`/`A`/`U` with `U` (in either position), plus `AA`/`DD` for both
+ * sides adding or deleting the same path.
+ */
+const UNMERGED_CODES = new Set(['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU'])
+
+/**
+ * Single display code for one porcelain `XY` pair: `X` for an unmerged
+ * (conflicted) path, else the staged (index) letter when set, else the
+ * worktree letter, else `U` for an untracked (`??`) entry. Checked before the
+ * `??` test since neither shares a character with an unmerged pair.
  * @param xy - the two-character porcelain status code.
- * @returns one of `M`/`A`/`D`/`R`/`C`/`U`.
+ * @returns one of `M`/`A`/`D`/`R`/`C`/`U`/`X`.
  */
 function classify(xy: string): string {
+  if (UNMERGED_CODES.has(xy)) return 'X'
   if (xy === '??') return 'U'
   const staged = xy.slice(0, 1)
   return staged !== ' ' ? staged : xy.slice(1, 2)
@@ -129,7 +153,7 @@ export async function workspaceGitStatus(path: string, signal?: AbortSignal): Pr
   }
   const [branch, { stdout: statusOut }] = await Promise.all([
     currentBranch(repoRoot, signal),
-    execFileAsync('git', ['-C', repoRoot, 'status', '--porcelain=v1', '-z', '--untracked-files=all'], { signal }),
+    runGit(['-C', repoRoot, 'status', '--porcelain=v1', '-z', '--untracked-files=all'], signal),
   ])
   return { isRepo: true, branch, files: parsePorcelain(statusOut, repoRoot) }
 }
@@ -147,7 +171,7 @@ export async function workspaceGitStatus(path: string, signal?: AbortSignal): Pr
 export async function commitAllChanges(path: string, message: string, signal?: AbortSignal): Promise<void> {
   const repoRoot = await repoRootOrThrow(path, signal)
   try {
-    await execFileAsync('git', ['-C', repoRoot, 'add', '-A'], { signal })
+    await runGit(['-C', repoRoot, 'add', '-A'], signal)
   } catch (error: unknown) {
     /* v8 ignore next -- needs the caller signal to abort in the narrow window
        between the repo-root check settling and this call settling; not
@@ -160,12 +184,44 @@ export async function commitAllChanges(path: string, message: string, signal?: A
     throw new GitCommandError('add', messageOf(error))
   }
   try {
-    await execFileAsync('git', ['-C', repoRoot, 'commit', '-m', message], { signal })
+    await runGit(['-C', repoRoot, 'commit', '-m', message], signal)
   } catch (error: unknown) {
     /* v8 ignore next -- same narrow-window rationale as the `add` catch above. */
     if (signal?.aborted) throw error
     throw new GitCommandError('commit', messageOf(error))
   }
+}
+
+/**
+ * Whether `repoRoot` has a rebase currently in progress (conflicted or not) —
+ * a `rebase-merge` or `rebase-apply` state directory present under `.git`,
+ * git's own on-disk marker for "mid-rebase", checked via `rev-parse
+ * --git-path` (which computes the path unconditionally, present or not)
+ * rather than assuming the ordinary `.git/<name>` layout, since a worktree or
+ * a relocated `$GIT_DIR` can move it. `--git-path` prints a path relative to
+ * `repoRoot` (as `-C` puts it, not this process's own cwd) unless the git
+ * directory lives elsewhere, so it is resolved against `repoRoot` before use
+ * — `resolve()` leaves an already-absolute path (the relocated-`$GIT_DIR`
+ * case) untouched.
+ * @param repoRoot - absolute repository root.
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @returns whether a rebase is in progress.
+ */
+async function isRebaseInProgress(repoRoot: string, signal: AbortSignal | undefined): Promise<boolean> {
+  const gitPaths = await Promise.all(['rebase-merge', 'rebase-apply'].map(async (name) => {
+    const { stdout } = await runGit(['-C', repoRoot, 'rev-parse', '--git-path', name], signal)
+    return resolve(repoRoot, stdout.trim())
+  }))
+  const present = await Promise.all(gitPaths.map(async (gitPath) => {
+    try {
+      await stat(gitPath)
+      return true
+    } catch {
+      // ENOENT: this state directory is absent, i.e. no rebase of this kind.
+      return false
+    }
+  }))
+  return present.some(Boolean)
 }
 
 /**
@@ -178,15 +234,39 @@ export async function commitAllChanges(path: string, message: string, signal?: A
  * reason — verified empirically, since `git restore --staged --worktree`
  * deletes such a file outright, unlike the `reset` + `checkout` pair used
  * here.
+ *
+ * When a prior {@link pullRebase} left the repository mid-rebase (a rebase
+ * conflict), `HEAD` transiently points at the commit currently being
+ * replayed, not the branch's own pre-rebase tip — a plain `reset` +
+ * `checkout` would "discard" onto that transient commit and leave the branch
+ * detached with the conflict markers untouched. This runs `git rebase
+ * --abort` instead in that case, which is what "discard everything and
+ * return to a clean state" actually means mid-rebase: it restores the
+ * branch's pre-rebase tip and working tree in one step, undoing the
+ * conflicted files along with it.
  * @param path - workspace's own directory (absolute).
  * @param signal - caller lifetime; abort rejects with the abort reason.
  * @throws {GitNotARepositoryError} when `path` is outside any git working tree.
- * @throws {GitCommandError} when `git reset` or `git checkout` exits non-zero.
+ * @throws {GitCommandError} when `git rebase --abort` (mid-rebase) or
+ * `git reset`/`git checkout` (otherwise) exits non-zero.
  */
 export async function discardAllChanges(path: string, signal?: AbortSignal): Promise<void> {
   const repoRoot = await repoRootOrThrow(path, signal)
+  if (await isRebaseInProgress(repoRoot, signal)) {
+    try {
+      await runGit(['-C', repoRoot, 'rebase', '--abort'], signal)
+    } catch (error: unknown) {
+      /* v8 ignore next -- same narrow-window rationale as commitAllChanges's own catch blocks. */
+      if (signal?.aborted) throw error
+      /* v8 ignore next -- `git rebase --abort` against a state directory this
+         function just confirmed exists fails only on the same kind of host
+         filesystem condition as `git add -A` above, not portably reproducible. */
+      throw new GitCommandError('rebase-abort', messageOf(error))
+    }
+    return
+  }
   try {
-    await execFileAsync('git', ['-C', repoRoot, 'reset'], { signal })
+    await runGit(['-C', repoRoot, 'reset'], signal)
   } catch (error: unknown) {
     /* v8 ignore next -- same narrow-window rationale as commitAllChanges's own catch blocks. */
     if (signal?.aborted) throw error
@@ -196,7 +276,7 @@ export async function discardAllChanges(path: string, signal?: AbortSignal): Pro
     throw new GitCommandError('reset', messageOf(error))
   }
   try {
-    await execFileAsync('git', ['-C', repoRoot, 'checkout', '--', '.'], { signal })
+    await runGit(['-C', repoRoot, 'checkout', '--', '.'], signal)
   } catch (error: unknown) {
     /* v8 ignore next -- same narrow-window rationale as commitAllChanges's own catch blocks. */
     if (signal?.aborted) throw error
@@ -216,7 +296,7 @@ export async function discardAllChanges(path: string, signal?: AbortSignal): Pro
 export async function pullRebase(path: string, signal?: AbortSignal): Promise<void> {
   const repoRoot = await repoRootOrThrow(path, signal)
   try {
-    await execFileAsync('git', ['-C', repoRoot, 'pull', '--rebase'], { signal })
+    await runGit(['-C', repoRoot, 'pull', '--rebase'], signal)
   } catch (error: unknown) {
     /* v8 ignore next -- needs the caller signal to abort in the narrow window
        between the repo-root check settling and this call settling; not
@@ -227,8 +307,46 @@ export async function pullRebase(path: string, signal?: AbortSignal): Promise<vo
 }
 
 /**
+ * The remote name the current branch pushes to, read from `branch.<name>.remote`.
+ * Used to push an explicit `<remote> HEAD` refspec so the current branch is
+ * the only one affected, independent of the host's `push.default`/
+ * `remote.<name>.push` configuration. Undefined when the branch has no
+ * configured remote — {@link push} then falls back to a bare `git push`,
+ * which reports the same "no configured push destination" failure either way.
+ * @param repoRoot - absolute repository root.
+ * @param branch - the current branch name (never `"HEAD"`; the caller only
+ * looks this up for a named branch).
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @returns the configured remote name, or undefined when none is set.
+ */
+async function currentRemote(repoRoot: string, branch: string, signal: AbortSignal | undefined): Promise<string | undefined> {
+  try {
+    const { stdout } = await runGit(['-C', repoRoot, 'config', '--get', `branch.${branch}.remote`], signal)
+    const remote = stdout.trim()
+    /* v8 ignore next -- `git config --get` on a present key returns its
+       stored value; git rejects setting an empty remote name, so an empty
+       success result is not reachable through ordinary config. */
+    return remote === '' ? undefined : remote
+  } catch (error: unknown) {
+    /* v8 ignore next -- needs the caller signal to abort in the narrow window
+       between the repo-root check settling and this call settling; not
+       reliably raceable in a portable test (see currentBranch's own guard). */
+    if (signal?.aborted) throw error
+    // No `branch.<name>.remote` entry: `git config --get` exits 1 rather
+    // than emitting an empty line, which lands here rather than the empty
+    // string above.
+    return undefined
+  }
+}
+
+/**
  * Pushes the current branch to its configured remote, in the git repository
- * enclosing `path`.
+ * enclosing `path`. Resolves the branch's own remote and pushes an explicit
+ * `<remote> HEAD` refspec rather than a bare `git push`, so only the current
+ * branch is ever affected — a bare `git push`'s scope instead depends on the
+ * host's `push.default`/`remote.<name>.push` configuration, which can push
+ * every locally-diverged branch with a same-named remote counterpart
+ * (`push.default: matching`).
  * @param path - workspace's own directory (absolute).
  * @param signal - caller lifetime; abort rejects with the abort reason.
  * @throws {GitNotARepositoryError} when `path` is outside any git working tree.
@@ -237,8 +355,11 @@ export async function pullRebase(path: string, signal?: AbortSignal): Promise<vo
  */
 export async function push(path: string, signal?: AbortSignal): Promise<void> {
   const repoRoot = await repoRootOrThrow(path, signal)
+  const branch = await currentBranch(repoRoot, signal)
+  const remote = branch === 'HEAD' ? undefined : await currentRemote(repoRoot, branch, signal)
+  const gitArgs = remote === undefined ? ['push'] : ['push', remote, 'HEAD']
   try {
-    await execFileAsync('git', ['-C', repoRoot, 'push'], { signal })
+    await runGit(['-C', repoRoot, ...gitArgs], signal)
   } catch (error: unknown) {
     /* v8 ignore next -- same narrow-window rationale as pullRebase's own catch above. */
     if (signal?.aborted) throw error
@@ -265,7 +386,7 @@ export async function workspaceFileAtHead(path: string, filePath: string, signal
   const repoRoot = await repoRootOrThrow(path, signal)
   const relativePath = relative(repoRoot, filePath)
   try {
-    const { stdout } = await execFileAsync('git', ['-C', repoRoot, 'show', `HEAD:${relativePath}`], { signal })
+    const { stdout } = await runGit(['-C', repoRoot, 'show', `HEAD:${relativePath}`], signal)
     return stdout
   } catch (error: unknown) {
     /* v8 ignore next -- needs the caller signal to abort in the narrow window
@@ -308,7 +429,7 @@ async function repoRootOrThrow(path: string, signal: AbortSignal | undefined): P
  */
 async function currentBranch(repoRoot: string, signal: AbortSignal | undefined): Promise<string> {
   try {
-    const { stdout } = await execFileAsync('git', ['-C', repoRoot, 'symbolic-ref', '--short', 'HEAD'], { signal })
+    const { stdout } = await runGit(['-C', repoRoot, 'symbolic-ref', '--short', 'HEAD'], signal)
     return stdout.trim()
   } catch (error: unknown) {
     /* v8 ignore next -- needs the caller signal to abort in the narrow window

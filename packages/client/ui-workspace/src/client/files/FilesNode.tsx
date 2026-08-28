@@ -12,7 +12,7 @@
  * across remounts, mirroring `ui-directory-picker-browse`'s "no search, no
  * persistence" posture.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   Button, IconArrowDownOutline14, IconArrowUpOutline14, IconCheckOutline14, IconChevronDuoUpOutline14, IconCloseFill14,
@@ -68,6 +68,7 @@ const GIT_STATUS_LABEL_KEYS: Readonly<Record<string, WorkspaceKey>> = {
   R: 'files.git.status.R',
   C: 'files.git.status.C',
   U: 'files.git.status.U',
+  X: 'files.git.status.X',
 }
 
 /**
@@ -110,14 +111,28 @@ function useGitStatus(
  * The Files header's branch name, dirty indicator, Pull/Push/Refresh
  * controls, and (when there are pending changes) Commit-all/Discard-all
  * triggers; renders nothing outside a git working tree.
+ *
+ * `busy` disables every trigger except Refresh while another write action
+ * (commit, discard, pull, push) is in flight or the discard confirmation is
+ * open — these all mutate the same working tree, so only one may run at a
+ * time. While its own action is pending, Pull/Push each also grow an
+ * adjacent Cancel button: both are network operations with no deadline (see
+ * `pullRebase`/`push`'s `'caller-signal-only'` timeout policy), so a stuck
+ * credential prompt or unreachable remote needs an escape hatch, not just a
+ * disabled icon.
  */
-function GitStatusSummary({ status, onRefresh, onCommit, onDiscard, onPull, onPush, pullPending, pushPending, t }: {
+function GitStatusSummary({
+  status, onRefresh, onCommit, onDiscard, onPull, onPush, onCancelPull, onCancelPush, busy, pullPending, pushPending, t,
+}: {
   status: WorkspaceGitStatus | undefined
   onRefresh: () => void
   onCommit: () => void
   onDiscard: () => void
   onPull: () => void
   onPush: () => void
+  onCancelPull: () => void
+  onCancelPush: () => void
+  busy: boolean
   pullPending: boolean
   pushPending: boolean
   t: FilesTranslate
@@ -132,23 +147,34 @@ function GitStatusSummary({ status, onRefresh, onCommit, onDiscard, onPull, onPu
           <span className={css.gitChangedCount} title={t('files.git.changedCount', { n: changedCount })}>
             {changedCount}
           </span>
-          <button type="button" className={css.gitRefreshButton} title={t('files.git.commit')} onClick={onCommit}>
+          <button type="button" className={css.gitRefreshButton} title={t('files.git.commit')} disabled={busy} onClick={onCommit}>
             <IconArrowUpOutline14 />
           </button>
           <button
             type="button"
             className={clsx(css.gitRefreshButton, css.gitDiscardButton)}
             title={t('files.git.discard')}
+            disabled={busy}
             onClick={onDiscard}
           >
             <IconUndoOutline14 />
           </button>
         </>
       )}
-      <button type="button" className={css.gitRefreshButton} title={t('files.git.pull')} disabled={pullPending} onClick={onPull}>
+      {pullPending && (
+        <button type="button" className={css.gitRefreshButton} title={t('files.git.cancel')} onClick={onCancelPull}>
+          <IconCloseFill14 />
+        </button>
+      )}
+      <button type="button" className={css.gitRefreshButton} title={t('files.git.pull')} disabled={busy} onClick={onPull}>
         <IconArrowDownOutline14 />
       </button>
-      <button type="button" className={css.gitRefreshButton} title={t('files.git.push')} disabled={pushPending} onClick={onPush}>
+      {pushPending && (
+        <button type="button" className={css.gitRefreshButton} title={t('files.git.cancel')} onClick={onCancelPush}>
+          <IconCloseFill14 />
+        </button>
+      )}
+      <button type="button" className={css.gitRefreshButton} title={t('files.git.push')} disabled={busy} onClick={onPush}>
         <IconChevronDuoUpOutline14 />
       </button>
       <button
@@ -431,11 +457,33 @@ export function FilesNode({
   const [pullError, setPullError] = useState<string | null>(null)
   const [pushPending, setPushPending] = useState(false)
   const [pushError, setPushError] = useState<string | null>(null)
+  // Only one write action (commit, discard, pull, push) may run against the
+  // working tree at a time — concurrent git subprocesses race on the same
+  // index/working tree otherwise. The discard confirmation counts too: once
+  // it's open, starting another action first would need to reason about a
+  // discard the user is mid-way through confirming.
+  const busy = discardPending || discardConfirming || pullPending || pushPending
+  // Pull/Push each hold the AbortController for their own in-flight call, so
+  // the Cancel button (GitStatusSummary) can abort a hung network request —
+  // both use the RPC's 'caller-signal-only' timeout policy, which never
+  // times out on its own.
+  const pullControllerRef = useRef<AbortController | null>(null)
+  const pushControllerRef = useRef<AbortController | null>(null)
+  const clearGitErrors = useCallback(() => {
+    setCommitError(null)
+    setDiscardError(null)
+    setPullError(null)
+    setPushError(null)
+  }, [])
+  const handleRefresh = useCallback(() => {
+    clearGitErrors()
+    refreshGitStatus()
+  }, [clearGitErrors, refreshGitStatus])
   const startCommit = useCallback(() => {
     setCommitMessage('')
-    setCommitError(null)
+    clearGitErrors()
     setCommitMode(true)
-  }, [])
+  }, [clearGitErrors])
   const cancelCommit = useCallback(() => {
     setCommitMode(false)
     setCommitError(null)
@@ -459,9 +507,9 @@ export function FilesNode({
     })
   }, [commitAllChanges, workspaceId, commitMessage, refreshGitStatus])
   const openDiscardConfirm = useCallback(() => {
-    setDiscardError(null)
+    clearGitErrors()
     setDiscardConfirming(true)
-  }, [])
+  }, [clearGitErrors])
   const closeDiscardConfirm = useCallback(() => {
     if (discardPending) return
     setDiscardConfirming(false)
@@ -481,31 +529,54 @@ export function FilesNode({
     })
   }, [discardAllChanges, workspaceId, refreshGitStatus])
   const runPull = useCallback(() => {
+    const controller = new AbortController()
+    pullControllerRef.current = controller
     setPullPending(true)
-    setPullError(null)
-    pullRebase(workspaceId).then(() => {
+    clearGitErrors()
+    pullRebase(workspaceId, controller.signal).then(() => {
+      pullControllerRef.current = null
       setPullPending(false)
       // A rebase can change working-tree content, the same as commit/discard.
       refreshGitStatus()
       setLevelRefreshKey(key => key + 1)
     }).catch((reason: unknown) => {
+      pullControllerRef.current = null
       setPullPending(false)
+      // A user-initiated cancel is not a failure to surface.
+      if (controller.signal.aborted) return
       setPullError(reason instanceof Error ? reason.message : String(reason))
+      // A rebase conflict leaves the repository mid-rebase with unmerged
+      // files on disk — the same as a successful pull, the working tree
+      // changed, so the header and level must refresh to show it (and to
+      // surface Discard-all as the recovery action).
+      refreshGitStatus()
+      setLevelRefreshKey(key => key + 1)
     })
-  }, [pullRebase, workspaceId, refreshGitStatus])
+  }, [pullRebase, workspaceId, refreshGitStatus, clearGitErrors])
+  const cancelPull = useCallback(() => {
+    pullControllerRef.current?.abort()
+  }, [])
   const runPush = useCallback(() => {
+    const controller = new AbortController()
+    pushControllerRef.current = controller
     setPushPending(true)
-    setPushError(null)
+    clearGitErrors()
     // Unlike pull, a push never changes the local working tree or anything
     // WorkspaceGitStatus reports (no ahead/behind field), so there is
     // nothing here to refresh on success.
-    push(workspaceId).then(() => {
+    push(workspaceId, controller.signal).then(() => {
+      pushControllerRef.current = null
       setPushPending(false)
     }).catch((reason: unknown) => {
+      pushControllerRef.current = null
       setPushPending(false)
+      if (controller.signal.aborted) return
       setPushError(reason instanceof Error ? reason.message : String(reason))
     })
-  }, [push, workspaceId])
+  }, [push, workspaceId, clearGitErrors])
+  const cancelPush = useCallback(() => {
+    pushControllerRef.current?.abort()
+  }, [])
   // Stable across the viewer-open/close re-renders that would otherwise
   // recreate these closures and re-arm useLevel's effect (its dependency
   // array includes `list`, so an unstable closure would refetch the level on
@@ -566,11 +637,14 @@ export function FilesNode({
           : (
             <GitStatusSummary
               status={gitStatus}
-              onRefresh={refreshGitStatus}
+              onRefresh={handleRefresh}
               onCommit={startCommit}
               onDiscard={openDiscardConfirm}
               onPull={runPull}
               onPush={runPush}
+              onCancelPull={cancelPull}
+              onCancelPush={cancelPush}
+              busy={busy}
               pullPending={pullPending}
               pushPending={pushPending}
               t={t}

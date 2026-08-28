@@ -93,7 +93,7 @@ export const zh = {
   'files.git.commitSubmit': '提交更改',
   'files.git.cancel': '取消',
   'files.git.discardConfirmTitle': '放弃全部更改？',
-  'files.git.discardConfirmDesc': '会把每个受版本控制的文件恢复为最近一次提交的内容。未跟踪的新文件不受影响。此操作无法撤销。',
+  'files.git.discardConfirmDesc': '会把每个受版本控制的文件恢复为最近一次提交的内容。未跟踪的新文件不受影响。如果此前的拉取（变基）导致仓库处于变基冲突状态，这会中止变基并恢复分支。此操作无法撤销。',
   'files.git.discardConfirm': '放弃更改',
   'files.git.discardPending': '正在放弃更改…',
   'files.git.status.M': '已修改',
@@ -102,6 +102,7 @@ export const zh = {
   'files.git.status.R': '已重命名',
   'files.git.status.C': '已复制',
   'files.git.status.U': '未跟踪',
+  'files.git.status.X': '冲突',
 } satisfies Record<string, string>
 
 /** The workspace namespace key union. */
@@ -196,7 +197,7 @@ export const en = {
   'files.git.commitSubmit': 'Commit changes',
   'files.git.cancel': 'Cancel',
   'files.git.discardConfirmTitle': 'Discard all changes?',
-  'files.git.discardConfirmDesc': 'Reverts every tracked file to its last commit. New (untracked) files are left alone. This can’t be undone.',
+  'files.git.discardConfirmDesc': 'Reverts every tracked file to its last commit. New (untracked) files are left alone. If an earlier Pull left the repository mid-rebase, this aborts the rebase and restores the branch. This can’t be undone.',
   'files.git.discardConfirm': 'Discard changes',
   'files.git.discardPending': 'Discarding changes…',
   'files.git.status.M': 'Modified',
@@ -205,4 +206,5 @@ export const en = {
   'files.git.status.R': 'Renamed',
   'files.git.status.C': 'Copied',
   'files.git.status.U': 'Untracked',
+  'files.git.status.X': 'Conflict',
 } satisfies Record<WorkspaceKey, string>
