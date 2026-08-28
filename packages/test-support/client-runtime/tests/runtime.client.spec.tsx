@@ -593,12 +593,14 @@ describe('workspaces action face', () => {
     await expect(ws.listWorkspaceGitStatus('w1' as WorkspaceId)).resolves.toEqual({ isRepo: false, branch: null, files: {} })
     await ws.commitAllWorkspaceChanges('w1' as WorkspaceId, 'a commit')
     await ws.discardAllWorkspaceChanges('w1' as WorkspaceId)
+    await ws.pullRebaseWorkspace('w1' as WorkspaceId)
+    await ws.pushWorkspace('w1' as WorkspaceId)
     await expect(ws.writeWorkspaceFile('w1' as WorkspaceId, '/proj/file.ts', 'edited', 'v1' as WorkspaceFileVersion))
       .resolves.toBe('test-version-6')
     expect(ws.calls.map(c => c.method)).toEqual([
       'create', 'create', 'pickDirectory', 'rename', 'delete', 'openPath', 'insertBefore', 'insertSessionBefore',
       'archiveSession', 'getWorkspaceFileDiff', 'listWorkspaceEntries', 'readWorkspaceFile', 'listWorkspaceGitStatus',
-      'commitAllWorkspaceChanges', 'discardAllWorkspaceChanges', 'writeWorkspaceFile',
+      'commitAllWorkspaceChanges', 'discardAllWorkspaceChanges', 'pullRebaseWorkspace', 'pushWorkspace', 'writeWorkspaceFile',
     ])
 
     ws.stub('create', () => Promise.resolve({ workspaceId: 'ws-x', title: 'X', path: '/x', sessionIds: [] } as never))
@@ -618,6 +620,10 @@ describe('workspaces action face', () => {
     ws.stub('commitAllWorkspaceChanges', commitAll)
     const discardAll = vi.fn(() => Promise.resolve())
     ws.stub('discardAllWorkspaceChanges', discardAll)
+    const pullRebase = vi.fn(() => Promise.resolve())
+    ws.stub('pullRebaseWorkspace', pullRebase)
+    const push = vi.fn(() => Promise.resolve())
+    ws.stub('pushWorkspace', push)
     ws.stub('writeWorkspaceFile', () => Promise.resolve('v3' as never))
     expect((await ws.create({ path: '/y' })).title).toBe('X')
     await expect(ws.pickDirectory()).resolves.toBe('/picked')
@@ -638,6 +644,10 @@ describe('workspaces action face', () => {
     expect(commitAll).toHaveBeenCalledWith('w1', 'another commit', undefined)
     await ws.discardAllWorkspaceChanges('w1' as WorkspaceId)
     expect(discardAll).toHaveBeenCalledWith('w1', undefined)
+    await ws.pullRebaseWorkspace('w1' as WorkspaceId)
+    expect(pullRebase).toHaveBeenCalledWith('w1', undefined)
+    await ws.pushWorkspace('w1' as WorkspaceId)
+    expect(push).toHaveBeenCalledWith('w1', undefined)
     await expect(ws.writeWorkspaceFile('w1' as WorkspaceId, '/proj/file.ts', 'edited', 'v1' as WorkspaceFileVersion))
       .resolves.toBe('v3')
     await runtime.dispose()

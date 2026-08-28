@@ -9,6 +9,7 @@
 import { useCallback, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 
+/** Configures {@link useSplitRatio}'s initial position and drag bounds. */
 export interface SplitRatioOptions {
   /** Left pane's initial share of the container width. Defaults to `0.5`. */
   defaultRatio?: number
@@ -28,6 +29,7 @@ export interface SplitDividerProps {
   onKeyDown: (event: KeyboardEvent<HTMLElement>) => void
 }
 
+/** {@link useSplitRatio}'s return value: the current ratio and the divider's event handlers. */
 export interface SplitRatioResult {
   /** The left pane's current share of the container width, in `[min, max]`. */
   ratio: number

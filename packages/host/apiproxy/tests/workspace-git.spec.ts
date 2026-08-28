@@ -139,6 +139,27 @@ describe('workspaceGitStatus', () => {
     controller.abort()
     await expect(workspaceGitStatus(root, controller.signal)).rejects.toThrow()
   })
+
+  it('classifies an unmerged (conflicted) path as X, distinct from untracked', async () => {
+    const root = tempDir('dsh-workspace-git-conflict-')
+    initRepo(root)
+    writeFileSync(join(root, 'f.txt'), 'base')
+    commitAll(root, 'base')
+    execFileSync('git', ['-C', root, 'checkout', '-q', '-b', 'feature'])
+    writeFileSync(join(root, 'f.txt'), 'feature change')
+    commitAll(root, 'feature change')
+    execFileSync('git', ['-C', root, 'checkout', '-q', 'main'])
+    writeFileSync(join(root, 'f.txt'), 'main change')
+    commitAll(root, 'main change')
+    try {
+      execFileSync('git', ['-C', root, 'merge', '-q', 'feature'])
+    } catch {
+      // Expected: the merge conflicts, leaving 'f.txt' unmerged.
+    }
+
+    const status = await workspaceGitStatus(root)
+    expect(status.files).toEqual({ [join(root, 'f.txt')]: 'X' })
+  })
 })
 
 describe('commitAllChanges', () => {
@@ -247,6 +268,27 @@ describe('pullRebase', () => {
 })
 
 describe('push', () => {
+  it('falls back to a bare push when the branch has no configured remote', async () => {
+    const root = tempDir('dsh-workspace-git-push-no-remote-')
+    initRepo(root)
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    commitAll(root, 'init')
+
+    await expect(push(root)).rejects.toThrow(GitCommandError)
+  })
+
+  it('falls back to a bare push on a detached HEAD, skipping remote resolution', async () => {
+    const remote = tempDir('dsh-workspace-git-remote-')
+    initBareRemote(remote)
+    const local = tempDir('dsh-workspace-git-push-detached-')
+    cloneRepo(remote, local)
+    writeFileSync(join(local, 'a.txt'), 'hello')
+    commitAll(local, 'init')
+    execFileSync('git', ['-C', local, 'checkout', '-q', 'HEAD~0'])
+
+    await expect(push(local)).rejects.toThrow(GitCommandError)
+  })
+
   it('pushes local commits to the configured remote', async () => {
     const remote = tempDir('dsh-workspace-git-remote-')
     initBareRemote(remote)
@@ -287,6 +329,38 @@ describe('push', () => {
     execFileSync('git', ['-C', a, 'push', '-q'])
 
     await expect(push(b)).rejects.toThrow(GitCommandError)
+  })
+
+  it('pushes only the current branch when the host has push.default set to "matching"', async () => {
+    const remote = tempDir('dsh-workspace-git-remote-')
+    initBareRemote(remote)
+    const seed = tempDir('dsh-workspace-git-push-refspec-seed-')
+    cloneRepo(remote, seed)
+    writeFileSync(join(seed, 'a.txt'), 'hello')
+    commitAll(seed, 'init')
+    execFileSync('git', ['-C', seed, 'push', '-q'])
+    execFileSync('git', ['-C', seed, 'checkout', '-q', '-b', 'other'])
+    writeFileSync(join(seed, 'b.txt'), 'other init')
+    commitAll(seed, 'other init')
+    execFileSync('git', ['-C', seed, 'push', '-q', '-u', 'origin', 'other'])
+
+    const local = tempDir('dsh-workspace-git-push-refspec-local-')
+    cloneRepo(remote, local)
+    // "matching" pushes every local branch with a same-named remote
+    // counterpart, not only the current one — a bare `git push` here would
+    // also push 'other', proving the fix requires the explicit refspec.
+    execFileSync('git', ['-C', local, 'config', 'push.default', 'matching'])
+    execFileSync('git', ['-C', local, 'checkout', '-q', '-b', 'other', 'origin/other'])
+    writeFileSync(join(local, 'b.txt'), 'other change')
+    commitAll(local, 'other change')
+    execFileSync('git', ['-C', local, 'checkout', '-q', 'main'])
+    writeFileSync(join(local, 'a.txt'), 'main change')
+    commitAll(local, 'main change')
+
+    await push(local)
+
+    expect(execFileSync('git', ['-C', remote, 'log', 'main', '--format=%s']).toString()).toContain('main change')
+    expect(execFileSync('git', ['-C', remote, 'log', 'other', '--format=%s']).toString()).not.toContain('other change')
   })
 
   it('propagates an abort instead of collapsing into a GitCommandError', async () => {
@@ -370,6 +444,35 @@ describe('discardAllChanges', () => {
     expect(status).toContain('?? staged-new.txt')
     expect(status).toContain('?? plain-untracked.txt')
     expect(status).not.toContain('a.txt')
+  })
+
+  it('aborts an in-progress rebase instead of leaving a detached HEAD with conflict markers', async () => {
+    const remote = tempDir('dsh-workspace-git-remote-')
+    initBareRemote(remote)
+    const a = tempDir('dsh-workspace-git-discard-rebase-a-')
+    cloneRepo(remote, a)
+    writeFileSync(join(a, 'f.txt'), 'base')
+    commitAll(a, 'base')
+    execFileSync('git', ['-C', a, 'push', '-q'])
+
+    const b = tempDir('dsh-workspace-git-discard-rebase-b-')
+    cloneRepo(remote, b)
+    writeFileSync(join(b, 'f.txt'), 'local change')
+    commitAll(b, 'local change')
+
+    writeFileSync(join(a, 'f.txt'), 'remote change')
+    commitAll(a, 'remote change')
+    execFileSync('git', ['-C', a, 'push', '-q'])
+
+    await expect(pullRebase(b)).rejects.toThrow(GitCommandError)
+
+    await discardAllChanges(b)
+
+    // Restored to the branch's own pre-rebase tip, not left detached mid-rebase.
+    expect(execFileSync('git', ['-C', b, 'symbolic-ref', '--short', 'HEAD']).toString().trim()).toBe('main')
+    expect(readFileSync(join(b, 'f.txt'), 'utf-8')).toBe('local change')
+    const status = await workspaceGitStatus(b)
+    expect(status.files).toEqual({})
   })
 
   it('rejects a directory outside any git working tree with GitNotARepositoryError', async () => {

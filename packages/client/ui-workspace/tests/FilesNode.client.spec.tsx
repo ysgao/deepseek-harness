@@ -1129,7 +1129,7 @@ describe('FilesNode', () => {
     await act(async () => { screen.getByText(t('files.label')).click() }) // expand: fetches listing once
     await screen.findByText('main')
     await act(async () => { screen.getByTitle(t('files.git.pull')).click() })
-    expect(pullRebase).toHaveBeenCalledWith(wsId)
+    expect(pullRebase).toHaveBeenCalledWith(wsId, expect.any(AbortSignal))
     await waitFor(() => { expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(3) })
     // The level remounted (new key), so its own fetch fired again.
     await waitFor(() => { expect(listWorkspaceEntries).toHaveBeenCalledTimes(2) })
@@ -1241,7 +1241,7 @@ describe('FilesNode', () => {
     const statusCallsBeforePush = listWorkspaceGitStatus.mock.calls.length
     const entriesCallsBeforePush = listWorkspaceEntries.mock.calls.length
     await act(async () => { screen.getByTitle(t('files.git.push')).click() })
-    expect(push).toHaveBeenCalledWith(wsId)
+    expect(push).toHaveBeenCalledWith(wsId, expect.any(AbortSignal))
     expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(statusCallsBeforePush)
     expect(listWorkspaceEntries).toHaveBeenCalledTimes(entriesCallsBeforePush)
   })
@@ -1324,5 +1324,191 @@ describe('FilesNode', () => {
     expect(push).toHaveBeenCalledTimes(1)
     await act(async () => { resolvePush?.() })
     await waitFor(() => { expect((pushButton as HTMLButtonElement).disabled).toBe(false) })
+  })
+
+  it('cancels a pending pull via the Cancel control, without surfacing an error notice', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const pullRebase = vi.fn((_workspaceId: WorkspaceId, signal?: AbortSignal) => new Promise<void>((_resolve, reject) => {
+      signal?.addEventListener('abort', () => { reject(new DOMException('This operation was aborted', 'AbortError')) })
+    }))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={pullRebase}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    const pullButton = await screen.findByTitle(t('files.git.pull'))
+    await act(async () => { pullButton.click() })
+    expect((pullButton as HTMLButtonElement).disabled).toBe(true)
+    const cancelButton = screen.getByTitle(t('files.git.cancel'))
+    await act(async () => { cancelButton.click() })
+    await waitFor(() => { expect((pullButton as HTMLButtonElement).disabled).toBe(false) })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByTitle(t('files.git.cancel'))).toBeNull()
+  })
+
+  it('cancels a pending push via the Cancel control, without surfacing an error notice', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const push = vi.fn((_workspaceId: WorkspaceId, signal?: AbortSignal) => new Promise<void>((_resolve, reject) => {
+      signal?.addEventListener('abort', () => { reject(new DOMException('This operation was aborted', 'AbortError')) })
+    }))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={push}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    const pushButton = await screen.findByTitle(t('files.git.push'))
+    await act(async () => { pushButton.click() })
+    expect((pushButton as HTMLButtonElement).disabled).toBe(true)
+    const cancelButton = screen.getByTitle(t('files.git.cancel'))
+    await act(async () => { cancelButton.click() })
+    await waitFor(() => { expect((pushButton as HTMLButtonElement).disabled).toBe(false) })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByTitle(t('files.git.cancel'))).toBeNull()
+  })
+
+  it('disables Commit, Discard, and Push while a pull is in flight', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    let resolvePull: (() => void) | undefined
+    const pullRebase = vi.fn(() => new Promise<void>((resolve) => { resolvePull = resolve }))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={pullRebase}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
+          isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' },
+        }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    const pullButton = await screen.findByTitle(t('files.git.pull'))
+    await act(async () => { pullButton.click() })
+    const commitButton = screen.getByTitle(t('files.git.commit'))
+    const discardButton = screen.getByTitle(t('files.git.discard'))
+    const pushButton = screen.getByTitle(t('files.git.push'))
+    expect((commitButton as HTMLButtonElement).disabled).toBe(true)
+    expect((discardButton as HTMLButtonElement).disabled).toBe(true)
+    expect((pushButton as HTMLButtonElement).disabled).toBe(true)
+    await act(async () => { resolvePull?.() })
+  })
+
+  it('refreshes git status and the directory listing when a pull fails, to surface a mid-rebase conflict', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const listWorkspaceGitStatus = vi.fn()
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} }) // initial mount
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} }) // expand-triggered refresh
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'X' } }) // post-failure refresh
+    const pullRebase = vi.fn(() => Promise.reject(new Error('conflict during rebase')))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={pullRebase}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={listWorkspaceGitStatus}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() }) // expand: fetches listing once
+    await screen.findByText('main')
+    await act(async () => { screen.getByTitle(t('files.git.pull')).click() })
+    await screen.findByText('conflict during rebase')
+    await waitFor(() => { expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(3) })
+    // The level remounted (new key), so its own fetch fired again.
+    await waitFor(() => { expect(listWorkspaceEntries).toHaveBeenCalledTimes(2) })
+  })
+
+  it('clears a stale pull error notice when Refresh is clicked', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const pullRebase = vi.fn(() => Promise.reject(new Error('conflict during rebase')))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={pullRebase}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByTitle(t('files.git.pull'))
+    await act(async () => { screen.getByTitle(t('files.git.pull')).click() })
+    await screen.findByText('conflict during rebase')
+    await act(async () => { screen.getByTitle(t('files.git.refresh')).click() })
+    await waitFor(() => { expect(screen.queryByText('conflict during rebase')).toBeNull() })
+  })
+
+  it('clears a stale pull error notice when Push succeeds', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const pullRebase = vi.fn(() => Promise.reject(new Error('conflict during rebase')))
+    const push = vi.fn(async () => {})
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={pullRebase}
+        push={push}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByTitle(t('files.git.pull'))
+    await act(async () => { screen.getByTitle(t('files.git.pull')).click() })
+    await screen.findByText('conflict during rebase')
+    await act(async () => { screen.getByTitle(t('files.git.push')).click() })
+    await waitFor(() => { expect(screen.queryByText('conflict during rebase')).toBeNull() })
   })
 })

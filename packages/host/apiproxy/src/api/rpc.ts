@@ -50,9 +50,9 @@ export interface RpcErrorDetailsMap {
   'file-too-large': { path: string; maxBytes: number }
   /** A `workspace.writeFile` target changed on disk since it was last read. */
   'file-changed': { path: string }
-  /** A `workspace.gitCommitAll`/`gitDiscardAll` target is outside any git working tree. */
+  /** A `workspace.gitCommitAll`/`gitDiscardAll`/`gitPullRebase`/`gitPush` target is outside any git working tree. */
   'git-not-a-repository': { path: string }
-  /** A `workspace.gitCommitAll`/`gitDiscardAll` git command exited non-zero; the message is git's own output. */
+  /** A `workspace.gitCommitAll`/`gitDiscardAll`/`gitPullRebase`/`gitPush` git command exited non-zero; the message is git's own output. */
   'git-command-failed': { command: string }
   'agent-preset-read-only': { agentPreset: string; reason: string }
   'agent-preset-locked': { sessionId: SessionId; agentPreset: string }

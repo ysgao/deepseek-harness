@@ -94,8 +94,8 @@ export interface WorkspaceGitStatus {
   branch: string | null
   /**
    * Absolute path (matching `WorkspaceEntry.path`) -> single-letter git
-   * status code (`M`/`A`/`D`/`R`/`C`/`U`), one entry per path with a
-   * pending change.
+   * status code (`M`/`A`/`D`/`R`/`C`/`U`/`X`, `X` marking an unmerged/
+   * conflicted path), one entry per path with a pending change.
    */
   files: Record<string, string>
 }
