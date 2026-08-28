@@ -139,6 +139,20 @@ export interface IWorkspaces {
    */
   discardAllWorkspaceChanges(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void>
   /**
+   * Fetch from the remote tracked by the current branch and rebase local
+   * commits on top, in the git repository enclosing the Workspace's directory.
+   * @param workspaceId - target workspace.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   */
+  pullRebaseWorkspace(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void>
+  /**
+   * Push the current branch to its configured remote, in the git repository
+   * enclosing the Workspace's directory.
+   * @param workspaceId - target workspace.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   */
+  pushWorkspace(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void>
+  /**
    * Read one file's `HEAD` and current working-tree text, for the File
    * tab's side-by-side diff view.
    * @param workspaceId - owning workspace; `path` must be its own path or a descendant.

@@ -94,6 +94,8 @@ function scriptedApi(overrides: {
       gitStatus: r => ok(r, { isRepo: false, branch: null, files: {} }),
       gitCommitAll: r => ok(r, { committed: true as const }),
       gitDiscardAll: r => ok(r, { discarded: true as const }),
+      gitPullRebase: r => ok(r, { pulled: true as const }),
+      gitPush: r => ok(r, { pushed: true as const }),
       gitFileDiff: r => ok(r, { oldText: null, newText: null }),
       writeFile: r => ok(r, { version: 'test-version' as WorkspaceFileVersion }),
     },

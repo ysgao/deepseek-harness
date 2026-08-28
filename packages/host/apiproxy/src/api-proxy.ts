@@ -68,7 +68,8 @@ import {
   writeWorkspaceFile,
 } from './workspace-files.ts'
 import {
-  commitAllChanges, discardAllChanges, GitCommandError, GitNotARepositoryError, workspaceFileAtHead, workspaceGitStatus,
+  commitAllChanges, discardAllChanges, GitCommandError, GitNotARepositoryError, pullRebase, push, workspaceFileAtHead,
+  workspaceGitStatus,
 } from './workspace-git.ts'
 import type { SessionRawArtifact } from '@deepseek-ai/dsh-session-persistence'
 import {
@@ -2999,6 +3000,48 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         } catch (error: unknown) {
           if (signal.aborted) {
             return err(request, { code: 'cancelled', message: 'workspace git discard was aborted', details: {} })
+          }
+          if (error instanceof GitNotARepositoryError) {
+            return err(request, { code: 'git-not-a-repository', message: error.message, details: { path: error.path } })
+          }
+          if (error instanceof GitCommandError) {
+            return err(request, { code: 'git-command-failed', message: error.message, details: { command: error.command } })
+          }
+          throw error
+        }
+      },
+
+      async gitPullRebase(request, signal) {
+        const { workspaceId } = request.payload
+        const workspace = ctx.workspaceRegistry.get(brandWorkspaceId(workspaceId))
+        if (workspace === undefined) return workspaceNotFound(request, workspaceId)
+        try {
+          await pullRebase(workspace.path, signal)
+          return ok(request, { pulled: true })
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'workspace git pull was aborted', details: {} })
+          }
+          if (error instanceof GitNotARepositoryError) {
+            return err(request, { code: 'git-not-a-repository', message: error.message, details: { path: error.path } })
+          }
+          if (error instanceof GitCommandError) {
+            return err(request, { code: 'git-command-failed', message: error.message, details: { command: error.command } })
+          }
+          throw error
+        }
+      },
+
+      async gitPush(request, signal) {
+        const { workspaceId } = request.payload
+        const workspace = ctx.workspaceRegistry.get(brandWorkspaceId(workspaceId))
+        if (workspace === undefined) return workspaceNotFound(request, workspaceId)
+        try {
+          await push(workspace.path, signal)
+          return ok(request, { pushed: true })
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'workspace git push was aborted', details: {} })
           }
           if (error instanceof GitNotARepositoryError) {
             return err(request, { code: 'git-not-a-repository', message: error.message, details: { path: error.path } })

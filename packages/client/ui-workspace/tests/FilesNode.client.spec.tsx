@@ -36,6 +36,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
@@ -62,6 +64,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
@@ -85,6 +89,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
@@ -108,6 +114,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
@@ -129,6 +137,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
@@ -153,6 +163,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
@@ -182,6 +194,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={readWorkspaceFile}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
@@ -211,6 +225,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={readWorkspaceFile}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={sessionId}
@@ -241,6 +257,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={readWorkspaceFile}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={sessionId}
@@ -266,6 +284,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
@@ -294,6 +314,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
@@ -321,6 +343,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={readWorkspaceFile}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
@@ -348,6 +372,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
@@ -372,6 +398,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
         currentSessionId={undefined}
@@ -392,6 +420,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
         currentSessionId={undefined}
@@ -418,6 +448,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
           isRepo: true, branch: 'main', files: { '/ws/changed.txt': 'M' },
@@ -444,6 +476,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.reject(new Error('denied')))}
         currentSessionId={undefined}
@@ -467,6 +501,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => new Promise<WorkspaceGitStatus>((resolve) => { resolveStatus = resolve }))}
         currentSessionId={undefined}
@@ -491,6 +527,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
           isRepo: true, branch: 'main', files: { '/ws/changed.txt': 'T' },
@@ -522,6 +560,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
           isRepo: true, branch: 'main', files: { '/ws/src/deep/nested.ts': 'M' },
@@ -550,6 +590,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
           isRepo: true, branch: 'main', files: { '/ws/foobar/x.txt': 'M' },
@@ -577,6 +619,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={listWorkspaceGitStatus}
         currentSessionId={undefined}
@@ -603,6 +647,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
         currentSessionId={undefined}
@@ -629,6 +675,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={listWorkspaceGitStatus}
         currentSessionId={undefined}
@@ -656,6 +704,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
         currentSessionId={undefined}
@@ -674,6 +724,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
         currentSessionId={undefined}
@@ -696,6 +748,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
         currentSessionId={undefined}
@@ -723,6 +777,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
         currentSessionId={undefined}
@@ -754,6 +810,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={commitAllChanges}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={listWorkspaceGitStatus}
         currentSessionId={undefined}
@@ -785,6 +843,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={commitAllChanges}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
         currentSessionId={undefined}
@@ -813,6 +873,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={commitAllChanges}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
         currentSessionId={undefined}
@@ -839,6 +901,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={commitAllChanges}
         discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
         currentSessionId={undefined}
@@ -870,6 +934,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={discardAllChanges}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
         currentSessionId={undefined}
@@ -900,6 +966,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={discardAllChanges}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={listWorkspaceGitStatus}
         currentSessionId={undefined}
@@ -929,6 +997,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={discardAllChanges}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
         currentSessionId={undefined}
@@ -956,6 +1026,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={discardAllChanges}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
         currentSessionId={undefined}
@@ -982,6 +1054,8 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={discardAllChanges}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
         currentSessionId={undefined}
@@ -1000,5 +1074,255 @@ describe('FilesNode', () => {
     expect(screen.queryByText(t('files.git.discardConfirmTitle'))).not.toBeNull()
     await act(async () => { resolveDiscard?.() })
     await waitFor(() => { expect(screen.queryByText(t('files.git.discardConfirmTitle'))).toBeNull() })
+  })
+
+  it('shows Pull and Push controls even with no pending changes', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByText('main')
+    expect(screen.queryByTitle(t('files.git.commit'))).toBeNull()
+    expect(screen.queryByTitle(t('files.git.discard'))).toBeNull()
+    expect(screen.getByTitle(t('files.git.pull'))).not.toBeNull()
+    expect(screen.getByTitle(t('files.git.push'))).not.toBeNull()
+  })
+
+  it('pulls on click, refreshing git status and the directory listing on success', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const listWorkspaceGitStatus = vi.fn()
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} }) // initial mount
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} }) // expand-triggered refresh
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }) // post-pull refresh
+    const pullRebase = vi.fn(async () => {})
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={pullRebase}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={listWorkspaceGitStatus}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() }) // expand: fetches listing once
+    await screen.findByText('main')
+    await act(async () => { screen.getByTitle(t('files.git.pull')).click() })
+    expect(pullRebase).toHaveBeenCalledWith(wsId)
+    await waitFor(() => { expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(3) })
+    // The level remounted (new key), so its own fetch fired again.
+    await waitFor(() => { expect(listWorkspaceEntries).toHaveBeenCalledTimes(2) })
+  })
+
+  it('shows an error notice when pull fails', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const pullRebase = vi.fn(() => Promise.reject(new Error('conflict during rebase')))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={pullRebase}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByTitle(t('files.git.pull'))
+    await act(async () => { screen.getByTitle(t('files.git.pull')).click() })
+    await screen.findByText('conflict during rebase')
+  })
+
+  it('stringifies a non-Error pull rejection', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- exercising the non-Error rejection branch on purpose.
+    const pullRebase = vi.fn(() => Promise.reject('offline'))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={pullRebase}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByTitle(t('files.git.pull'))
+    await act(async () => { screen.getByTitle(t('files.git.pull')).click() })
+    await screen.findByText('offline')
+  })
+
+  it('disables the Pull control while a pull is in flight', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    let resolvePull: (() => void) | undefined
+    const pullRebase = vi.fn(() => new Promise<void>((resolve) => { resolvePull = resolve }))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={pullRebase}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    const pullButton = await screen.findByTitle(t('files.git.pull'))
+    await act(async () => { pullButton.click() })
+    expect((pullButton as HTMLButtonElement).disabled).toBe(true)
+    expect(pullRebase).toHaveBeenCalledTimes(1)
+    await act(async () => { resolvePull?.() })
+    await waitFor(() => { expect((pullButton as HTMLButtonElement).disabled).toBe(false) })
+  })
+
+  it('pushes on click without refreshing git status or the directory listing', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const listWorkspaceGitStatus = vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))
+    const push = vi.fn(async () => {})
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={push}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={listWorkspaceGitStatus}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() }) // expand: fetches listing once
+    await screen.findByText('main')
+    const statusCallsBeforePush = listWorkspaceGitStatus.mock.calls.length
+    const entriesCallsBeforePush = listWorkspaceEntries.mock.calls.length
+    await act(async () => { screen.getByTitle(t('files.git.push')).click() })
+    expect(push).toHaveBeenCalledWith(wsId)
+    expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(statusCallsBeforePush)
+    expect(listWorkspaceEntries).toHaveBeenCalledTimes(entriesCallsBeforePush)
+  })
+
+  it('shows an error notice when push fails', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const push = vi.fn(() => Promise.reject(new Error('non-fast-forward')))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={push}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByTitle(t('files.git.push'))
+    await act(async () => { screen.getByTitle(t('files.git.push')).click() })
+    await screen.findByText('non-fast-forward')
+  })
+
+  it('stringifies a non-Error push rejection', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- exercising the non-Error rejection branch on purpose.
+    const push = vi.fn(() => Promise.reject('denied'))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={push}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByTitle(t('files.git.push'))
+    await act(async () => { screen.getByTitle(t('files.git.push')).click() })
+    await screen.findByText('denied')
+  })
+
+  it('disables the Push control while a push is in flight', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    let resolvePush: (() => void) | undefined
+    const push = vi.fn(() => new Promise<void>((resolve) => { resolvePush = resolve }))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={push}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    const pushButton = await screen.findByTitle(t('files.git.push'))
+    await act(async () => { pushButton.click() })
+    expect((pushButton as HTMLButtonElement).disabled).toBe(true)
+    expect(push).toHaveBeenCalledTimes(1)
+    await act(async () => { resolvePush?.() })
+    await waitFor(() => { expect((pushButton as HTMLButtonElement).disabled).toBe(false) })
   })
 })

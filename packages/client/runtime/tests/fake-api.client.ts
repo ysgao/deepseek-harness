@@ -220,6 +220,12 @@ export class FakeApiClient implements IApiClient {
   onWorkspaceGitDiscardAll: (payload: unknown) => Promise<RpcResponse<{ discarded: true }>> =
     () => Promise.resolve(ok({ discarded: true }))
 
+  onWorkspaceGitPullRebase: (payload: unknown) => Promise<RpcResponse<{ pulled: true }>> =
+    () => Promise.resolve(ok({ pulled: true }))
+
+  onWorkspaceGitPush: (payload: unknown) => Promise<RpcResponse<{ pushed: true }>> =
+    () => Promise.resolve(ok({ pushed: true }))
+
   onWorkspaceGitFileDiff: (payload: unknown) => Promise<RpcResponse<WorkspaceFileDiff>> =
     () => Promise.resolve(ok({ oldText: null, newText: null }))
 
@@ -251,6 +257,10 @@ export class FakeApiClient implements IApiClient {
       this.record('workspace.gitCommitAll', payload, this.onWorkspaceGitCommitAll(payload)),
     gitDiscardAll: (payload: unknown) =>
       this.record('workspace.gitDiscardAll', payload, this.onWorkspaceGitDiscardAll(payload)),
+    gitPullRebase: (payload: unknown) =>
+      this.record('workspace.gitPullRebase', payload, this.onWorkspaceGitPullRebase(payload)),
+    gitPush: (payload: unknown) =>
+      this.record('workspace.gitPush', payload, this.onWorkspaceGitPush(payload)),
     gitFileDiff: (payload: unknown) =>
       this.record('workspace.gitFileDiff', payload, this.onWorkspaceGitFileDiff(payload)),
     writeFile: (payload: unknown) =>

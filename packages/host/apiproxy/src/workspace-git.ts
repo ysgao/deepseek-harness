@@ -1,17 +1,18 @@
 /**
  * Host-side git operations for the Web GUI's Files tree and File tab: status
  * (branch and pending-change classification), a file's `HEAD` content (for
- * the File tab's diff view), and the Commit-all/Discard-all write actions,
- * all scanned or applied against the git repository enclosing a workspace's
- * own directory (which may be an ancestor of it). Shells out to the host's
- * own `git` binary; there is no bundled git implementation.
+ * the File tab's diff view), and the Commit-all/Discard-all/Pull-rebase/Push
+ * write actions, all scanned or applied against the git repository enclosing
+ * a workspace's own directory (which may be an ancestor of it). Shells out to
+ * the host's own `git` binary; there is no bundled git implementation.
  *
  * `workspaceGitStatus` treats a directory outside any working tree, or a
  * host with no `git` binary at all, as `isRepo: false` rather than a thrown
  * error — it never distinguishes "not a repo" from "can't tell". The write
- * actions (`commitAllChanges`, `discardAllChanges`) cannot use that same
- * quiet fallback — a write the caller believes succeeded must not silently
- * no-op — so they throw {@link GitNotARepositoryError} instead.
+ * actions (`commitAllChanges`, `discardAllChanges`, `pullRebase`, `push`)
+ * cannot use that same quiet fallback — a write the caller believes
+ * succeeded must not silently no-op — so they throw
+ * {@link GitNotARepositoryError} instead.
  * @module
  */
 
@@ -200,6 +201,48 @@ export async function discardAllChanges(path: string, signal?: AbortSignal): Pro
     /* v8 ignore next -- same narrow-window rationale as commitAllChanges's own catch blocks. */
     if (signal?.aborted) throw error
     throw new GitCommandError('checkout', messageOf(error))
+  }
+}
+
+/**
+ * Fetches from the remote tracked by the current branch and rebases local
+ * commits on top, in the git repository enclosing `path`.
+ * @param path - workspace's own directory (absolute).
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @throws {GitNotARepositoryError} when `path` is outside any git working tree.
+ * @throws {GitCommandError} when `git pull --rebase` exits non-zero (no
+ * configured remote/upstream, a rebase conflict, network failure, …).
+ */
+export async function pullRebase(path: string, signal?: AbortSignal): Promise<void> {
+  const repoRoot = await repoRootOrThrow(path, signal)
+  try {
+    await execFileAsync('git', ['-C', repoRoot, 'pull', '--rebase'], { signal })
+  } catch (error: unknown) {
+    /* v8 ignore next -- needs the caller signal to abort in the narrow window
+       between the repo-root check settling and this call settling; not
+       reliably raceable in a portable test (see currentBranch's own guard). */
+    if (signal?.aborted) throw error
+    throw new GitCommandError('pull', messageOf(error))
+  }
+}
+
+/**
+ * Pushes the current branch to its configured remote, in the git repository
+ * enclosing `path`.
+ * @param path - workspace's own directory (absolute).
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @throws {GitNotARepositoryError} when `path` is outside any git working tree.
+ * @throws {GitCommandError} when `git push` exits non-zero (no configured
+ * remote/upstream, a non-fast-forward rejection, authentication failure, …).
+ */
+export async function push(path: string, signal?: AbortSignal): Promise<void> {
+  const repoRoot = await repoRootOrThrow(path, signal)
+  try {
+    await execFileAsync('git', ['-C', repoRoot, 'push'], { signal })
+  } catch (error: unknown) {
+    /* v8 ignore next -- same narrow-window rationale as pullRebase's own catch above. */
+    if (signal?.aborted) throw error
+    throw new GitCommandError('push', messageOf(error))
   }
 }
 

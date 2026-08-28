@@ -547,6 +547,169 @@ describe('workspace.gitDiscardAll', () => {
   })
 })
 
+/** Initializes a bare repository at `root`, usable as a `gitPullRebase`/`gitPush` remote. */
+function initBareRemote(root: string): void {
+  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', root])
+}
+
+/** Clones `remote` into an existing empty directory `dest`, with a deterministic committer identity. */
+function cloneInto(remote: string, dest: string): void {
+  execFileSync('git', ['clone', '-q', remote, dest])
+  execFileSync('git', ['-C', dest, 'config', 'user.email', 'test@example.com'])
+  execFileSync('git', ['-C', dest, 'config', 'user.name', 'Test'])
+}
+
+/** Commits every pending change (tracked and untracked) in `root` with `message`. */
+function commitAll(root: string, message: string): void {
+  execFileSync('git', ['-C', root, 'add', '-A'])
+  execFileSync('git', ['-C', root, 'commit', '-q', '-m', message])
+}
+
+describe('workspace.gitPullRebase', () => {
+  it('fetches from the remote and rebases local commits on top', async () => {
+    const { api, root } = await harness()
+    const remote = realpathSync.native(mkdtempSync(join(tmpdir(), 'dsh-apiproxy-workspace-git-remote-')))
+    initBareRemote(remote)
+    cloneInto(remote, root)
+    writeFileSync(join(root, 'local.txt'), 'local')
+    commitAll(root, 'local change')
+
+    const other = realpathSync.native(mkdtempSync(join(tmpdir(), 'dsh-apiproxy-workspace-git-other-')))
+    cloneInto(remote, other)
+    writeFileSync(join(other, 'remote.txt'), 'remote')
+    commitAll(other, 'remote change')
+    execFileSync('git', ['-C', other, 'push', '-q'])
+
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+    const value = expectOk(await api.workspace.gitPullRebase(
+      request({ workspaceId: created.workspaceId }),
+      new AbortController().signal,
+    ))
+    expect(value).toEqual({ pulled: true })
+    expect(execFileSync('git', ['-C', root, 'log', '--format=%s']).toString().trim().split('\n')).toEqual([
+      'local change', 'remote change',
+    ])
+  })
+
+  it('rejects an unknown workspace id with workspace-not-found', async () => {
+    const { api } = await harness()
+    const error = expectErr(await api.workspace.gitPullRebase(
+      request({ workspaceId: 'no-such-workspace' as never }),
+      new AbortController().signal,
+    ))
+    expect(error.code).toBe('workspace-not-found')
+  })
+
+  it('rejects a workspace outside any git working tree with git-not-a-repository', async () => {
+    const { api, root } = await harness()
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+
+    const error = expectErr(await api.workspace.gitPullRebase(
+      request({ workspaceId: created.workspaceId }),
+      new AbortController().signal,
+    ))
+    expect(error.code).toBe('git-not-a-repository')
+  })
+
+  it('rejects with git-command-failed when there is no configured remote', async () => {
+    const { api, root } = await harness()
+    execFileSync('git', ['init', '-q', '-b', 'main', root])
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+
+    const error = expectErr(await api.workspace.gitPullRebase(
+      request({ workspaceId: created.workspaceId }),
+      new AbortController().signal,
+    ))
+    expect(error.code).toBe('git-command-failed')
+    if (error.code !== 'git-command-failed') throw new Error('unreachable')
+    expect(error.details.command).toBe('pull')
+  })
+
+  it('aborts and reports cancelled when the caller signal fires', async () => {
+    const { api, root } = await harness()
+    execFileSync('git', ['init', '-q', '-b', 'main', root])
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+    const controller = new AbortController()
+    controller.abort()
+    const error = expectErr(await api.workspace.gitPullRebase(
+      request({ workspaceId: created.workspaceId }), controller.signal,
+    ))
+    expect(error.code).toBe('cancelled')
+  })
+})
+
+describe('workspace.gitPush', () => {
+  it('pushes local commits to the configured remote', async () => {
+    const { api, root } = await harness()
+    const remote = realpathSync.native(mkdtempSync(join(tmpdir(), 'dsh-apiproxy-workspace-git-remote-')))
+    initBareRemote(remote)
+    cloneInto(remote, root)
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    commitAll(root, 'init')
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+
+    const value = expectOk(await api.workspace.gitPush(
+      request({ workspaceId: created.workspaceId }),
+      new AbortController().signal,
+    ))
+    expect(value).toEqual({ pushed: true })
+
+    const check = realpathSync.native(mkdtempSync(join(tmpdir(), 'dsh-apiproxy-workspace-git-check-')))
+    cloneInto(remote, check)
+    expect(readFileSync(join(check, 'a.txt'), 'utf-8')).toBe('hello')
+  })
+
+  it('rejects an unknown workspace id with workspace-not-found', async () => {
+    const { api } = await harness()
+    const error = expectErr(await api.workspace.gitPush(
+      request({ workspaceId: 'no-such-workspace' as never }),
+      new AbortController().signal,
+    ))
+    expect(error.code).toBe('workspace-not-found')
+  })
+
+  it('rejects a workspace outside any git working tree with git-not-a-repository', async () => {
+    const { api, root } = await harness()
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+
+    const error = expectErr(await api.workspace.gitPush(
+      request({ workspaceId: created.workspaceId }),
+      new AbortController().signal,
+    ))
+    expect(error.code).toBe('git-not-a-repository')
+  })
+
+  it('rejects with git-command-failed when there is no configured remote', async () => {
+    const { api, root } = await harness()
+    execFileSync('git', ['init', '-q', '-b', 'main', root])
+    execFileSync('git', ['-C', root, 'config', 'user.email', 'test@example.com'])
+    execFileSync('git', ['-C', root, 'config', 'user.name', 'Test'])
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    commitAll(root, 'init')
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+
+    const error = expectErr(await api.workspace.gitPush(
+      request({ workspaceId: created.workspaceId }),
+      new AbortController().signal,
+    ))
+    expect(error.code).toBe('git-command-failed')
+    if (error.code !== 'git-command-failed') throw new Error('unreachable')
+    expect(error.details.command).toBe('push')
+  })
+
+  it('aborts and reports cancelled when the caller signal fires', async () => {
+    const { api, root } = await harness()
+    execFileSync('git', ['init', '-q', '-b', 'main', root])
+    const created = expectOk(await api.workspace.create(request({ path: root }))).workspace
+    const controller = new AbortController()
+    controller.abort()
+    const error = expectErr(await api.workspace.gitPush(
+      request({ workspaceId: created.workspaceId }), controller.signal,
+    ))
+    expect(error.code).toBe('cancelled')
+  })
+})
+
 describe('workspace.gitFileDiff', () => {
   it('reads a modified tracked file\'s HEAD and working-tree text', async () => {
     const { api, root } = await harness()

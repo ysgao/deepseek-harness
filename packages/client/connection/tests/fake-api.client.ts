@@ -189,6 +189,12 @@ export class FakeApiClient implements IApiClient {
     gitDiscardAll: (payload: unknown) => this.record('workspace.gitDiscardAll', payload, Promise.resolve(ok({
       discarded: true as const,
     }))),
+    gitPullRebase: (payload: unknown) => this.record('workspace.gitPullRebase', payload, Promise.resolve(ok({
+      pulled: true as const,
+    }))),
+    gitPush: (payload: unknown) => this.record('workspace.gitPush', payload, Promise.resolve(ok({
+      pushed: true as const,
+    }))),
     gitFileDiff: (payload: unknown) => this.record('workspace.gitFileDiff', payload, Promise.resolve(ok({
       oldText: null,
       newText: null,

@@ -15,8 +15,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import clsx from 'clsx'
 import {
-  Button, IconArrowUpOutline14, IconCheckOutline14, IconCloseFill14, IconFilePlaceholder16, IconFolderClose16,
-  IconFolderOpen16, IconRefreshOutline14, IconTriangleRightFill14, IconUndoOutline14, Modal, StateDot,
+  Button, IconArrowDownOutline14, IconArrowUpOutline14, IconCheckOutline14, IconChevronDuoUpOutline14, IconCloseFill14,
+  IconFilePlaceholder16, IconFolderClose16, IconFolderOpen16, IconRefreshOutline14, IconTriangleRightFill14,
+  IconUndoOutline14, Modal, StateDot,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   SessionId, WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId,
@@ -42,6 +43,10 @@ export interface FilesNodeProps {
   commitAllChanges: (workspaceId: WorkspaceId, message: string, signal?: AbortSignal) => Promise<void>
   /** Revert every tracked file's pending change to its `HEAD` content; an untracked file is left untouched. */
   discardAllChanges: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<void>
+  /** Fetch from the remote tracked by the current branch and rebase local commits on top. */
+  pullRebase: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<void>
+  /** Push the current branch to its configured remote. */
+  push: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<void>
   /** Open a file with the Host OS default application (the preview's external fallback). */
   openPath: (path: string) => Promise<void>
   /** The currently selected session, if any (the file-tab open route's target). */
@@ -102,15 +107,19 @@ function useGitStatus(
 }
 
 /**
- * The Files header's branch name, dirty indicator, refresh control, and (when
- * there are pending changes) Commit-all/Discard-all triggers; renders nothing
- * outside a git working tree.
+ * The Files header's branch name, dirty indicator, Pull/Push/Refresh
+ * controls, and (when there are pending changes) Commit-all/Discard-all
+ * triggers; renders nothing outside a git working tree.
  */
-function GitStatusSummary({ status, onRefresh, onCommit, onDiscard, t }: {
+function GitStatusSummary({ status, onRefresh, onCommit, onDiscard, onPull, onPush, pullPending, pushPending, t }: {
   status: WorkspaceGitStatus | undefined
   onRefresh: () => void
   onCommit: () => void
   onDiscard: () => void
+  onPull: () => void
+  onPush: () => void
+  pullPending: boolean
+  pushPending: boolean
   t: FilesTranslate
 }) {
   if (status === undefined || !status.isRepo || status.branch === null) return null
@@ -136,6 +145,12 @@ function GitStatusSummary({ status, onRefresh, onCommit, onDiscard, t }: {
           </button>
         </>
       )}
+      <button type="button" className={css.gitRefreshButton} title={t('files.git.pull')} disabled={pullPending} onClick={onPull}>
+        <IconArrowDownOutline14 />
+      </button>
+      <button type="button" className={css.gitRefreshButton} title={t('files.git.push')} disabled={pushPending} onClick={onPush}>
+        <IconChevronDuoUpOutline14 />
+      </button>
       <button
         type="button"
         className={css.gitRefreshButton}
@@ -395,7 +410,7 @@ function FilesLevel({ path, depth, onOpenFile, listWorkspaceEntries, gitStatusFi
  */
 export function FilesNode({
   workspaceId, rootPath, listWorkspaceEntries, readWorkspaceFile, listWorkspaceGitStatus,
-  commitAllChanges, discardAllChanges, openPath, currentSessionId, openFileInSession, t,
+  commitAllChanges, discardAllChanges, pullRebase, push, openPath, currentSessionId, openFileInSession, t,
 }: FilesNodeProps) {
   const [expanded, setExpanded] = useState(false)
   const [previewPath, setPreviewPath] = useState<string | null>(null)
@@ -412,6 +427,10 @@ export function FilesNode({
   const [discardConfirming, setDiscardConfirming] = useState(false)
   const [discardPending, setDiscardPending] = useState(false)
   const [discardError, setDiscardError] = useState<string | null>(null)
+  const [pullPending, setPullPending] = useState(false)
+  const [pullError, setPullError] = useState<string | null>(null)
+  const [pushPending, setPushPending] = useState(false)
+  const [pushError, setPushError] = useState<string | null>(null)
   const startCommit = useCallback(() => {
     setCommitMessage('')
     setCommitError(null)
@@ -461,6 +480,32 @@ export function FilesNode({
       setDiscardError(reason instanceof Error ? reason.message : String(reason))
     })
   }, [discardAllChanges, workspaceId, refreshGitStatus])
+  const runPull = useCallback(() => {
+    setPullPending(true)
+    setPullError(null)
+    pullRebase(workspaceId).then(() => {
+      setPullPending(false)
+      // A rebase can change working-tree content, the same as commit/discard.
+      refreshGitStatus()
+      setLevelRefreshKey(key => key + 1)
+    }).catch((reason: unknown) => {
+      setPullPending(false)
+      setPullError(reason instanceof Error ? reason.message : String(reason))
+    })
+  }, [pullRebase, workspaceId, refreshGitStatus])
+  const runPush = useCallback(() => {
+    setPushPending(true)
+    setPushError(null)
+    // Unlike pull, a push never changes the local working tree or anything
+    // WorkspaceGitStatus reports (no ahead/behind field), so there is
+    // nothing here to refresh on success.
+    push(workspaceId).then(() => {
+      setPushPending(false)
+    }).catch((reason: unknown) => {
+      setPushPending(false)
+      setPushError(reason instanceof Error ? reason.message : String(reason))
+    })
+  }, [push, workspaceId])
   // Stable across the viewer-open/close re-renders that would otherwise
   // recreate these closures and re-arm useLevel's effect (its dependency
   // array includes `list`, so an unstable closure would refetch the level on
@@ -524,11 +569,17 @@ export function FilesNode({
               onRefresh={refreshGitStatus}
               onCommit={startCommit}
               onDiscard={openDiscardConfirm}
+              onPull={runPull}
+              onPush={runPush}
+              pullPending={pullPending}
+              pushPending={pushPending}
               t={t}
             />
           )}
       </div>
       {commitError !== null && <div className={css.notice} role="alert">{commitError}</div>}
+      {pullError !== null && <div className={css.notice} role="alert">{pullError}</div>}
+      {pushError !== null && <div className={css.notice} role="alert">{pushError}</div>}
       {expanded && (
         <FilesLevel
           key={levelRefreshKey}

@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
-  commitAllChanges, discardAllChanges, GitCommandError, GitNotARepositoryError, workspaceFileAtHead, workspaceGitStatus,
+  commitAllChanges, discardAllChanges, GitCommandError, GitNotARepositoryError, pullRebase, push, workspaceFileAtHead,
+  workspaceGitStatus,
 } from '../src/workspace-git.ts'
 
 function tempDir(prefix: string): string {
@@ -22,6 +23,18 @@ function initRepo(root: string): void {
 function commitAll(root: string, message: string): void {
   execFileSync('git', ['-C', root, 'add', '-A'])
   execFileSync('git', ['-C', root, 'commit', '-q', '-m', message])
+}
+
+/** Initializes a bare repository at `root`, usable as a `pullRebase`/`push` remote. */
+function initBareRemote(root: string): void {
+  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', root])
+}
+
+/** Clones `remote` into a fresh working copy at `dest`, with a deterministic committer identity. */
+function cloneRepo(remote: string, dest: string): void {
+  execFileSync('git', ['clone', '-q', remote, dest])
+  execFileSync('git', ['-C', dest, 'config', 'user.email', 'test@example.com'])
+  execFileSync('git', ['-C', dest, 'config', 'user.name', 'Test'])
 }
 
 describe('workspaceGitStatus', () => {
@@ -163,6 +176,125 @@ describe('commitAllChanges', () => {
     const controller = new AbortController()
     controller.abort()
     const error = await commitAllChanges(root, 'msg', controller.signal).catch((reason: unknown) => reason)
+    expect(error).not.toBeInstanceOf(GitCommandError)
+    expect(error).not.toBeInstanceOf(GitNotARepositoryError)
+  })
+})
+
+describe('pullRebase', () => {
+  it('fetches from the remote and rebases local commits on top', async () => {
+    const remote = tempDir('dsh-workspace-git-remote-')
+    initBareRemote(remote)
+    const a = tempDir('dsh-workspace-git-pull-a-')
+    cloneRepo(remote, a)
+    writeFileSync(join(a, 'base.txt'), 'base')
+    commitAll(a, 'base')
+    execFileSync('git', ['-C', a, 'push', '-q'])
+
+    const b = tempDir('dsh-workspace-git-pull-b-')
+    cloneRepo(remote, b)
+    writeFileSync(join(b, 'local.txt'), 'local')
+    commitAll(b, 'local change')
+
+    // A commit lands on the remote that b has not fetched yet.
+    writeFileSync(join(a, 'remote.txt'), 'remote')
+    commitAll(a, 'remote change')
+    execFileSync('git', ['-C', a, 'push', '-q'])
+
+    await pullRebase(b)
+
+    expect(execFileSync('git', ['-C', b, 'log', '--format=%s']).toString().trim().split('\n')).toEqual([
+      'local change', 'remote change', 'base',
+    ])
+    expect(existsSync(join(b, 'remote.txt'))).toBe(true)
+  })
+
+  it('rejects a directory outside any git working tree with GitNotARepositoryError', async () => {
+    const root = tempDir('dsh-workspace-git-pull-none-')
+    await expect(pullRebase(root)).rejects.toThrow(GitNotARepositoryError)
+  })
+
+  it('rejects with GitCommandError on a rebase conflict', async () => {
+    const remote = tempDir('dsh-workspace-git-remote-')
+    initBareRemote(remote)
+    const a = tempDir('dsh-workspace-git-pull-conflict-a-')
+    cloneRepo(remote, a)
+    writeFileSync(join(a, 'f.txt'), 'base')
+    commitAll(a, 'base')
+    execFileSync('git', ['-C', a, 'push', '-q'])
+
+    const b = tempDir('dsh-workspace-git-pull-conflict-b-')
+    cloneRepo(remote, b)
+    writeFileSync(join(b, 'f.txt'), 'local change')
+    commitAll(b, 'local change')
+
+    writeFileSync(join(a, 'f.txt'), 'remote change')
+    commitAll(a, 'remote change')
+    execFileSync('git', ['-C', a, 'push', '-q'])
+
+    await expect(pullRebase(b)).rejects.toThrow(GitCommandError)
+  })
+
+  it('propagates an abort instead of collapsing into a GitCommandError', async () => {
+    const root = tempDir('dsh-workspace-git-pull-abort-')
+    initRepo(root)
+    const controller = new AbortController()
+    controller.abort()
+    const error = await pullRebase(root, controller.signal).catch((reason: unknown) => reason)
+    expect(error).not.toBeInstanceOf(GitCommandError)
+    expect(error).not.toBeInstanceOf(GitNotARepositoryError)
+  })
+})
+
+describe('push', () => {
+  it('pushes local commits to the configured remote', async () => {
+    const remote = tempDir('dsh-workspace-git-remote-')
+    initBareRemote(remote)
+    const local = tempDir('dsh-workspace-git-push-')
+    cloneRepo(remote, local)
+    writeFileSync(join(local, 'a.txt'), 'hello')
+    commitAll(local, 'init')
+
+    await push(local)
+
+    const check = tempDir('dsh-workspace-git-push-check-')
+    cloneRepo(remote, check)
+    expect(readFileSync(join(check, 'a.txt'), 'utf8')).toBe('hello')
+  })
+
+  it('rejects a directory outside any git working tree with GitNotARepositoryError', async () => {
+    const root = tempDir('dsh-workspace-git-push-none-')
+    await expect(push(root)).rejects.toThrow(GitNotARepositoryError)
+  })
+
+  it('rejects with GitCommandError on a non-fast-forward push', async () => {
+    const remote = tempDir('dsh-workspace-git-remote-')
+    initBareRemote(remote)
+    const a = tempDir('dsh-workspace-git-push-nff-a-')
+    cloneRepo(remote, a)
+    writeFileSync(join(a, 'f.txt'), 'base')
+    commitAll(a, 'base')
+    execFileSync('git', ['-C', a, 'push', '-q'])
+
+    const b = tempDir('dsh-workspace-git-push-nff-b-')
+    cloneRepo(remote, b)
+    writeFileSync(join(b, 'g.txt'), 'b change')
+    commitAll(b, 'b change')
+
+    // a diverges the remote from under b before b ever pushes.
+    writeFileSync(join(a, 'h.txt'), 'a change')
+    commitAll(a, 'a change')
+    execFileSync('git', ['-C', a, 'push', '-q'])
+
+    await expect(push(b)).rejects.toThrow(GitCommandError)
+  })
+
+  it('propagates an abort instead of collapsing into a GitCommandError', async () => {
+    const root = tempDir('dsh-workspace-git-push-abort-')
+    initRepo(root)
+    const controller = new AbortController()
+    controller.abort()
+    const error = await push(root, controller.signal).catch((reason: unknown) => reason)
     expect(error).not.toBeInstanceOf(GitCommandError)
     expect(error).not.toBeInstanceOf(GitNotARepositoryError)
   })

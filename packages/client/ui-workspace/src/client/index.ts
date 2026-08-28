@@ -109,6 +109,8 @@ export function apply(ctx: ClientContext): void {
     listWorkspaceGitStatus: (workspaceId, signal) => ctx.workspaces.listWorkspaceGitStatus(workspaceId, signal),
     commitAllWorkspaceChanges: (workspaceId, message, signal) => ctx.workspaces.commitAllWorkspaceChanges(workspaceId, message, signal),
     discardAllWorkspaceChanges: (workspaceId, signal) => ctx.workspaces.discardAllWorkspaceChanges(workspaceId, signal),
+    pullRebaseWorkspace: (workspaceId, signal) => ctx.workspaces.pullRebaseWorkspace(workspaceId, signal),
+    pushWorkspace: (workspaceId, signal) => ctx.workspaces.pushWorkspace(workspaceId, signal),
     openPath: path => ctx.workspaces.openPath(path),
     openFileInSession: (sessionId, path) => ctx.get('conversationFileOpener')?.openFile(sessionId, path) ?? false,
     hooks: { directoryFlow: browserFlowSource, hostDescription },

@@ -37,6 +37,8 @@ import {
   workspaceDeleteValueSchema,
   workspaceGitCommitAllValueSchema,
   workspaceGitDiscardAllValueSchema,
+  workspaceGitPullRebaseValueSchema,
+  workspaceGitPushValueSchema,
   workspaceGitFileDiffValueSchema,
   workspaceGitStatusValueSchema,
   workspaceInsertBeforeValueSchema,
@@ -135,6 +137,8 @@ export interface IApiClient {
     gitStatus(payload: RequestPayload<'workspace.gitStatus'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitStatus'>>>
     gitCommitAll(payload: RequestPayload<'workspace.gitCommitAll'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitCommitAll'>>>
     gitDiscardAll(payload: RequestPayload<'workspace.gitDiscardAll'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitDiscardAll'>>>
+    gitPullRebase(payload: RequestPayload<'workspace.gitPullRebase'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitPullRebase'>>>
+    gitPush(payload: RequestPayload<'workspace.gitPush'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitPush'>>>
     gitFileDiff(payload: RequestPayload<'workspace.gitFileDiff'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.gitFileDiff'>>>
     writeFile(payload: RequestPayload<'workspace.writeFile'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.writeFile'>>>
   }
@@ -225,6 +229,8 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'workspace.gitStatus': workspaceGitStatusValueSchema,
   'workspace.gitCommitAll': workspaceGitCommitAllValueSchema,
   'workspace.gitDiscardAll': workspaceGitDiscardAllValueSchema,
+  'workspace.gitPullRebase': workspaceGitPullRebaseValueSchema,
+  'workspace.gitPush': workspaceGitPushValueSchema,
   'workspace.gitFileDiff': workspaceGitFileDiffValueSchema,
   'workspace.writeFile': workspaceWriteFileValueSchema,
   'skill.list': skillListValueSchema,
@@ -491,6 +497,10 @@ export abstract class AbstractApiClient implements IApiClient {
     // unary deadline. Caller/connection aborts remain.
     gitCommitAll: (payload, signal) => this.callUnary('workspace.gitCommitAll', payload, signal, 'caller-signal-only'),
     gitDiscardAll: (payload, signal) => this.callUnary('workspace.gitDiscardAll', payload, signal, 'caller-signal-only'),
+    // Same user-paced rationale as gitCommitAll/gitDiscardAll above: pull and
+    // push are network operations, not bound by the normal unary deadline.
+    gitPullRebase: (payload, signal) => this.callUnary('workspace.gitPullRebase', payload, signal, 'caller-signal-only'),
+    gitPush: (payload, signal) => this.callUnary('workspace.gitPush', payload, signal, 'caller-signal-only'),
     gitFileDiff: (payload, signal) => this.callUnary('workspace.gitFileDiff', payload, signal),
     // Same user-paced rationale as gitCommitAll/gitDiscardAll above: a large
     // file write is not bound by the normal unary deadline.

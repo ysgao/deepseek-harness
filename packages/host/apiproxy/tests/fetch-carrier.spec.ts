@@ -206,6 +206,12 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
       async gitDiscardAll(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { discarded: true as const } } }
       },
+      async gitPullRebase(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { pulled: true as const } } }
+      },
+      async gitPush(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { pushed: true as const } } }
+      },
       async gitFileDiff(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { oldText: null, newText: null } } }
       },

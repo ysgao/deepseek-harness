@@ -361,6 +361,27 @@ export class WorkspaceRuntime implements IWorkspaces {
   }
 
   /**
+   * Fetch from the remote tracked by the current branch and rebase local
+   * commits on top through `workspace.gitPullRebase`.
+   * @param workspaceId - target workspace.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   */
+  async pullRebaseWorkspace(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void> {
+    const response = await this.api.workspace.gitPullRebase({ workspaceId }, signal)
+    if (!response.result.ok) throw new WorkspaceFileBrowseError(response.result.error)
+  }
+
+  /**
+   * Push the current branch to its configured remote through `workspace.gitPush`.
+   * @param workspaceId - target workspace.
+   * @param signal - aborts the wire request when the caller supersedes it.
+   */
+  async pushWorkspace(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void> {
+    const response = await this.api.workspace.gitPush({ workspaceId }, signal)
+    if (!response.result.ok) throw new WorkspaceFileBrowseError(response.result.error)
+  }
+
+  /**
    * Read one file's `HEAD` and current working-tree text through `workspace.gitFileDiff`.
    * @param workspaceId - owning workspace; `path` must be its own path or a descendant.
    * @param path - absolute file path.

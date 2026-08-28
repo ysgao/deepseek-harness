@@ -232,6 +232,28 @@ export interface WorkspaceApi {
   Promise<RpcResponse<{ discarded: true }>>
 
   /**
+   * Fetches from the remote tracked by the current branch and rebases local
+   * commits on top, in the git repository enclosing a workspace's own
+   * directory. Fails `git-not-a-repository` when the directory is outside
+   * any git working tree, `git-command-failed` when `git pull --rebase`
+   * itself exits non-zero (no configured remote/upstream, a rebase
+   * conflict, network failure, …) — the message is git's own output.
+   */
+  gitPullRebase(request: RpcRequest<{ workspaceId: WorkspaceId }>, signal: AbortSignal):
+  Promise<RpcResponse<{ pulled: true }>>
+
+  /**
+   * Pushes the current branch to its configured remote, in the git
+   * repository enclosing a workspace's own directory. Fails
+   * `git-not-a-repository` when the directory is outside any git working
+   * tree, `git-command-failed` when `git push` itself exits non-zero (no
+   * configured remote/upstream, a non-fast-forward rejection, authentication
+   * failure, …) — the message is git's own output.
+   */
+  gitPush(request: RpcRequest<{ workspaceId: WorkspaceId }>, signal: AbortSignal):
+  Promise<RpcResponse<{ pushed: true }>>
+
+  /**
    * Reads one file's `HEAD` and current working-tree text, for the File
    * tab's side-by-side diff. `path` must be the workspace's own canonical
    * path or a descendant of it; a request outside that root fails with

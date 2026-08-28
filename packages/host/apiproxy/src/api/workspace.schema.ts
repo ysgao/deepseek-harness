@@ -174,6 +174,26 @@ export const workspaceGitDiscardAllValueSchema = z.object({
   discarded: z.literal(true),
 }) satisfies z.ZodType<Wire<ResponseValue<'workspace.gitDiscardAll'>>>
 
+/** workspace.gitPullRebase request payload. */
+export const workspaceGitPullRebaseRequestSchema = z.object({
+  workspaceId: workspaceIdSchema,
+}) satisfies z.ZodType<Wire<RequestPayload<'workspace.gitPullRebase'>>>
+
+/** workspace.gitPullRebase response value. */
+export const workspaceGitPullRebaseValueSchema = z.object({
+  pulled: z.literal(true),
+}) satisfies z.ZodType<Wire<ResponseValue<'workspace.gitPullRebase'>>>
+
+/** workspace.gitPush request payload. */
+export const workspaceGitPushRequestSchema = z.object({
+  workspaceId: workspaceIdSchema,
+}) satisfies z.ZodType<Wire<RequestPayload<'workspace.gitPush'>>>
+
+/** workspace.gitPush response value. */
+export const workspaceGitPushValueSchema = z.object({
+  pushed: z.literal(true),
+}) satisfies z.ZodType<Wire<ResponseValue<'workspace.gitPush'>>>
+
 /** workspace.gitFileDiff request payload: the path must be the workspace root or a descendant. */
 export const workspaceGitFileDiffRequestSchema = z.object({
   workspaceId: workspaceIdSchema,

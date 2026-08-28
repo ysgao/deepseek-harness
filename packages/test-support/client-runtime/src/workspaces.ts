@@ -282,6 +282,28 @@ export class TestWorkspaces implements IWorkspaces {
   }
 
   /**
+   * Fetch from the remote and rebase local commits on top (recorded). The default resolves with no effect; stub to simulate failure.
+   * @param workspaceId - owning workspace.
+   * @param signal - forwarded like the production face.
+   */
+  async pullRebaseWorkspace(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void> {
+    this.calls.push({ method: 'pullRebaseWorkspace', args: [workspaceId, signal] })
+    const stub = this.stubs.get('pullRebaseWorkspace')
+    if (stub !== undefined) await (stub(workspaceId, signal) as Promise<void>)
+  }
+
+  /**
+   * Push the current branch to its configured remote (recorded). The default resolves with no effect; stub to simulate failure.
+   * @param workspaceId - owning workspace.
+   * @param signal - forwarded like the production face.
+   */
+  async pushWorkspace(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void> {
+    this.calls.push({ method: 'pushWorkspace', args: [workspaceId, signal] })
+    const stub = this.stubs.get('pushWorkspace')
+    if (stub !== undefined) await (stub(workspaceId, signal) as Promise<void>)
+  }
+
+  /**
    * Read one file's `HEAD` and working-tree text (recorded). The default
    * reports neither side present; stub to shape a diff.
    * @param workspaceId - owning workspace.

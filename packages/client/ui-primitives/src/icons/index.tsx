@@ -915,3 +915,38 @@ export const IconUndoOutline14 = ({ size = 14, className }: IconProps) => (
     />
   </svg>
 )
+
+/**
+ * ic_ds_arrow_down_outline_14 (hand-drawn, stroke-based, no figma source):
+ * download/pull glyph — a down arrow descending from a base line, the
+ * vertical mirror of {@link IconArrowUpOutline14}.
+ */
+export const IconArrowDownOutline14 = ({ size = 14, className }: IconProps) => (
+  <svg width={size} height={size} className={className} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M7 4V11M3 7L7 11L11 7M4 2H10"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/**
+ * ic_ds_chevron_duo_up_outline_14 (hand-drawn, stroke-based, no figma
+ * source): push glyph — two stacked ascending chevrons, kept visually
+ * distinct from {@link IconArrowUpOutline14}'s single arrow-into-base
+ * commit glyph.
+ */
+export const IconChevronDuoUpOutline14 = ({ size = 14, className }: IconProps) => (
+  <svg width={size} height={size} className={className} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M3.5 12L7 8.5L10.5 12M3.5 8L7 4.5L10.5 8"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
