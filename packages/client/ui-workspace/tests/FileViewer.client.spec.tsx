@@ -2,8 +2,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { WorkspaceFileBrowseError } from '@deepseek-ai/dsh-client-runtime/client'
-import type { RpcError, WorkspaceFileContent, WorkspaceFileVersion } from '@deepseek-ai/dsh-client-runtime/client'
+import { WorkspaceFileBrowseError } from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type { WorkspaceFileContent, WorkspaceFileVersion } from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type { WorkspaceError } from '@deepseek-ai/dsh-api-workspace-controller/types'
 import { FileViewer } from '../src/client/files/FileViewer.tsx'
 import { zh } from '../src/client/locales.ts'
 
@@ -106,11 +107,11 @@ describe('FileViewer', () => {
   })
 
   it('falls back to the external action when the read fails with file-too-large, showing the bound', async () => {
-    const rpcError: RpcError = { code: 'file-too-large', message: 'too big', details: { path: '/ws/big.txt', maxBytes: 20 * 1024 * 1024 } }
+    const rpcError: WorkspaceError = { code: 'file-too-large', message: 'too big', details: { path: '/ws/big.txt', maxBytes: 20 * 1024 * 1024 } }
     render(
       <FileViewer
         path="/ws/big.txt"
-        readFile={() => Promise.reject(new WorkspaceFileBrowseError(rpcError))}
+        readFile={() => Promise.reject(new WorkspaceFileBrowseError('read file', rpcError))}
         openPath={vi.fn()}
         onClose={vi.fn()}
         t={t}

@@ -10,8 +10,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { FileEditor } from '../src/index.ts'
+import type { FileEditorResizeLabels, MarkdownLabels } from '../src/index.ts'
 
 afterEach(cleanup)
+
+const LABELS: MarkdownLabels = { code: { copyLabel: 'copy', copiedLabel: 'copied' }, footnotes: 'footnotes' }
+const RESIZE_LABELS: FileEditorResizeLabels = { ariaLabel: 'Resize preview', title: 'Drag to resize, double-click to reset' }
 
 // jsdom implements neither constructor: CodeMirror's block-measurement path
 // (Range/Element.getClientRects) and its resize-driven remeasure both no-op
@@ -50,7 +54,7 @@ function pasteInto(content: Element, text: string): void {
 describe('FileEditor', () => {
   it('renders the initial buffer for a plain text file, with no preview pane', () => {
     const { container } = render(
-      <FileEditor path="/ws/notes.txt" text="hello world" kind="text" onChange={vi.fn()} />,
+      <FileEditor path="/ws/notes.txt" text="hello world" kind="text" labels={LABELS} resizeLabels={RESIZE_LABELS} onChange={vi.fn()} />,
     )
     expect(container.querySelector('.cm-content')?.textContent).toBe('hello world')
     expect(container.querySelector('[class*="_previewPane_"]')).toBeNull()
@@ -58,7 +62,7 @@ describe('FileEditor', () => {
 
   it('renders a live-rendered preview pane alongside the editor for Markdown', () => {
     const { container, getByRole } = render(
-      <FileEditor path="/ws/README.md" text="# Title" kind="markdown" onChange={vi.fn()} />,
+      <FileEditor path="/ws/README.md" text="# Title" kind="markdown" labels={LABELS} resizeLabels={RESIZE_LABELS} onChange={vi.fn()} />,
     )
     expect(container.querySelector('.cm-content')?.textContent).toBe('# Title')
     expect(getByRole('heading', { name: 'Title' })).not.toBeNull()
@@ -67,7 +71,7 @@ describe('FileEditor', () => {
   it('reports edits through onChange', async () => {
     const onChange = vi.fn()
     const { container } = render(
-      <FileEditor path="/ws/notes.txt" text="hello" kind="text" onChange={onChange} />,
+      <FileEditor path="/ws/notes.txt" text="hello" kind="text" labels={LABELS} resizeLabels={RESIZE_LABELS} onChange={onChange} />,
     )
     const content = container.querySelector('.cm-content')
     if (content === null) throw new Error('unreachable')
@@ -85,7 +89,7 @@ describe('FileEditor', () => {
     vi.useFakeTimers()
     try {
       const { container } = render(
-        <FileEditor path="/ws/README.md" text="# One" kind="markdown" onChange={vi.fn()} />,
+        <FileEditor path="/ws/README.md" text="# One" kind="markdown" labels={LABELS} resizeLabels={RESIZE_LABELS} onChange={vi.fn()} />,
       )
       const content = container.querySelector('.cm-content')
       const preview = container.querySelector('[class*="_previewPane_"]')
@@ -103,7 +107,7 @@ describe('FileEditor', () => {
   it('calls onSaveRequested and suppresses the browser default on Mod-s', () => {
     const onSaveRequested = vi.fn()
     const { container } = render(
-      <FileEditor path="/ws/notes.txt" text="hello" kind="text" onChange={vi.fn()} onSaveRequested={onSaveRequested} />,
+      <FileEditor path="/ws/notes.txt" text="hello" kind="text" labels={LABELS} resizeLabels={RESIZE_LABELS} onChange={vi.fn()} onSaveRequested={onSaveRequested} />,
     )
     const content = container.querySelector('.cm-content')
     if (content === null) throw new Error('unreachable')
@@ -115,14 +119,14 @@ describe('FileEditor', () => {
 
   it('renders no divider for a plain text file', () => {
     const { container } = render(
-      <FileEditor path="/ws/notes.txt" text="hello" kind="text" onChange={vi.fn()} />,
+      <FileEditor path="/ws/notes.txt" text="hello" kind="text" labels={LABELS} resizeLabels={RESIZE_LABELS} onChange={vi.fn()} />,
     )
     expect(container.querySelector('[role="separator"]')).toBeNull()
   })
 
   it('drags the Markdown split divider to resize the ratio between panes', () => {
     const { container } = render(
-      <FileEditor path="/ws/README.md" text="# Title" kind="markdown" onChange={vi.fn()} />,
+      <FileEditor path="/ws/README.md" text="# Title" kind="markdown" labels={LABELS} resizeLabels={RESIZE_LABELS} onChange={vi.fn()} />,
     )
     const divider = container.querySelector('[role="separator"]')
     const splitRoot = divider?.parentElement
@@ -136,7 +140,7 @@ describe('FileEditor', () => {
 
   it('tears the editor view down cleanly on unmount', () => {
     const { unmount } = render(
-      <FileEditor path="/ws/notes.txt" text="hello" kind="text" onChange={vi.fn()} />,
+      <FileEditor path="/ws/notes.txt" text="hello" kind="text" labels={LABELS} resizeLabels={RESIZE_LABELS} onChange={vi.fn()} />,
     )
     expect(() => { unmount() }).not.toThrow()
   })

@@ -9,8 +9,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { SideBySideDiff } from '../src/index.ts'
+import type { SideBySideDiffLabels } from '../src/index.ts'
 
 afterEach(cleanup)
+
+const LABELS: SideBySideDiffLabels = {
+  copy: '复制',
+  copied: '复制成功',
+  resizeAria: 'Resize columns',
+  resizeTitle: 'Drag to resize, double-click to reset',
+}
 
 beforeEach(() => {
   vi.useRealTimers()
@@ -47,7 +55,7 @@ function rows(container: HTMLElement): Row[] {
 
 describe('SideBySideDiff alignment', () => {
   it('renders a pure addition as new-only rows with blank old cells', () => {
-    const { container } = render(<SideBySideDiff oldText={null} newText={'a\nb'} />)
+    const { container } = render(<SideBySideDiff oldText={null} newText={'a\nb'} labels={LABELS} />)
     expect(rows(container)).toEqual([
       { oldNum: '', oldText: '', newNum: '1', newText: 'a' },
       { oldNum: '', oldText: '', newNum: '2', newText: 'b' },
@@ -57,7 +65,7 @@ describe('SideBySideDiff alignment', () => {
   })
 
   it('renders a pure deletion as old-only rows with blank new cells', () => {
-    const { container } = render(<SideBySideDiff oldText={'a\nb'} newText={null} />)
+    const { container } = render(<SideBySideDiff oldText={'a\nb'} newText={null} labels={LABELS} />)
     expect(rows(container)).toEqual([
       { oldNum: '1', oldText: 'a', newNum: '', newText: '' },
       { oldNum: '2', oldText: 'b', newNum: '', newText: '' },
@@ -67,7 +75,7 @@ describe('SideBySideDiff alignment', () => {
   })
 
   it('pairs an equal-length replacement row for row', () => {
-    const { container } = render(<SideBySideDiff oldText={'x\ny'} newText={'p\nq'} />)
+    const { container } = render(<SideBySideDiff oldText={'x\ny'} newText={'p\nq'} labels={LABELS} />)
     expect(rows(container)).toEqual([
       { oldNum: '1', oldText: 'x', newNum: '1', newText: 'p' },
       { oldNum: '2', oldText: 'y', newNum: '2', newText: 'q' },
@@ -75,7 +83,7 @@ describe('SideBySideDiff alignment', () => {
   })
 
   it('leaves the old side\'s excess lines unpaired when it is longer', () => {
-    const { container } = render(<SideBySideDiff oldText={'x\ny\nz'} newText={'p'} />)
+    const { container } = render(<SideBySideDiff oldText={'x\ny\nz'} newText={'p'} labels={LABELS} />)
     expect(rows(container)).toEqual([
       { oldNum: '1', oldText: 'x', newNum: '1', newText: 'p' },
       { oldNum: '2', oldText: 'y', newNum: '', newText: '' },
@@ -84,7 +92,7 @@ describe('SideBySideDiff alignment', () => {
   })
 
   it('leaves the new side\'s excess lines unpaired when it is longer', () => {
-    const { container } = render(<SideBySideDiff oldText={'x'} newText={'p\nq\nr'} />)
+    const { container } = render(<SideBySideDiff oldText={'x'} newText={'p\nq\nr'} labels={LABELS} />)
     expect(rows(container)).toEqual([
       { oldNum: '1', oldText: 'x', newNum: '1', newText: 'p' },
       { oldNum: '', oldText: '', newNum: '2', newText: 'q' },
@@ -93,7 +101,7 @@ describe('SideBySideDiff alignment', () => {
   })
 
   it('keeps unchanged context lines in step on both sides around a change', () => {
-    const { container } = render(<SideBySideDiff oldText={'a\nb\nc'} newText={'a\nZ\nc'} />)
+    const { container } = render(<SideBySideDiff oldText={'a\nb\nc'} newText={'a\nZ\nc'} labels={LABELS} />)
     expect(rows(container)).toEqual([
       { oldNum: '1', oldText: 'a', newNum: '1', newText: 'a' },
       { oldNum: '2', oldText: 'b', newNum: '2', newText: 'Z' },
@@ -104,7 +112,7 @@ describe('SideBySideDiff alignment', () => {
   })
 
   it('renders identical non-empty content as plain rows on both sides', () => {
-    const { container } = render(<SideBySideDiff oldText={'same\ntext'} newText={'same\ntext'} />)
+    const { container } = render(<SideBySideDiff oldText={'same\ntext'} newText={'same\ntext'} labels={LABELS} />)
     expect(rows(container)).toEqual([
       { oldNum: '1', oldText: 'same', newNum: '1', newText: 'same' },
       { oldNum: '2', oldText: 'text', newNum: '2', newText: 'text' },
@@ -114,19 +122,19 @@ describe('SideBySideDiff alignment', () => {
   })
 
   it('renders nothing when both sides are empty', () => {
-    const { container } = render(<SideBySideDiff oldText={null} newText={null} />)
+    const { container } = render(<SideBySideDiff oldText={null} newText={null} labels={LABELS} />)
     expect(container.firstChild).toBeNull()
   })
 
   it('treats a trailing newline as a terminator, not an extra blank line', () => {
-    const { container } = render(<SideBySideDiff oldText={null} newText={'hello\n'} />)
+    const { container } = render(<SideBySideDiff oldText={null} newText={'hello\n'} labels={LABELS} />)
     expect(rows(container)).toEqual([{ oldNum: '', oldText: '', newNum: '1', newText: 'hello' }])
   })
 })
 
 describe('SideBySideDiff divider', () => {
   it('drags the column divider to resize the ratio between the two sides', () => {
-    const { container } = render(<SideBySideDiff oldText={'a\nb'} newText={'p\nq'} />)
+    const { container } = render(<SideBySideDiff oldText={'a\nb'} newText={'p\nq'} labels={LABELS} />)
     const divider = container.querySelector('[role="separator"]')
     const body = divider?.parentElement
     if (divider === null || divider === undefined || body === null || body === undefined) throw new Error('unreachable')
@@ -140,12 +148,12 @@ describe('SideBySideDiff divider', () => {
 
 describe('SideBySideDiff banner', () => {
   it('shows the path label when provided', () => {
-    render(<SideBySideDiff path="src/a.ts" oldText="x" newText="y" />)
+    render(<SideBySideDiff path="src/a.ts" oldText="x" newText="y" labels={LABELS} />)
     expect(screen.getByText('src/a.ts')).toBeTruthy()
   })
 
   it('renders an empty label, still with a copy control, when no path is given', () => {
-    render(<SideBySideDiff oldText="x" newText="y" />)
+    render(<SideBySideDiff oldText="x" newText="y" labels={LABELS} />)
     expect(screen.getByRole('button', { name: '复制' })).toBeTruthy()
   })
 })
@@ -155,7 +163,7 @@ describe('SideBySideDiff copy', () => {
     vi.useFakeTimers()
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
-    render(<SideBySideDiff path="a.ts" oldText={'a\nb\nc'} newText={'a\nZ\nc'} />)
+    render(<SideBySideDiff path="a.ts" oldText={'a\nb\nc'} newText={'a\nZ\nc'} labels={LABELS} />)
     const copy = screen.getByRole('button', { name: '复制' })
     await act(async () => { fireEvent.click(copy) })
     expect(writeText).toHaveBeenCalledWith('  a\n- b\n+ Z\n  c')
@@ -167,7 +175,7 @@ describe('SideBySideDiff copy', () => {
   it('omits the added prefix for a deletion-only row', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
-    render(<SideBySideDiff path="a.ts" oldText={'only\nhere'} newText={null} />)
+    render(<SideBySideDiff path="a.ts" oldText={'only\nhere'} newText={null} labels={LABELS} />)
     const copy = screen.getByRole('button', { name: '复制' })
     await act(async () => { fireEvent.click(copy) })
     expect(writeText).toHaveBeenCalledWith('- only\n- here')
@@ -178,7 +186,7 @@ describe('SideBySideDiff copy', () => {
       configurable: true,
       value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
     })
-    render(<SideBySideDiff path="a.ts" oldText={null} newText="x" />)
+    render(<SideBySideDiff path="a.ts" oldText={null} newText="x" labels={LABELS} />)
     const copy = screen.getByRole('button', { name: '复制' })
     await act(async () => { fireEvent.click(copy) })
     expect(screen.getByRole('button', { name: '复制' })).toBeTruthy()
@@ -188,7 +196,7 @@ describe('SideBySideDiff copy', () => {
     vi.useFakeTimers()
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
-    render(<SideBySideDiff path="a.ts" oldText={null} newText="x" />)
+    render(<SideBySideDiff path="a.ts" oldText={null} newText="x" labels={LABELS} />)
     const copy = screen.getByRole('button', { name: '复制' })
     await act(async () => { fireEvent.click(copy) })
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: '复制成功' })) })

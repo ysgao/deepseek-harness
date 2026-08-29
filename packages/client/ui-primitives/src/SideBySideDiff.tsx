@@ -35,6 +35,18 @@ interface DiffRow {
   new: DiffCell
 }
 
+/** Caller-supplied copy: the copy control's two states and the resize divider's accessible name/hint. */
+export interface SideBySideDiffLabels {
+  /** Copy button's idle label. */
+  copy: string
+  /** Copy button's label immediately after a successful copy. */
+  copied: string
+  /** The column-resize divider's `aria-label`. */
+  resizeAria: string
+  /** The column-resize divider's `title` (drag/double-click hint). */
+  resizeTitle: string
+}
+
 export interface SideBySideDiffProps {
   /** Banner label (the file path); omitted draws an empty label (the banner itself, and its copy control, always render). */
   path?: string | undefined
@@ -44,6 +56,8 @@ export interface SideBySideDiffProps {
   newText: string | null
   /** Extra class merged onto the wrapper (callers position; this component draws). */
   className?: string | undefined
+  /** Copy control and resize-divider copy, supplied by the caller's own locale. */
+  labels: SideBySideDiffLabels
 }
 
 /** Split a diff part's value into its content lines, dropping the line-terminating (not interior) trailing newline. */
@@ -140,12 +154,13 @@ const CELL_CLASS: Record<DiffCell['tone'], string | undefined> = {
 
 /**
  * Render one file's HEAD-vs-working-tree content as a two-column diff.
- * @param props - see {@link SideBySideDiffProps}.
+ * @param props - see {@link SideBySideDiffProps}; `labels` supplies the copy
+ * control and resize-divider copy from the caller's own locale.
  * @returns the diff element, or `null` when there is no content on either
  * side (both `oldText` and `newText` are `null` or empty) — an unchanged
  * file with content still renders its lines, all in the plain tone.
  */
-export function SideBySideDiff({ path, oldText, newText, className }: SideBySideDiffProps) {
+export function SideBySideDiff({ path, oldText, newText, className, labels }: SideBySideDiffProps) {
   const rows = useMemo(() => buildRows(oldText, newText), [oldText, newText])
   const [copied, setCopied] = useState(false)
   const { ratio, dividerProps } = useSplitRatio()
@@ -168,7 +183,7 @@ export function SideBySideDiff({ path, oldText, newText, className }: SideBySide
       <div className={css.banner}>
         <div className={css.label}>{path ?? ''}</div>
         <button type="button" className={css.copyButton} onClick={onCopy}>
-          {copied ? '复制成功' : '复制'}
+          {copied ? labels.copied : labels.copy}
         </button>
       </div>
       <div className={css.body} style={bodyStyle}>
@@ -176,9 +191,9 @@ export function SideBySideDiff({ path, oldText, newText, className }: SideBySide
           className={css.divider}
           role="separator"
           aria-orientation="vertical"
-          aria-label="Resize diff columns"
+          aria-label={labels.resizeAria}
           tabIndex={0}
-          title="Drag to resize. Double-click to reset."
+          title={labels.resizeTitle}
           {...dividerProps}
         />
         {rows.map((row, index) => (

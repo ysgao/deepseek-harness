@@ -13,14 +13,14 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, MarkdownText, Modal, ReadBlock, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ReadBlockLine } from '@deepseek-ai/dsh-client-ui-primitives'
-import { WorkspaceFileBrowseError } from '@deepseek-ai/dsh-client-runtime/client'
-import type { WorkspaceFileContent } from '@deepseek-ai/dsh-client-runtime/client'
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
+import type { WorkspaceFileBrowseError, WorkspaceFileContent } from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type { WorkspaceError } from '@deepseek-ai/dsh-api-workspace-controller/types'
 import { langFromPath, viewerKindFor } from './classify.ts'
-import type { WorkspaceKey } from '../locales.ts'
 import css from './FileViewer.module.css'
 
-/** The standard locale seat this viewer consumes (a slice of the browser's full namespace). */
-type FileViewerTranslate = (key: WorkspaceKey, vars?: Record<string, string | number>) => string
+/** The standard locale seat this viewer consumes (the browser's full namespace plus the shared common vocabulary). */
+type FileViewerTranslate = TranslateNS<'workspace'>
 
 export interface FileViewerProps {
   /** The file to preview; the dialog is open exactly while this is set. */
@@ -74,8 +74,9 @@ type FetchState =
 
 /** Resolve one readFile rejection into the state its cause distinguishes. */
 function stateFromError(error: unknown): FetchState {
-  if (error instanceof WorkspaceFileBrowseError && error.rpcError.code === 'file-too-large') {
-    return { phase: 'too-large', maxBytes: error.rpcError.details.maxBytes }
+  if (error instanceof Error && error.name === 'WorkspaceFileBrowseError') {
+    const failure = (error as WorkspaceFileBrowseError).rpcError as WorkspaceError
+    if (failure.code === 'file-too-large') return { phase: 'too-large', maxBytes: failure.details.maxBytes }
   }
   return { phase: 'error' }
 }
@@ -105,6 +106,20 @@ export function FileViewer({ path, readFile, openPath, onClose, t }: FileViewerP
     })
     return () => { controller.abort() }
   }, [path, readFile])
+
+  const markdownLabels = useMemo(() => ({
+    code: { copyLabel: t('copy'), copiedLabel: t('copied') },
+    footnotes: t('files.viewer.footnotes'),
+  }), [t])
+  const readLabels = useMemo(() => ({
+    window: (shown: number, total: number) => t('files.viewer.read.window', { shown, total }),
+    copy: t('copy'),
+    copied: t('copied'),
+    collapseAria: t('files.viewer.read.collapseAria'),
+    expandAria: (count: number) => t('files.viewer.read.expandAria', { count }),
+    collapse: t('collapse'),
+    expand: (count: number) => t('files.viewer.read.expand', { count }),
+  }), [t])
 
   const binaryBase64 = state.phase === 'ready' && state.content.kind === 'binary' ? state.content.data : null
   const binaryMediaType = state.phase === 'ready' && state.content.kind === 'binary' ? state.content.mediaType : undefined
@@ -142,7 +157,7 @@ export function FileViewer({ path, readFile, openPath, onClose, t }: FileViewerP
       ? <p className={css.notice}>{t('files.viewer.loading')}</p>
       : <img className={css.image} src={imageUrl} alt={basename(path)} />
   } else if (kind === 'markdown' && state.content.kind === 'text') {
-    body = <MarkdownText text={state.content.content} />
+    body = <MarkdownText text={state.content.content} labels={markdownLabels} />
   } else {
     // Reached only for kind === 'text' with a text read: a binary read here
     // would already have taken the binaryMismatch branch above (kind !==
@@ -150,7 +165,7 @@ export function FileViewer({ path, readFile, openPath, onClose, t }: FileViewerP
     // guaranteed 'text'. TypeScript still requires the narrowing check.
     /* v8 ignore next -- the false arm is unreachable per the comment above; only TypeScript's narrowing needs it. */
     const lines = state.content.kind === 'text' ? toReadBlockLines(state.content.content) : []
-    body = <ReadBlock label={path} lines={lines} totalLines={lines.length} lang={langFromPath(path)} />
+    body = <ReadBlock label={path} lines={lines} totalLines={lines.length} lang={langFromPath(path)} labels={readLabels} />
   }
 
   const footer = showsExternalOnly

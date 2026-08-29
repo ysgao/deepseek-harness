@@ -14,9 +14,16 @@
 import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { MarkdownText } from './markdown/MarkdownText.tsx'
+import type { MarkdownLabels } from './markdown/MarkdownText.tsx'
 import { ReadBlock } from './ReadBlock.tsx'
-import type { ReadBlockLine } from './ReadBlock.tsx'
+import type { ReadBlockLabels, ReadBlockLine } from './ReadBlock.tsx'
 import css from './FilePreview.module.css'
+
+/** Localized chrome for whichever body {@link FilePreview} renders. */
+export interface FilePreviewLabels {
+  markdown: MarkdownLabels
+  read: ReadBlockLabels
+}
 
 /** Which body a file path selects (mirrors the caller's own extension classification). */
 export type FilePreviewKind = 'markdown' | 'image' | 'text' | 'external'
@@ -39,6 +46,8 @@ export interface FilePreviewProps {
   lang?: string | undefined
   /** Image `alt` text; defaults to `path` (a caller wanting just the basename passes it explicitly). */
   imageAlt?: string | undefined
+  /** Localized chrome for the Markdown and text/code bodies; unused for 'image'/'external'. */
+  labels: FilePreviewLabels
   loadingLabel: string
   loadErrorLabel: string
   externalLabel: string
@@ -62,7 +71,7 @@ function toReadBlockLines(text: string): ReadBlockLine[] {
  * @returns the body element (a notice, a rendered image, Markdown, or a `ReadBlock`).
  */
 export function FilePreview({
-  path, kind, state, lang, imageAlt, loadingLabel, loadErrorLabel, externalLabel, tooLargeLabel, className,
+  path, kind, state, lang, imageAlt, labels, loadingLabel, loadErrorLabel, externalLabel, tooLargeLabel, className,
 }: FilePreviewProps) {
   // A binary read where the classified kind expected text (a mismatched
   // extension on real binary content) falls back the same way an
@@ -89,13 +98,13 @@ export function FilePreview({
       ? <p className={css.notice}>{loadingLabel}</p>
       : <img className={css.image} src={blobUrl} alt={imageAlt ?? path} />
   } else if (kind === 'markdown' && state.content.kind === 'text') {
-    body = <MarkdownText text={state.content.text} />
+    body = <MarkdownText text={state.content.text} labels={labels.markdown} />
   } else {
     // Reached only for kind === 'text' with a text read: a binary read here
     // would already have taken the binaryMismatch branch above (kind !==
     // 'image' covers 'markdown' and 'text' alike), so `lines` is non-null.
     /* v8 ignore next -- the false arm is unreachable per the comment above; only TypeScript's narrowing needs it. */
-    body = <ReadBlock label={path} lines={lines ?? []} totalLines={(lines ?? []).length} lang={lang} />
+    body = <ReadBlock label={path} lines={lines ?? []} totalLines={(lines ?? []).length} lang={lang} labels={labels.read} />
   }
 
   return <div className={className ?? css.body}>{body}</div>

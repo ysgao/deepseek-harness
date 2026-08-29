@@ -2,7 +2,8 @@
 /** Generic authorization-flow surface: method choice, notices, prompt kinds, cancel/decline. */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { AuthorizationEntry, AuthorizationKeyState } from '@deepseek-ai/dsh-client-runtime/client'
+import type { AuthorizationEntry } from '@deepseek-ai/dsh-authorization/types'
+import type { AuthorizationKeyState } from '../src/client/authorization-runtime.ts'
 import { AuthorizationPanel } from '../src/client/AuthorizationPanel.tsx'
 import { en } from '../src/client/locales.ts'
 
@@ -82,7 +83,7 @@ describe('AuthorizationPanel', () => {
     auth.respondPrompt.mockRejectedValueOnce(new Error('stale attempt'))
     render(<AuthorizationPanel
       entry={entry([{ id: 'oauth', label: 'Sign in' }])}
-      keyState={inFlight({ pendingPrompt: { rpcId: 'p1' as never, prompt: { kind: 'text', message: 'Code' } } })}
+      keyState={inFlight({ pendingPrompt: { prompt: { kind: 'text', message: 'Code' } } })}
       authorization={auth} t={t}
     />)
     fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'x' } })
@@ -95,7 +96,7 @@ describe('AuthorizationPanel', () => {
     auth.respondPrompt.mockRejectedValueOnce('transport down')
     render(<AuthorizationPanel
       entry={entry([{ id: 'oauth', label: 'Sign in' }])}
-      keyState={inFlight({ pendingPrompt: { rpcId: 'p1' as never, prompt: { kind: 'text', message: 'Code' } } })}
+      keyState={inFlight({ pendingPrompt: { prompt: { kind: 'text', message: 'Code' } } })}
       authorization={auth} t={t}
     />)
     fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'x' } })
@@ -140,20 +141,20 @@ describe('AuthorizationPanel', () => {
     const auth = authorization()
     render(<AuthorizationPanel
       entry={entry([{ id: 'oauth', label: 'Sign in' }])}
-      keyState={inFlight({ pendingPrompt: { rpcId: 'p1' as never, prompt: { kind: 'text', message: 'Paste the redirect URL' } } })}
+      keyState={inFlight({ pendingPrompt: { prompt: { kind: 'text', message: 'Paste the redirect URL' } } })}
       authorization={auth} t={t}
     />)
     const input = screen.getByLabelText('Paste the redirect URL') as HTMLInputElement
     expect(input.type).toBe('text')
     fireEvent.change(input, { target: { value: 'https://callback/?code=x' } })
     fireEvent.click(screen.getByText(en.signInSubmit))
-    expect(auth.respondPrompt).toHaveBeenCalledWith('p1', 'https://callback/?code=x')
+    expect(auth.respondPrompt).toHaveBeenCalledWith(KEY, 'https://callback/?code=x')
   })
 
   it('a secret prompt masks the input', () => {
     render(<AuthorizationPanel
       entry={entry([{ id: 'oauth', label: 'Sign in' }])}
-      keyState={inFlight({ pendingPrompt: { rpcId: 'p1' as never, prompt: { kind: 'secret', message: 'Enter your key' } } })}
+      keyState={inFlight({ pendingPrompt: { prompt: { kind: 'secret', message: 'Enter your key' } } })}
       authorization={authorization()} t={t}
     />)
     const input = screen.getByLabelText('Enter your key') as HTMLInputElement
@@ -166,25 +167,24 @@ describe('AuthorizationPanel', () => {
       entry={entry([{ id: 'oauth', label: 'Sign in' }])}
       keyState={inFlight({
         pendingPrompt: {
-          rpcId: 'p1' as never,
           prompt: { kind: 'select', message: 'Pick an account', options: [{ id: 'a', label: 'Account A' }, { id: 'b', label: 'Account B' }] },
         },
       })}
       authorization={auth} t={t}
     />)
     fireEvent.click(screen.getByText('Account B'))
-    expect(auth.respondPrompt).toHaveBeenCalledWith('p1', 'b')
+    expect(auth.respondPrompt).toHaveBeenCalledWith(KEY, 'b')
   })
 
-  it('decline calls declinePrompt with the pending rpcId', async () => {
+  it('decline calls declinePrompt with the entry key', async () => {
     const auth = authorization()
     render(<AuthorizationPanel
       entry={entry([{ id: 'oauth', label: 'Sign in' }])}
-      keyState={inFlight({ pendingPrompt: { rpcId: 'p1' as never, prompt: { kind: 'text', message: 'Code' } } })}
+      keyState={inFlight({ pendingPrompt: { prompt: { kind: 'text', message: 'Code' } } })}
       authorization={auth} t={t}
     />)
     fireEvent.click(screen.getByText(en.signInDecline))
-    expect(auth.declinePrompt).toHaveBeenCalledWith('p1')
+    expect(auth.declinePrompt).toHaveBeenCalledWith(KEY)
   })
 
   it('cancel calls cancel with the entry key while in flight, with no pending prompt required', async () => {

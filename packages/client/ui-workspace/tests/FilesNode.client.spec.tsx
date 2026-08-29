@@ -3,8 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import type {
-  SessionId, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileVersion, WorkspaceGitStatus, WorkspaceId,
-} from '@deepseek-ai/dsh-client-runtime/client'
+  WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileVersion, WorkspaceGitStatus, WorkspaceId,
+} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { FilesNode } from '../src/client/files/FilesNode.tsx'
 import { zh } from '../src/client/locales.ts'
 

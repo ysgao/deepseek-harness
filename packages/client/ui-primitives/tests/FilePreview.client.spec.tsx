@@ -11,6 +11,18 @@ const labels = {
   loadErrorLabel: 'load error',
   externalLabel: 'open externally',
   tooLargeLabel: (maxMB: number) => `too large (${maxMB}MB)`,
+  labels: {
+    markdown: { code: { copyLabel: 'copy', copiedLabel: 'copied' }, footnotes: 'footnotes' },
+    read: {
+      window: (shown: number, total: number) => `${shown}/${total}`,
+      copy: 'copy',
+      copied: 'copied',
+      collapseAria: 'collapse',
+      expandAria: (count: number) => `expand ${count}`,
+      collapse: 'collapse',
+      expand: (count: number) => `expand ${count}`,
+    },
+  },
 }
 
 describe('FilePreview', () => {

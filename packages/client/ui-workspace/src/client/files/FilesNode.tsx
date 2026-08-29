@@ -20,14 +20,16 @@ import {
   IconUndoOutline14, Modal, StateDot,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
-  SessionId, WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId,
-} from '@deepseek-ai/dsh-client-runtime/client'
+  WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId,
+} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { WorkspaceKey } from '../locales.ts'
 import { FileViewer } from './FileViewer.tsx'
 import css from './FilesNode.module.css'
 
-/** The standard locale seat this tree consumes (a slice of the browser's full namespace). */
-type FilesTranslate = (key: WorkspaceKey, vars?: Record<string, string | number>) => string
+/** The standard locale seat this tree consumes — the full `workspace` namespace, matching `FileViewer`'s own. */
+type FilesTranslate = TranslateNS<'workspace'>
 
 export interface FilesNodeProps {
   workspaceId: WorkspaceId

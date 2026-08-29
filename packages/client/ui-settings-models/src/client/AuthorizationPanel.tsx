@@ -9,10 +9,8 @@
 
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import type {
-  AuthorizationEntry, AuthorizationKeyState, IAuthorization,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import type { RpcId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { AuthorizationEntry } from '@deepseek-ai/dsh-authorization/types'
+import type { AuthorizationKeyState, IAuthorization } from './authorization-runtime.ts'
 import type { en } from './locales.ts'
 import styles from './ModelsSection.module.css'
 
@@ -62,11 +60,11 @@ export function AuthorizationPanel(props: AuthorizationPanelProps): ReactNode {
   // Takes the answer explicitly rather than reading `draft` from closure: a
   // select option's click handler cannot set the draft and read it back in
   // the same tick, since setDraft is an async state update.
-  const submitPrompt = async (rpcId: RpcId, answer: string): Promise<void> => {
+  const submitPrompt = async (answer: string): Promise<void> => {
     setBusy(true)
     setFailure(undefined)
     try {
-      await authorization.respondPrompt(rpcId, answer)
+      await authorization.respondPrompt(entry.key, answer)
       setDraft('')
     } catch (error) {
       setFailure(error instanceof Error ? error.message : String(error))
@@ -75,10 +73,10 @@ export function AuthorizationPanel(props: AuthorizationPanelProps): ReactNode {
     }
   }
 
-  const declinePrompt = async (rpcId: RpcId): Promise<void> => {
+  const declinePrompt = async (): Promise<void> => {
     setBusy(true)
     try {
-      await authorization.declinePrompt(rpcId)
+      await authorization.declinePrompt(entry.key)
       setDraft('')
     } finally {
       setBusy(false)
@@ -155,7 +153,7 @@ export function AuthorizationPanel(props: AuthorizationPanelProps): ReactNode {
                   type="button"
                   className={styles['secondaryButton']}
                   disabled={disabled}
-                  onClick={() => { void submitPrompt(prompt.rpcId, option.id) }}
+                  onClick={() => { void submitPrompt(option.id) }}
                 >
                   {option.label}
                 </button>
@@ -176,7 +174,7 @@ export function AuthorizationPanel(props: AuthorizationPanelProps): ReactNode {
                     type="button"
                     className={styles['primaryButton']}
                     disabled={disabled || draft.length === 0}
-                    onClick={() => { void submitPrompt(prompt.rpcId, draft) }}
+                    onClick={() => { void submitPrompt(draft) }}
                   >
                     {t('signInSubmit')}
                   </button>
@@ -186,7 +184,7 @@ export function AuthorizationPanel(props: AuthorizationPanelProps): ReactNode {
               type="button"
               className={styles['secondaryButton']}
               disabled={disabled}
-              onClick={() => { void declinePrompt(prompt.rpcId) }}
+              onClick={() => { void declinePrompt() }}
             >
               {t('signInDecline')}
             </button>

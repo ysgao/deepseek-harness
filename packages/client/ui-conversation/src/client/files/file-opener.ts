@@ -3,19 +3,19 @@
  * Workspace Files tree today — hands this package a path to preview instead
  * of only ever falling back to the Host OS-default handoff.
  *
- * `chatStore`'s bound actions are reachable only from inside that store's own
- * registered components (ui-slots resolves and caches store instances
- * per-entry, and does not expose that resolution outside the render tree —
- * see `docs/cookbook` slot-system standard, "stores: read via useStore, write
- * via actions"). This registry is therefore the actual cross-session,
- * cross-plugin handoff surface (mirrors `ComposerBlockRegistry`'s shape
- * exactly): `apply.ts`'s `conversationFileOpener` service writes to it,
- * and `ConversationSession` (which legitimately holds `chatStore`'s bound
- * actions for its own session) drains it into the store's `openFilePath` /
- * `view` fields through an effect.
+ * `conversationStore`'s bound actions are reachable only from inside that
+ * store's own registered components (ui-slots resolves and caches store
+ * instances per-entry, and does not expose that resolution outside the
+ * render tree — see `docs/cookbook` slot-system standard, "stores: read via
+ * useStore, write via actions"). This registry is therefore the actual
+ * cross-session, cross-plugin handoff surface (mirrors `ComposerBlockRegistry`'s
+ * shape exactly): `apply.ts`'s `conversationFileOpener` service writes to it,
+ * and `ConversationSession` (which legitimately holds `conversationStore`'s
+ * bound actions for its own session) drains it into the store's `openView('file', path)`
+ * action through an effect.
  */
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SessionId, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 /** The registry face `ConversationFileOpener` writes and `ConversationSession` drains. */
 export interface FileOpenRegistry {

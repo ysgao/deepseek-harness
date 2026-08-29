@@ -30,6 +30,7 @@ import { EditorView, keymap, lineNumbers } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { MarkdownText } from './markdown/MarkdownText.tsx'
+import type { MarkdownLabels } from './markdown/MarkdownText.tsx'
 import { editorTheme } from './codemirror/theme.ts'
 import { useSplitRatio } from './useSplitRatio.ts'
 import css from './FileEditor.module.css'
@@ -40,6 +41,14 @@ type SplitRootStyle = CSSProperties & { '--ds-file-editor-ratio': number }
 /** Debounce between a keystroke and the Markdown preview pane re-rendering it. */
 const MARKDOWN_PREVIEW_DEBOUNCE_MS = 150
 
+/** The Markdown preview pane's resize divider: accessible name and drag/double-click hint. */
+export interface FileEditorResizeLabels {
+  /** The divider's `aria-label`. */
+  ariaLabel: string
+  /** The divider's `title` (drag/double-click hint). */
+  title: string
+}
+
 export interface FileEditorProps {
   /** Display path; not read by this component today, kept for parity with the other file-surface primitives and future banner use. */
   path: string
@@ -47,6 +56,10 @@ export interface FileEditorProps {
   text: string
   /** `'markdown'` adds the live preview pane and Markdown-aware editing; `'text'` is a single plain-monospace pane. */
   kind: 'text' | 'markdown'
+  /** Localized chrome for the Markdown preview pane; unused for `kind: 'text'`. */
+  labels: MarkdownLabels
+  /** The preview-pane resize divider's accessible name and hint; unused for `kind: 'text'`. */
+  resizeLabels: FileEditorResizeLabels
   /** Called with the full buffer content after every edit. */
   onChange: (text: string) => void
   /**
@@ -63,7 +76,7 @@ export interface FileEditorProps {
  * @param props - see {@link FileEditorProps}.
  * @returns the editor element.
  */
-export function FileEditor({ text, kind, onChange, onSaveRequested, className }: FileEditorProps) {
+export function FileEditor({ text, kind, labels, resizeLabels, onChange, onSaveRequested, className }: FileEditorProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
@@ -127,13 +140,13 @@ export function FileEditor({ text, kind, onChange, onSaveRequested, className }:
             className={css.divider}
             role="separator"
             aria-orientation="vertical"
-            aria-label="Resize preview pane"
+            aria-label={resizeLabels.ariaLabel}
             tabIndex={0}
-            title="Drag to resize. Double-click to reset."
+            title={resizeLabels.title}
             {...dividerProps}
           />
           <div className={css.previewPane}>
-            <MarkdownText text={previewText} />
+            <MarkdownText text={previewText} labels={labels} />
           </div>
         </>
       )}

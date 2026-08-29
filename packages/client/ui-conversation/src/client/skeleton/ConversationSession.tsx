@@ -1,11 +1,13 @@
 /** Strict per-session header/body content inserted into the resident conversation layout. */
 
-import { useEffect, useSyncExternalStore } from 'react'
+import { useEffect } from 'react'
 import clsx from 'clsx'
-import type { SessionId, SessionListState, SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
   ConversationSessionHeaderSlotProps, ConversationSessionSlotProps,
 } from '../contract/slots.ts'
+import { conversationPhase } from '../contract/snapshot.ts'
 import type { ViewTab } from '../contract/views.ts'
 import css from './ConversationRoot.module.css'
 
@@ -23,11 +25,10 @@ interface Breadcrumb {
 
 const DEFAULT_VIEW_ID = 'chat'
 
-/** Resolve by id and keep stale persisted selections on the stable Chat fallback. */
+/** Resolve a persisted selection, then registered Chat, without choosing another View. */
 function resolveActiveView(tabs: readonly ViewTab[], selectedId: string | null): ViewTab | undefined {
-  const requestedId = selectedId ?? DEFAULT_VIEW_ID
-  return tabs.find(view => view.id === requestedId)
-    ?? tabs.find(view => view.id === DEFAULT_VIEW_ID)
+  const selected = selectedId === null ? undefined : tabs.find(view => view.id === selectedId)
+  return selected ?? tabs.find(view => view.id === DEFAULT_VIEW_ID)
 }
 
 function deriveAncestry(list: SessionListState, id: SessionId): readonly Breadcrumb[] {
@@ -65,23 +66,22 @@ function equalBreadcrumbs(left: readonly Breadcrumb[], right: readonly Breadcrum
  * regardless of blank status once the File tab is active.
  */
 export function ConversationSessionHeader({
-  sessionId, useSession, useSessions, useStore, actions,
-  renderSlot, views, open, t,
+  sessionId, useSession, useSessions, useConversation, useConversationViews, useStore, actions,
+  renderSlot, open, t,
 }: ConversationSessionHeaderProps) {
-  useSyncExternalStore(views.subscribe, views.version)
-  const tabs = views.list()
+  const tabs = useConversationViews(value => value)
   const selectedId = useStore(s => s.view)
   const active = resolveActiveView(tabs, selectedId)
   const ancestry = useSessions(s => deriveAncestry(s, sessionId), equalBreadcrumbs)
-  const composerPhase = useSession(s => s.composerPhase)
-  const blank = useSession(s => s.blank)
+  const session = useSession(s => s)
+  const conversation = useConversation(s => s)
   // The File tab stays reachable even before the session's first turn: unlike
   // Chat (no history yet) or Trajectory (no tool calls yet), browsing or
   // editing a workspace file needs no turn to have run. Gated on the
-  // persisted view selection (`setView('file')`, set once by the file-open
-  // drain effect below and never reset elsewhere), not the one-shot
-  // `openFilePath` handoff, so the tab does not flash open and re-hide.
-  const hideChrome = blank && composerPhase === 'blank' && active?.id !== 'file'
+  // persisted view selection (`openView('file', path)`, set once by the
+  // file-open drain effect below and never reset elsewhere), not the
+  // one-shot `viewRequest` handoff, so the tab does not flash open and re-hide.
+  const hideChrome = session.blank && conversationPhase(session, conversation) === 'blank' && active?.id !== 'file'
 
   return (
     <header
@@ -180,20 +180,17 @@ export function ConversationSessionHeader({
  * file needs no turn to browse or edit.
  */
 export function ConversationSession({
-  sessionId, useSession, useInput, inputActions, useStore, actions,
-  renderSlot, views, bindDraftMirror, releaseSessionImages, usePendingFileOpen,
+  useSession, useConversation, useConversationViews, useInput, inputActions, useStore, actions,
+  renderSlot, bindDraftMirror, usePendingFileOpen, openFile,
 }: ConversationSessionProps) {
-  useSyncExternalStore(views.subscribe, views.version)
-  const tabs = views.list()
+  const tabs = useConversationViews(value => value)
   const selectedId = useStore(s => s.view)
   const active = resolveActiveView(tabs, selectedId)
-  const composerPhase = useSession(s => s.composerPhase)
-  const blank = useSession(s => s.blank)
+  const session = useSession(s => s)
+  const conversation = useConversation(s => s)
   const inputState = useInput(s => s)
   const storedDraft = useStore(s => s.draft)
-  // `?? null`: persisted snapshots from before the inspect field rehydrate without it.
-  const inspect = useStore(s => s.inspect ?? null)
-  const openFilePath = useStore(s => s.openFilePath ?? null)
+  const viewRequest = useStore(s => s.viewRequest ?? null)
   const pendingFileOpen = usePendingFileOpen(request => request)
 
   useEffect(() => {
@@ -204,33 +201,28 @@ export function ConversationSession({
     // the machine mirror, not this seed effect.
   }, [inputActions])
 
-  useEffect(() => () => {
-    releaseSessionImages(sessionId)
-  }, [releaseSessionImages, sessionId])
-
   // Drain the cross-plugin file-open registry (see file-opener.ts) into this
-  // session's own chat store: only this component holds chatStore's bound
-  // actions for its session, so the registry — not a direct external write —
-  // is the actual handoff surface. `seq` (not just `path`) keys the effect so
-  // requesting the same path twice in a row still switches/re-focuses the tab.
+  // session's own conversation store: only this component holds
+  // conversationStore's bound actions for its session, so the registry — not
+  // a direct external write — is the actual handoff surface. `seq` (not just
+  // `path`) keys the effect so requesting the same path twice in a row still
+  // switches/re-focuses the tab.
   useEffect(() => {
     if (pendingFileOpen === undefined) return
-    actions.setOpenFilePath(pendingFileOpen.path)
-    actions.setView('file')
-  }, [pendingFileOpen, actions])
+    openFile(pendingFileOpen.path)
+  }, [pendingFileOpen, openFile])
 
   // Same File-tab exception as the header's hideChrome (see there): the
   // view area renders while blank exactly when the File tab is the active
   // one, so a file opened via the Files tree before any turn has run is
   // actually reachable instead of being hidden behind the Hero screen.
-  if (blank && composerPhase === 'blank' && active?.id !== 'file') return null
+  if (session.blank && conversationPhase(session, conversation) === 'blank' && active?.id !== 'file') return null
   return (
     <div className={css.viewArea}>
       {active !== undefined && renderSlot('conversation.view', {
-        inspect,
-        onInspectDone: () => { actions.setInspect(null) },
-        openFilePath,
-        onFileOpened: () => { actions.setOpenFilePath(null) },
+        viewRequest,
+        openView: actions.openView,
+        completeViewRequest: actions.completeViewRequest,
       }, { only: active.id })}
     </div>
   )

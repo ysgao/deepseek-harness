@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { FileOpenRegistryImpl } from '../src/client/files/file-opener.ts'
 
 const s1 = 's1' as SessionId

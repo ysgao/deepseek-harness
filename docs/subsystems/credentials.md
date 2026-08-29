@@ -34,13 +34,17 @@ interface ResolvedCredential {
 `describe(ref)` answers configuration surfaces without ever exposing a value: whether the reference resolves, from which layer, and whether `set` would currently succeed. The local provider reports a reference supplied by the live process environment as `writable: false` — a write would appear to succeed while resolution kept returning the shadowing value, so the seam rejects it and the UI can render the reference read-only up front.
 
 ```ts type-equiv
-/** Source and writability facts for one reference, safe for configuration UIs — never the value. */
+/**
+ * Source and writability facts for one reference, safe for configuration UIs —
+ * never the value. The view has no slot a value could ride in, which is what
+ * lets the whole read half cross the Remote wire.
+ */
 interface CredentialInfo {
-  /** Whether {@link CredentialProvider.resolve} would currently return a value. */
+  /** Whether resolving the reference would currently return a value. */
   configured: boolean
   /** Source layer currently supplying the value; absent while unconfigured. */
   source?: string
-  /** Whether {@link CredentialProvider.set} would currently succeed for this reference. */
+  /** Whether the active provider can write this reference. */
   writable: boolean
 }
 ```
@@ -117,6 +121,59 @@ async begin(request: AuthorizationRequest): Promise<AuthorizationOutcome>
 ```
 
 Source: [`packages/credentials/authorization/src/index.ts`](../../packages/credentials/authorization/src/index.ts)
+
+<a id="ctxauthorizationcontroller--authorizationcontroller"></a>
+
+### `ctx.authorizationController` — `AuthorizationController`
+
+Host service backing the generated `ctx.remote.authorization` namespace. Every method delegates to `ctx.authorization`, the seam a plugin registers its own flow against; this controller supplies no flows of its own.
+
+```ts cordis-catalog
+/**
+ * Every registered flow, for a surface listing what can be authorized.
+ * @returns one entry per flow, in registration order.
+ */
+@Remote list(): readonly AuthorizationEntry[]
+
+/**
+ * Open the shared notice/prompt stream, starting with a baseline of every
+ * prompt still pending.
+ * @param signal - generation cancellation.
+ * @returns a baseline frame of pending prompts, then one frame per notice.
+ */
+@Remote({ mode: 'stream' }) follow(signal: AbortSignal): AsyncIterable<AuthorizationStreamFrame>
+
+/**
+ * Answer the prompt pending for a key, from whichever connected
+ * configuration page is showing it.
+ * @param key - the credential record whose prompt is being answered.
+ * @param answer - the typed text or chosen option id; omit to decline.
+ * @throws TypertRemoteFailure `authorization-not-found` when no prompt is pending for the key.
+ */
+@Remote respond(key: CredentialKey, answer: string | undefined): void
+
+/**
+ * Run one attempt to authorize a key, resolving only once it settles.
+ * @param key - the credential record to authorize.
+ * @param method - which of the flow's methods to run; defaults to its first.
+ * @param signal - caller lifetime; abort withdraws the attempt like `cancel`.
+ * @returns `authorized` once the flow's record is committed, or `cancelled` when declined or withdrawn.
+ * @throws TypertRemoteFailure `authorization-not-found` when no flow claims the key,
+ * `authorization-in-flight` when one is already running, or `authorization-rejected` for any other seam refusal.
+ */
+@Remote async begin(key: CredentialKey, method: string | undefined, signal: AbortSignal): Promise<AuthorizationOutcome>
+
+/**
+ * Withdraw the attempt running for a key, if any (idempotent) — the Cancel
+ * button's path, distinct from `begin`'s own `signal` because a
+ * request/response transport answers Cancel on a second call, with no
+ * handle on the first one's signal.
+ * @param key - the credential record whose attempt should stop.
+ */
+@Remote cancel(key: CredentialKey): void
+```
+
+Source: [`packages/api/settings-controller/src/authorization.ts`](../../packages/api/settings-controller/src/authorization.ts)
 
 <a id="ctxcredentials--credentialprovider-abstract-seam"></a>
 
@@ -211,6 +268,42 @@ abstract deleteRecord(key: CredentialKey): Promise<void>
 ```
 
 Source: [`packages/credentials/credentials/src/index.ts`](../../packages/credentials/credentials/src/index.ts)
+
+<a id="ctxcredentialscontroller--credentialscontroller"></a>
+
+### `ctx.credentialsController` — `CredentialsController`
+
+Host service backing the generated `ctx.remote.credentials` namespace. It carries every wire obligation the credential seam itself does not: the batch fan-out bound, the field-by-field view projection, the reference-grammar guard, and the refusal mapping. Secret values cross in one direction only — no method here returns one.
+
+```ts cordis-catalog
+/**
+ * Describe several references for one configuration surface. Batched because
+ * a settings page describes every reference its rows name at once, and one
+ * round trip keeps those rows from settling separately.
+ * @param refs - reference names, at most {@link MAX_DESCRIBE_REFS}; a name outside the grammar rejects the whole call as `bad-request`.
+ * @returns one view per requested name, keyed by that name.
+ * @throws TypertRemoteFailure when the request is invalid or no credential provider is mounted.
+ */
+@Remote async describe(refs: string[]): Promise<Record<string, CredentialInfo>>
+
+/**
+ * Store one value from a configuration surface. The value crosses the wire in
+ * this direction only: no read path returns it.
+ * @param ref - reference name to store under.
+ * @param value - the non-empty secret value.
+ * @throws TypertRemoteFailure when the request is invalid, no provider is mounted, or the provider refuses the write.
+ */
+@Remote async set(ref: string, value: string): Promise<void>
+
+/**
+ * Remove one reference from a configuration surface.
+ * @param ref - reference name to remove.
+ * @throws TypertRemoteFailure when the request is invalid, no provider is mounted, or the provider refuses the write.
+ */
+@Remote async unset(ref: string): Promise<void>
+```
+
+Source: [`packages/api/settings-controller/src/credentials.ts`](../../packages/api/settings-controller/src/credentials.ts)
 
 <a id="authorization-events"></a>
 
