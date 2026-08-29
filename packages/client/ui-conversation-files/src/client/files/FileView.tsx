@@ -31,23 +31,42 @@ import type {
 import type {
   WorkspaceFileBrowseError, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceFileVersion, WorkspaceGitStatus,
 } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { WorkspaceError } from '@deepseek-ai/dsh-api-workspace-controller/types'
+import type { WorkspaceError, WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/types'
 import type { ConvViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { langFromPath, viewerKindFor } from './classify.ts'
 import css from './FileView.module.css'
 
-/** Injected share of the File view entry. */
+/**
+ * Injected share of the File view entry. Every method takes the opened
+ * path's own `workspaceId` (from the opener's request, when it had one —
+ * see {@link OpenFileFocus}) rather than resolving it from the session, so
+ * a request from a requester that already knows its exact workspace (the
+ * Workspace Files tree) can never be misrouted to the wrong one.
+ */
 export interface FileViewInjected {
-  /** Read one file's content under the session's owning Workspace (fails when the session has none). */
-  readFile: (path: string, signal?: AbortSignal) => Promise<WorkspaceFileContent>
+  /** Read one file's content under the given Workspace (fails when neither `workspaceId` nor a session-derived fallback resolves one). */
+  readFile: (workspaceId: WorkspaceId | undefined, path: string, signal?: AbortSignal) => Promise<WorkspaceFileContent>
   /** Open the file with the Host OS default application (the external-kind and error fallback). */
   openPath: (path: string) => Promise<void>
-  /** The session's owning Workspace's git branch and pending file changes (decides whether the Diff toggle shows). */
-  getGitStatus: (signal?: AbortSignal) => Promise<WorkspaceGitStatus>
+  /** The given Workspace's git branch and pending file changes (decides whether the Diff toggle shows). */
+  getGitStatus: (workspaceId: WorkspaceId | undefined, signal?: AbortSignal) => Promise<WorkspaceGitStatus>
   /** One file's `HEAD` and working-tree text, fetched lazily when the user switches to Diff mode. */
-  getFileDiff: (path: string, signal?: AbortSignal) => Promise<WorkspaceFileDiff>
-  /** Overwrite one file's content under the session's owning Workspace, guarded by `expectedVersion`. */
-  writeFile: (path: string, content: string, expectedVersion: WorkspaceFileVersion, signal?: AbortSignal) => Promise<WorkspaceFileVersion>
+  getFileDiff: (workspaceId: WorkspaceId | undefined, path: string, signal?: AbortSignal) => Promise<WorkspaceFileDiff>
+  /** Overwrite one file's content under the given Workspace, guarded by `expectedVersion`. */
+  writeFile: (
+    workspaceId: WorkspaceId | undefined, path: string, content: string, expectedVersion: WorkspaceFileVersion, signal?: AbortSignal,
+  ) => Promise<WorkspaceFileVersion>
+}
+
+/**
+ * The File view's own opaque `viewRequest.focus` payload (see
+ * `ConvViewOwnerProps`'s JSDoc): JSON-encoded by `ui-conversation`'s
+ * `openFile` so a requester's own `workspaceId`, when it has one, survives
+ * the hand-off through the generic view-request channel.
+ */
+interface OpenFileFocus {
+  readonly path: string
+  readonly workspaceId?: WorkspaceId
 }
 
 /** Which body the tab shows for the opened path: the plain preview, the in-app editor, or the git diff. */
@@ -74,6 +93,24 @@ type SaveState =
 
 /** Full File-view component props: runtime & injected & locale seat. */
 export type FileViewProps = ConvViewProps & InjectFace<FileViewInjected> & PropsLocale<'conversation'>
+
+/**
+ * Parse the File view's own opaque `focus` payload — a JSON-encoded
+ * {@link OpenFileFocus} written by `ui-conversation`'s `openFile`. Never
+ * expected to fail within one coordinated deploy of both packages; guarded
+ * rather than left to throw across a serialization boundary.
+ * @param focus - the raw `viewRequest.focus` string.
+ * @returns the decoded path/workspaceId pair, or null if it doesn't parse.
+ */
+function parseOpenFileFocus(focus: string): OpenFileFocus | null {
+  try {
+    const parsed: unknown = JSON.parse(focus)
+    if (typeof parsed !== 'object' || parsed === null || !('path' in parsed) || typeof parsed.path !== 'string') return null
+    return parsed as OpenFileFocus
+  } catch {
+    return null
+  }
+}
 
 /** Decode base64 wire bytes to a revocable blob URL. */
 function decodeBlobUrl(base64: string, mediaType: string): string {
@@ -124,8 +161,9 @@ export function FileView({
     resizeTitle: t('files.diff.resizeTitle'),
   }), [t])
 
-  const openFilePath = viewRequest?.view === 'file' ? viewRequest.focus : null
+  const openFileFocus = viewRequest?.view === 'file' ? parseOpenFileFocus(viewRequest.focus) : null
   const [openedPath, setOpenedPath] = useState<string | null>(null)
+  const [openedWorkspaceId, setOpenedWorkspaceId] = useState<WorkspaceId | undefined>(undefined)
   const [state, setState] = useState<FilePreviewState>({ phase: 'loading' })
   const [version, setVersion] = useState<WorkspaceFileVersion | null>(null)
   const [mode, setMode] = useState<FileViewMode>('view')
@@ -147,10 +185,11 @@ export function FileView({
   // immediately so a second open of the same path (a re-click while already
   // showing it) still notifies through file-opener.ts's seq-keyed request.
   useEffect(() => {
-    if (openFilePath === null) return
-    setOpenedPath(openFilePath)
+    if (openFileFocus === null) return
+    setOpenedPath(openFileFocus.path)
+    setOpenedWorkspaceId(openFileFocus.workspaceId)
     completeViewRequest()
-  }, [openFilePath, completeViewRequest])
+  }, [openFileFocus, completeViewRequest])
 
   const kind = openedPath === null ? 'external' : viewerKindFor(openedPath)
 
@@ -173,7 +212,7 @@ export function FileView({
     setChanged(false)
     if (openedPath === null) return
     const controller = new AbortController()
-    getGitStatus(controller.signal).then((status) => {
+    getGitStatus(openedWorkspaceId, controller.signal).then((status) => {
       if (controller.signal.aborted) return
       setChanged(Object.hasOwn(status.files, openedPath))
     }).catch(() => {
@@ -182,7 +221,7 @@ export function FileView({
       // Diff toggle hidden rather than surfacing an error.
     })
     return () => { controller.abort() }
-  }, [openedPath, getGitStatus, refreshToken])
+  }, [openedPath, openedWorkspaceId, getGitStatus, refreshToken])
 
   // The diff itself is fetched lazily, only once the user switches into
   // Diff mode — not on every plain-view open. `refreshToken` re-runs it once
@@ -191,7 +230,7 @@ export function FileView({
     if (mode !== 'diff' || openedPath === null) return
     setDiffState({ phase: 'loading' })
     const controller = new AbortController()
-    getFileDiff(openedPath, controller.signal).then((diff) => {
+    getFileDiff(openedWorkspaceId, openedPath, controller.signal).then((diff) => {
       if (controller.signal.aborted) return
       setDiffState({ phase: 'ready', diff })
     }).catch(() => {
@@ -199,7 +238,7 @@ export function FileView({
       setDiffState({ phase: 'error' })
     })
     return () => { controller.abort() }
-  }, [mode, openedPath, getFileDiff, refreshToken])
+  }, [mode, openedPath, openedWorkspaceId, getFileDiff, refreshToken])
 
   useEffect(() => {
     if (openedPath === null) return
@@ -210,7 +249,7 @@ export function FileView({
     if (viewerKindFor(openedPath) === 'external') return
     const controller = new AbortController()
     let createdUrl: string | null = null
-    readFile(openedPath, controller.signal).then((content) => {
+    readFile(openedWorkspaceId, openedPath, controller.signal).then((content) => {
       if (controller.signal.aborted) return
       if (content.kind === 'text') {
         setState({ phase: 'ready', content: { kind: 'text', text: content.content } })
@@ -231,7 +270,7 @@ export function FileView({
       controller.abort()
       if (createdUrl !== null) URL.revokeObjectURL(createdUrl)
     }
-  }, [openedPath, readFile, reloadToken])
+  }, [openedPath, openedWorkspaceId, readFile, reloadToken])
 
   // Records every keystroke into the current path's draft, forked from the
   // version the buffer was seeded at (the read's version, or the prior
@@ -249,7 +288,7 @@ export function FileView({
     const draft = draftsRef.current.get(openedPath)
     if (draft === undefined) return
     setSaveState({ phase: 'saving' })
-    writeFile(openedPath, draft.text, draft.version).then((nextVersion) => {
+    writeFile(openedWorkspaceId, openedPath, draft.text, draft.version).then((nextVersion) => {
       draftsRef.current.delete(openedPath)
       setHasDraft(false)
       setSaveState({ phase: 'idle' })
@@ -261,7 +300,7 @@ export function FileView({
         && (error as WorkspaceFileBrowseError).rpcError.code === 'file-changed'
       setSaveState({ phase: conflict ? 'conflict' : 'error' })
     })
-  }, [openedPath, writeFile])
+  }, [openedPath, openedWorkspaceId, writeFile])
 
   // Discards the current draft and re-fetches the path fresh — the
   // conflict notice's recovery action, since a version mismatch means the

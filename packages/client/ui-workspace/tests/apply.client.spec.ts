@@ -157,12 +157,12 @@ describe('ui-workspace apply', () => {
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     const browser = (b.slots.entries('sidebar.workspaces')[0]!.inject as () => WorkspaceBrowserInjected)()
 
-    expect(browser.openFileInSession('session' as never, '/ws/a.txt')).toBe(false)
+    expect(browser.openFileInSession('session' as never, 'ws' as never, '/ws/a.txt')).toBe(false)
 
     const openFile = vi.fn(() => true)
     b.ctx.provide('conversationFileOpener', { openFile } as never)
-    expect(browser.openFileInSession('session' as never, '/ws/a.txt')).toBe(true)
-    expect(openFile).toHaveBeenCalledWith('session', '/ws/a.txt')
+    expect(browser.openFileInSession('session' as never, 'ws' as never, '/ws/a.txt')).toBe(true)
+    expect(openFile).toHaveBeenCalledWith('session', '/ws/a.txt', 'ws')
   })
 
   it('declares the two directory-flow holes and reports their occupancy per surface', async () => {

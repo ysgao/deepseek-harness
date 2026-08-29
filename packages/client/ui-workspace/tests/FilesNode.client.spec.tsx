@@ -238,7 +238,7 @@ describe('FilesNode', () => {
     await act(async () => { screen.getByText(t('files.label')).click() })
     const fileRow = await screen.findByText('notes.txt')
     await act(async () => { fileRow.click() })
-    expect(openFileInSession).toHaveBeenCalledWith(sessionId, '/ws/notes.txt')
+    expect(openFileInSession).toHaveBeenCalledWith(sessionId, wsId, '/ws/notes.txt')
     expect(readWorkspaceFile).not.toHaveBeenCalled()
     expect(screen.queryByText('body')).toBeNull()
   })
@@ -270,7 +270,7 @@ describe('FilesNode', () => {
     await act(async () => { screen.getByText(t('files.label')).click() })
     const fileRow = await screen.findByText('notes.txt')
     await act(async () => { fileRow.click() })
-    expect(openFileInSession).toHaveBeenCalledWith(sessionId, '/ws/notes.txt')
+    expect(openFileInSession).toHaveBeenCalledWith(sessionId, wsId, '/ws/notes.txt')
     await screen.findByText('body')
   })
 

@@ -232,7 +232,11 @@ export function apply(ctx: Context): void {
         pendingFileOpen: fileOpenRegistry.storeFor(sessionId),
       },
       bindDraftMirror: write => inputHub.shell(sessionId).bindMirror(write),
-      openFile: (path) => { actions.openView('file', path) },
+      // `focus` is the File view's own opaque identity (see ConvViewOwnerProps'
+      // JSDoc): JSON-encode path + workspaceId together so the view — which
+      // only receives this one string — can resolve the exact workspace the
+      // requester meant, not just the path.
+      openFile: (path, workspaceId) => { actions.openView('file', JSON.stringify({ path, workspaceId })) },
     }),
   }, ConversationSession)
 
@@ -346,10 +350,10 @@ export function apply(ctx: Context): void {
   // hands it to fileOpenRegistry instead of only ever falling back to the
   // Host OS-default handoff (ui-workspace's Files tree is the first caller).
   const fileOpener: ConversationFileOpener = {
-    openFile: (sessionId, path) => {
+    openFile: (sessionId, path, workspaceId) => {
       if (sessions.binding(sessionId) === undefined) return false
       if (!slots.entries('conversation.view').some(entry => entry.options.id === 'file')) return false
-      fileOpenRegistry.request(sessionId, path)
+      fileOpenRegistry.request(sessionId, path, workspaceId)
       return true
     },
   }

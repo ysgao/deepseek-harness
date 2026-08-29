@@ -16,6 +16,22 @@
  */
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/types'
+
+/** One pending cross-plugin file-open request. */
+export interface PendingFileOpen {
+  readonly path: string
+  /**
+   * The requester's own workspace, when known (e.g. the Workspace Files
+   * tree, which is always browsing one specific workspace). Absent when the
+   * requester only has a session (e.g. a chat-message file mention) — the
+   * File view then falls back to deriving the owning workspace from the
+   * session's own membership, which can miss for a session not yet
+   * reflected in that workspace's roster.
+   */
+  readonly workspaceId?: WorkspaceId
+  readonly seq: number
+}
 
 /** The registry face `ConversationFileOpener` writes and `ConversationSession` drains. */
 export interface FileOpenRegistry {
@@ -25,8 +41,9 @@ export interface FileOpenRegistry {
    * re-click while the tab is already showing that file re-focuses it).
    * @param sessionId - target session.
    * @param path - workspace-scoped absolute path to preview.
+   * @param workspaceId - the requester's own workspace, when known.
    */
-  request(sessionId: SessionId, path: string): void
+  request(sessionId: SessionId, path: string, workspaceId?: WorkspaceId): void
   /**
    * The store one session's `ConversationSession` drains on every change.
    * Created on first read from either side, so a request may arrive before
@@ -34,7 +51,7 @@ export interface FileOpenRegistry {
    * @param sessionId - the session to observe.
    * @returns that session's pending-path store (undefined = no pending request).
    */
-  storeFor(sessionId: SessionId): SnapshotStore<{ path: string; seq: number } | undefined>
+  storeFor(sessionId: SessionId): SnapshotStore<PendingFileOpen | undefined>
   /**
    * Drop one session's store. The session scope's disposer calls this; a
    * requester never needs to.
@@ -45,21 +62,23 @@ export interface FileOpenRegistry {
 
 /** The per-session file-open registry (one instance per plugin fiber). */
 export class FileOpenRegistryImpl implements FileOpenRegistry {
-  private readonly stores = new Map<SessionId, SnapshotStore<{ path: string; seq: number } | undefined>>()
+  private readonly stores = new Map<SessionId, SnapshotStore<PendingFileOpen | undefined>>()
   private nextSeq = 0
 
   /** @inheritdoc */
-  request(sessionId: SessionId, path: string): void {
+  request(sessionId: SessionId, path: string, workspaceId?: WorkspaceId): void {
     // seq, not just path, so requesting the same path twice in a row still
     // notifies (ConversationSession's drain effect keys off the change).
-    this.storeFor(sessionId).set({ path, seq: this.nextSeq++ })
+    // Spread, not a `workspaceId` shorthand: exactOptionalPropertyTypes
+    // treats an explicit `undefined` value differently from an absent key.
+    this.storeFor(sessionId).set({ path, seq: this.nextSeq++, ...(workspaceId !== undefined && { workspaceId }) })
   }
 
   /** @inheritdoc */
-  storeFor(sessionId: SessionId): SnapshotStore<{ path: string; seq: number } | undefined> {
+  storeFor(sessionId: SessionId): SnapshotStore<PendingFileOpen | undefined> {
     const existing = this.stores.get(sessionId)
     if (existing !== undefined) return existing
-    const created = createSnapshotStore<{ path: string; seq: number } | undefined>(undefined)
+    const created = createSnapshotStore<PendingFileOpen | undefined>(undefined)
     this.stores.set(sessionId, created)
     return created
   }

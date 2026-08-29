@@ -221,9 +221,14 @@ export interface ConversationFileOpener {
    * Open a path in the given session's in-app File tab.
    * @param sessionId - target session; must have a live chat store binding.
    * @param path - workspace-scoped absolute path to preview.
+   * @param workspaceId - the requester's own workspace, when known (e.g. the
+   * Workspace Files tree browsing that exact workspace). Passing it skips
+   * the session-membership derivation the File view otherwise falls back to,
+   * which can miss for a session not yet reflected in that workspace's
+   * roster.
    * @returns whether the session accepted the request (a live binding was found).
    */
-  openFile(sessionId: SessionId, path: string): boolean
+  openFile(sessionId: SessionId, path: string, workspaceId?: WorkspaceId): boolean
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -256,15 +261,17 @@ export interface ConversationSessionInjected {
    */
   readonly hooks: {
     readonly conversationViews: ObservableSnapshot<readonly ViewTab[]>
-    readonly pendingFileOpen: ObservableSnapshot<{ path: string; seq: number } | undefined>
+    readonly pendingFileOpen: ObservableSnapshot<import('../files/file-opener.ts').PendingFileOpen | undefined>
   }
   /** Bind input draft persistence to the Session-owned store instance. */
   bindDraftMirror: (write: (text: string) => void) => () => void
   /**
    * Open a filesystem path through the cross-plugin file-open registry —
    * `conversationStore`'s `openView('file', path)` action.
+   * @param path - workspace-scoped absolute path to preview.
+   * @param workspaceId - the requester's own workspace, when known.
    */
-  openFile: (path: string) => void
+  openFile: (path: string, workspaceId?: WorkspaceId) => void
 }
 
 /** Business callbacks injected into the strict Session header. */

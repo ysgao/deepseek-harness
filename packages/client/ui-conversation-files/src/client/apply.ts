@@ -1,6 +1,7 @@
 /** Registers the File conversation-view tab. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/types'
 // Type-only service and declaration merges used by this assembly.
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
@@ -24,11 +25,20 @@ export function apply(ctx: Context): void {
   // pattern for `conversationFileOpener`) that may not have registered yet
   // when this plugin's own apply() runs — caching it here would freeze it at
   // `undefined` for the plugin's whole lifetime.
-  const resolveOwningWorkspace = (targetSessionId: SessionId) => {
+  //
+  // `requestedWorkspaceId` comes from the opener (e.g. the Workspace Files
+  // tree, which always knows its own workspace) and is used as-is when
+  // present. Only a requester with no workspace of its own (e.g. a chat
+  // message's file mention, which only has a sessionId) falls back to
+  // deriving it from the session's membership in a workspace's roster — a
+  // derivation that misses for a session not yet reflected there, unlike the
+  // direct id.
+  const resolveWorkspace = (targetSessionId: SessionId, requestedWorkspaceId: WorkspaceId | undefined) => {
     const workspaces = ctx.get('workspaces')
-    const workspaceId = workspaces?.list.getSnapshot().items
+    if (workspaces === undefined) return undefined
+    const workspaceId = requestedWorkspaceId ?? workspaces.list.getSnapshot().items
       .find(item => item.sessionIds.includes(targetSessionId))?.workspaceId
-    return workspaceId === undefined || workspaces === undefined ? undefined : { workspaceId, workspaces }
+    return workspaceId === undefined ? undefined : { workspaceId, workspaces }
   }
 
   ctx.slots.inject('conversation.view', () => ctx.slots.register({
@@ -38,8 +48,8 @@ export function apply(ctx: Context): void {
     label: () => t('view.file'),
     locale: 'conversation',
     inject: (sessionId: SessionId): FileViewInjected => ({
-      readFile: (path, signal) => {
-        const owner = resolveOwningWorkspace(sessionId)
+      readFile: (workspaceId, path, signal) => {
+        const owner = resolveWorkspace(sessionId, workspaceId)
         if (owner === undefined) {
           return Promise.reject(new Error(`ui-conversation-files: session "${sessionId}" has no owning workspace`))
         }
@@ -49,22 +59,22 @@ export function apply(ctx: Context): void {
         const result = await sessions.openWorkspacePath(path, new AbortController().signal)
         if (!result.ok) throw new Error(`ui-conversation-files: path open failed: ${result.error.message}`)
       },
-      getGitStatus: (signal) => {
-        const owner = resolveOwningWorkspace(sessionId)
+      getGitStatus: (workspaceId, signal) => {
+        const owner = resolveWorkspace(sessionId, workspaceId)
         if (owner === undefined) {
           return Promise.reject(new Error(`ui-conversation-files: session "${sessionId}" has no owning workspace`))
         }
         return owner.workspaces.gitStatus(owner.workspaceId, signal)
       },
-      getFileDiff: (path, signal) => {
-        const owner = resolveOwningWorkspace(sessionId)
+      getFileDiff: (workspaceId, path, signal) => {
+        const owner = resolveWorkspace(sessionId, workspaceId)
         if (owner === undefined) {
           return Promise.reject(new Error(`ui-conversation-files: session "${sessionId}" has no owning workspace`))
         }
         return owner.workspaces.gitFileDiff(owner.workspaceId, path, signal)
       },
-      writeFile: (path, content, expectedVersion, signal) => {
-        const owner = resolveOwningWorkspace(sessionId)
+      writeFile: (workspaceId, path, content, expectedVersion, signal) => {
+        const owner = resolveWorkspace(sessionId, workspaceId)
         if (owner === undefined) {
           return Promise.reject(new Error(`ui-conversation-files: session "${sessionId}" has no owning workspace`))
         }

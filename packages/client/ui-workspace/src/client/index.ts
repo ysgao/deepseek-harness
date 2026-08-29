@@ -138,7 +138,8 @@ export function apply(ctx: Context): void {
       const result = await sessions.openWorkspacePath(path, new AbortController().signal)
       if (!result.ok) throw new Error(result.error.message)
     },
-    openFileInSession: (sessionId, path) => ctx.get('conversationFileOpener')?.openFile(sessionId, path) ?? false,
+    openFileInSession: (sessionId, workspaceId, path) =>
+      ctx.get('conversationFileOpener')?.openFile(sessionId, path, workspaceId) ?? false,
     hooks: { directoryFlow: browserFlowSource, connectionGeneration },
   })
   const pickerInjected = (): WorkspacePickerInjected => ({

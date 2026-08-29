@@ -53,34 +53,48 @@ async function bench() {
 }
 
 describe('File view inject API', () => {
-  it('resolves workspace file/git RPCs against the session\'s owning Workspace', async () => {
+  it('resolves workspace file/git RPCs against the session\'s owning Workspace when no explicit workspaceId is given', async () => {
     const b = await bench()
     const injected = b.injectedFor(ROOT)
 
-    await injected.readFile('src/a.ts')
+    await injected.readFile(undefined, 'src/a.ts')
     expect(b.runtime.workspaces.calls).toContainEqual({ method: 'readFile', args: [WORKSPACE, 'src/a.ts', undefined] })
 
-    await injected.getGitStatus()
+    await injected.getGitStatus(undefined)
     expect(b.runtime.workspaces.calls).toContainEqual({ method: 'gitStatus', args: [WORKSPACE, undefined] })
 
-    await injected.getFileDiff('src/a.ts')
+    await injected.getFileDiff(undefined, 'src/a.ts')
     expect(b.runtime.workspaces.calls).toContainEqual({ method: 'gitFileDiff', args: [WORKSPACE, 'src/a.ts', undefined] })
 
-    await injected.writeFile('src/a.ts', 'content', 1 as never)
+    await injected.writeFile(undefined, 'src/a.ts', 'content', 1 as never)
     expect(b.runtime.workspaces.calls).toContainEqual({
       method: 'writeFile', args: [WORKSPACE, 'src/a.ts', 'content', 1, undefined],
     })
     await b.runtime.dispose()
   })
 
-  it('rejects file/git RPCs for a session with no owning Workspace', async () => {
+  it('uses an explicit workspaceId directly, bypassing session-membership derivation entirely', async () => {
+    const b = await bench()
+    // ORPHAN has no owning Workspace by session-membership derivation (see
+    // the rejection test below) — an explicit workspaceId must still work,
+    // since the requester (e.g. the Workspace Files tree) already knows its
+    // own workspace and should never be misrouted by a stale or absent
+    // session/workspace association.
+    const injected = b.injectedFor(ORPHAN)
+
+    await injected.readFile(WORKSPACE, 'src/a.ts')
+    expect(b.runtime.workspaces.calls).toContainEqual({ method: 'readFile', args: [WORKSPACE, 'src/a.ts', undefined] })
+    await b.runtime.dispose()
+  })
+
+  it('rejects file/git RPCs for a session with no owning Workspace and no explicit workspaceId', async () => {
     const b = await bench()
     const injected = b.injectedFor(ORPHAN)
 
-    await expect(injected.readFile('src/a.ts')).rejects.toThrow(/no owning workspace/)
-    await expect(injected.getGitStatus()).rejects.toThrow(/no owning workspace/)
-    await expect(injected.getFileDiff('src/a.ts')).rejects.toThrow(/no owning workspace/)
-    await expect(injected.writeFile('src/a.ts', 'content', 1 as never)).rejects.toThrow(/no owning workspace/)
+    await expect(injected.readFile(undefined, 'src/a.ts')).rejects.toThrow(/no owning workspace/)
+    await expect(injected.getGitStatus(undefined)).rejects.toThrow(/no owning workspace/)
+    await expect(injected.getFileDiff(undefined, 'src/a.ts')).rejects.toThrow(/no owning workspace/)
+    await expect(injected.writeFile(undefined, 'src/a.ts', 'content', 1 as never)).rejects.toThrow(/no owning workspace/)
     await b.runtime.dispose()
   })
 

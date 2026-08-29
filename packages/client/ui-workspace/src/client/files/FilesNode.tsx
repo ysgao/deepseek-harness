@@ -58,7 +58,7 @@ export interface FilesNodeProps {
    * current session, no live binding, or the service isn't composed in)
    * falls back to the in-app preview modal.
    */
-  openFileInSession: (sessionId: SessionId, path: string) => boolean
+  openFileInSession: (sessionId: SessionId, workspaceId: WorkspaceId, path: string) => boolean
   t: FilesTranslate
 }
 
@@ -594,9 +594,9 @@ export function FilesNode({
   // Tab-dock first: only fall back to the in-app preview modal when there is
   // no current session or the conversationFileOpener service isn't composed in.
   const handleOpenFile = useCallback((path: string) => {
-    if (currentSessionId !== undefined && openFileInSession(currentSessionId, path)) return
+    if (currentSessionId !== undefined && openFileInSession(currentSessionId, workspaceId, path)) return
     setPreviewPath(path)
-  }, [currentSessionId, openFileInSession])
+  }, [currentSessionId, workspaceId, openFileInSession])
   // A collapse-then-reopen also refreshes git status (mirroring the level
   // fetch's own "collapse-then-reopen refetches" posture) — a second, no-UI
   // route to fresh status alongside the explicit refresh control.

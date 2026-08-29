@@ -209,7 +209,7 @@ export function ConversationSession({
   // switches/re-focuses the tab.
   useEffect(() => {
     if (pendingFileOpen === undefined) return
-    openFile(pendingFileOpen.path)
+    openFile(pendingFileOpen.path, pendingFileOpen.workspaceId)
   }, [pendingFileOpen, openFile])
 
   // Same File-tab exception as the header's hideChrome (see there): the

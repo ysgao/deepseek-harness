@@ -167,12 +167,15 @@ export type WorkspaceBrowserInjected = {
   openPath: (path: string) => Promise<void>
   /**
    * Open a Workspace file in the target session's in-app File tab (the
-   * Files tree's primary open route). Returns false when there is no
+   * Files tree's primary open route). `workspaceId` is always the Files
+   * tree's own workspace, so the File view can use it directly instead of
+   * deriving it from the session (which can miss for a session not yet
+   * reflected in that workspace's roster). Returns false when there is no
    * `conversationFileOpener` service composed in or the session has no live
    * binding, in which case the caller falls back to `openPath` or its own
    * in-app preview.
    */
-  openFileInSession: (sessionId: SessionId, path: string) => boolean
+  openFileInSession: (sessionId: SessionId, workspaceId: WorkspaceId, path: string) => boolean
 }
 
 /** Full browser props: shell owner share + viewing store + injected actions + the locale seat. */

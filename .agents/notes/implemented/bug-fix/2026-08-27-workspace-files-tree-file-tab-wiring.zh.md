@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-`WorkspaceBrowserInjected` 新增 `openFileInSession(sessionId, path): boolean`。`ui-workspace` 的 `apply` 将其实现为 `ctx.get('conversationFileOpener')?.openFile(sessionId, path) ?? false`，与 `chatFileMentions` 采用相同的可选服务写法。`SessionTree` 已经为自身的分组逻辑通过 `useSessions(s => s).current` 解析出当前会话 id；把这个 id 与新增的回调一起，沿着既有的 `WorkspaceBrowser` → `SessionTree` → `FilesNode` 属性链，与 `listWorkspaceEntries`/`readWorkspaceFile`/`openPath` 一并传递下去。
+`WorkspaceBrowserInjected` 新增 `openFileInSession(sessionId, workspaceId, path): boolean`。`ui-workspace` 的 `apply` 将其实现为 `ctx.get('conversationFileOpener')?.openFile(sessionId, path, workspaceId) ?? false`，与 `chatFileMentions` 采用相同的可选服务写法。`SessionTree` 已经为自身的分组逻辑通过 `useSessions(s => s).current` 解析出当前会话 id；把这个 id 与新增的回调一起，沿着既有的 `WorkspaceBrowser` → `SessionTree` → `FilesNode` 属性链，与 `listWorkspaceEntries`/`readWorkspaceFile`/`openPath` 一并传递下去。`workspaceId` 是 `FilesNode` 自身的属性——即正在浏览的那个确切 workspace——直接传递下去，而不是由 File 视图一侧重新推导；这一直接 id 为何重要，见[修复上游同步后 File 视图的 workspace 解析问题](2026-08-29-file-view-workspace-resolution-fixes.zh.md)。
 
 `FilesNode` 的文件打开处理函数现在优先尝试会话路由：当存在当前会话且 `openFileInSession` 返回 `true` 时，直接返回，不触碰本地状态。只有在没有当前会话，或该服务拒绝时，才回退到 `setPreviewPath`（即 `FileViewer` 弹窗）——无会话的"新建会话"视图，以及任何未组合 `ui-conversation` 的场景，行为保持不变。
 

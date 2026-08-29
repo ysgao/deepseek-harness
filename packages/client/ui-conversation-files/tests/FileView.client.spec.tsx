@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { WorkspaceFileBrowseError } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { WorkspaceFileContent, WorkspaceFileVersion } from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/types'
 import type { RemoteFailure } from '@deepseek-ai/dsh-typert-protocol'
 import type { ConversationViewRequest } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { zh } from '@deepseek-ai/dsh-client-ui-conversation/src/client/locales.ts'
@@ -30,12 +31,19 @@ afterEach(() => { vi.unstubAllGlobals() })
 
 const t = makeTranslate(zh)
 
-/** A one-shot 'file' viewRequest addressed at `path`, as `conversationFileOpener` would produce. */
-function fileRequest(path: string): ConversationViewRequest {
-  return { view: 'file', focus: path }
+/**
+ * A one-shot 'file' viewRequest addressed at `path`, as `conversationFileOpener`
+ * would produce (JSON-encoded `focus` — see `OpenFileFocus` in FileView.tsx).
+ * `workspaceId` defaults absent, matching a requester with no workspace of
+ * its own (e.g. a chat-message file mention).
+ */
+function fileRequest(path: string, workspaceId?: WorkspaceId): ConversationViewRequest {
+  return { view: 'file', focus: JSON.stringify({ path, workspaceId }) }
 }
 
-function readFileOnce(content: WorkspaceFileContent): (path: string, signal?: AbortSignal) => Promise<WorkspaceFileContent> {
+function readFileOnce(
+  content: WorkspaceFileContent,
+): (workspaceId: WorkspaceId | undefined, path: string, signal?: AbortSignal) => Promise<WorkspaceFileContent> {
   return () => Promise.resolve(content)
 }
 
@@ -84,7 +92,15 @@ describe('FileView', () => {
     render(<FileView {...baseProps({ viewRequest: fileRequest('/ws/notes.txt'), completeViewRequest, readFile })} />)
     expect(completeViewRequest).toHaveBeenCalled()
     await screen.findByText('hello')
-    expect(readFile).toHaveBeenCalledWith('/ws/notes.txt', expect.anything())
+    expect(readFile).toHaveBeenCalledWith(undefined, '/ws/notes.txt', expect.anything())
+  })
+
+  it('passes the focus payload\'s own workspaceId through to every call, not a session-derived one', async () => {
+    const workspaceId = 'ws-explicit' as WorkspaceId
+    const readFile = vi.fn(readFileOnce({ kind: 'text', content: 'hello', version: 'test-version' as WorkspaceFileVersion }))
+    render(<FileView {...baseProps({ viewRequest: fileRequest('/ws/notes.txt', workspaceId), readFile })} />)
+    await screen.findByText('hello')
+    expect(readFile).toHaveBeenCalledWith(workspaceId, '/ws/notes.txt', expect.anything())
     // The header path span and ReadBlock's own banner label both show the
     // path — assert at least one instance renders rather than picking one.
     expect(screen.getAllByText('/ws/notes.txt').length).toBeGreaterThan(0)
@@ -172,7 +188,7 @@ describe('FileView', () => {
   })
 
   it('re-fetches on a new viewRequest after the first file is showing', async () => {
-    const readFile = vi.fn((path: string) => Promise.resolve({
+    const readFile = vi.fn((_workspaceId: WorkspaceId | undefined, path: string) => Promise.resolve({
       kind: 'text' as const, content: `content of ${path}`, version: 'test-version' as WorkspaceFileVersion,
     }))
     const { rerender } = render(<FileView {...baseProps({ viewRequest: fileRequest('/ws/one.txt'), readFile })} />)
@@ -209,7 +225,7 @@ describe('FileView', () => {
     )
     const diffToggle = await screen.findByRole('button', { name: t('files.diff.diff') })
     await act(async () => { diffToggle.click() })
-    expect(getFileDiff).toHaveBeenCalledWith('/ws/changed.txt', expect.anything())
+    expect(getFileDiff).toHaveBeenCalledWith(undefined, '/ws/changed.txt', expect.anything())
     await screen.findByText('old line')
     await screen.findByText('new line')
   })
@@ -293,7 +309,7 @@ describe('FileView editing', () => {
     const saveButton = await screen.findByRole('button', { name: t('files.edit.save') })
     await act(async () => { saveButton.click() })
 
-    expect(writeFile).toHaveBeenCalledWith('/ws/notes.txt', expect.stringContaining('hello'), 'v1')
+    expect(writeFile).toHaveBeenCalledWith(undefined, '/ws/notes.txt', expect.stringContaining('hello'), 'v1')
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t('files.edit.save') }).hasAttribute('disabled')).toBe(true)
     })
