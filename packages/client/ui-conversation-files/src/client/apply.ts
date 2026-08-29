@@ -19,9 +19,17 @@ export const inject = ['slots', 'sessions', 'locale']
 export function apply(ctx: Context): void {
   const t = ctx.locale.bind('conversation')
   const sessions = ctx.sessions
-  const workspaces = ctx.get('workspaces')
-  const resolveOwningWorkspaceId = (targetSessionId: SessionId) =>
-    workspaces?.list.getSnapshot().items.find(item => item.sessionIds.includes(targetSessionId))?.workspaceId
+  // Re-fetched on every call, not cached at apply() time: `workspaces` is an
+  // optional cross-package service (see ui-chat's identical `ctx.get(...)`
+  // pattern for `conversationFileOpener`) that may not have registered yet
+  // when this plugin's own apply() runs — caching it here would freeze it at
+  // `undefined` for the plugin's whole lifetime.
+  const resolveOwningWorkspace = (targetSessionId: SessionId) => {
+    const workspaces = ctx.get('workspaces')
+    const workspaceId = workspaces?.list.getSnapshot().items
+      .find(item => item.sessionIds.includes(targetSessionId))?.workspaceId
+    return workspaceId === undefined || workspaces === undefined ? undefined : { workspaceId, workspaces }
+  }
 
   ctx.slots.inject('conversation.view', () => ctx.slots.register({
     name: 'conversation.view',
@@ -31,36 +39,36 @@ export function apply(ctx: Context): void {
     locale: 'conversation',
     inject: (sessionId: SessionId): FileViewInjected => ({
       readFile: (path, signal) => {
-        const workspaceId = resolveOwningWorkspaceId(sessionId)
-        if (workspaceId === undefined || workspaces === undefined) {
+        const owner = resolveOwningWorkspace(sessionId)
+        if (owner === undefined) {
           return Promise.reject(new Error(`ui-conversation-files: session "${sessionId}" has no owning workspace`))
         }
-        return workspaces.readFile(workspaceId, path, signal)
+        return owner.workspaces.readFile(owner.workspaceId, path, signal)
       },
       openPath: async (path) => {
         const result = await sessions.openWorkspacePath(path, new AbortController().signal)
         if (!result.ok) throw new Error(`ui-conversation-files: path open failed: ${result.error.message}`)
       },
       getGitStatus: (signal) => {
-        const workspaceId = resolveOwningWorkspaceId(sessionId)
-        if (workspaceId === undefined || workspaces === undefined) {
+        const owner = resolveOwningWorkspace(sessionId)
+        if (owner === undefined) {
           return Promise.reject(new Error(`ui-conversation-files: session "${sessionId}" has no owning workspace`))
         }
-        return workspaces.gitStatus(workspaceId, signal)
+        return owner.workspaces.gitStatus(owner.workspaceId, signal)
       },
       getFileDiff: (path, signal) => {
-        const workspaceId = resolveOwningWorkspaceId(sessionId)
-        if (workspaceId === undefined || workspaces === undefined) {
+        const owner = resolveOwningWorkspace(sessionId)
+        if (owner === undefined) {
           return Promise.reject(new Error(`ui-conversation-files: session "${sessionId}" has no owning workspace`))
         }
-        return workspaces.gitFileDiff(workspaceId, path, signal)
+        return owner.workspaces.gitFileDiff(owner.workspaceId, path, signal)
       },
       writeFile: (path, content, expectedVersion, signal) => {
-        const workspaceId = resolveOwningWorkspaceId(sessionId)
-        if (workspaceId === undefined || workspaces === undefined) {
+        const owner = resolveOwningWorkspace(sessionId)
+        if (owner === undefined) {
           return Promise.reject(new Error(`ui-conversation-files: session "${sessionId}" has no owning workspace`))
         }
-        return workspaces.writeFile(workspaceId, path, content, expectedVersion, signal)
+        return owner.workspaces.writeFile(owner.workspaceId, path, content, expectedVersion, signal)
       },
     }),
   }, FileView))
