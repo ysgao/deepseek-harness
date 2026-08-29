@@ -147,6 +147,22 @@ export type WorkspaceBrowserInjected = {
   /** Read one Workspace file's content for in-app preview. */
   readWorkspaceFile: (workspaceId: WorkspaceId, path: string, signal?: AbortSignal) => Promise<WorkspaceFileContent>
   /**
+   * Create one new, empty regular file as a child of an existing directory
+   * under a Workspace root (the Files tree header's "Add file" control).
+   * @returns the created file's absolute path.
+   */
+  createWorkspaceFile: (
+    workspaceId: WorkspaceId, parentPath: string, name: string, signal?: AbortSignal,
+  ) => Promise<string>
+  /**
+   * Create one new, empty directory as a child of an existing directory
+   * under a Workspace root (the Files tree header's "Add folder" control).
+   * @returns the created directory's absolute path.
+   */
+  createWorkspaceFolder: (
+    workspaceId: WorkspaceId, parentPath: string, name: string, signal?: AbortSignal,
+  ) => Promise<string>
+  /**
    * Report a Workspace's current git branch and pending file changes (the
    * Files tree sibling's header branch/dirty display and per-row change
    * markers).

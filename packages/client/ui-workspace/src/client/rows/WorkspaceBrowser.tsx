@@ -236,6 +236,7 @@ type SessionTreeProps = Pick<
   'useSessions' | 'useSessionPendingInteraction' | 'startSession' | 'open' | 'forkSession'
   | 'insertWorkspaceBefore' | 'insertSessionBefore' | 't'
   | 'listWorkspaceEntries' | 'readWorkspaceFile' | 'listWorkspaceGitStatus'
+  | 'createWorkspaceFile' | 'createWorkspaceFolder'
   | 'commitAllWorkspaceChanges' | 'discardAllWorkspaceChanges' | 'pullRebaseWorkspace' | 'pushWorkspace'
   | 'openPath' | 'openFileInSession'
 > & {
@@ -275,7 +276,7 @@ function SessionTree({
   insertWorkspaceBefore, insertSessionBefore, orderBy,
   groupExpansion, setGroupExpanded,
   sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t,
-  listWorkspaceEntries, readWorkspaceFile, listWorkspaceGitStatus,
+  listWorkspaceEntries, readWorkspaceFile, listWorkspaceGitStatus, createWorkspaceFile, createWorkspaceFolder,
   commitAllWorkspaceChanges, discardAllWorkspaceChanges, pullRebaseWorkspace, pushWorkspace, openPath, openFileInSession,
 }: SessionTreeProps) {
   const list = useSessions(s => s)
@@ -541,6 +542,8 @@ function SessionTree({
                   listWorkspaceEntries={listWorkspaceEntries}
                   readWorkspaceFile={readWorkspaceFile}
                   listWorkspaceGitStatus={listWorkspaceGitStatus}
+                  createWorkspaceFile={createWorkspaceFile}
+                  createWorkspaceFolder={createWorkspaceFolder}
                   commitAllChanges={commitAllWorkspaceChanges}
                   discardAllChanges={discardAllWorkspaceChanges}
                   pullRebase={pullRebaseWorkspace}
@@ -851,6 +854,8 @@ export function WorkspaceBrowser({
   listWorkspaceEntries,
   readWorkspaceFile,
   listWorkspaceGitStatus,
+  createWorkspaceFile,
+  createWorkspaceFolder,
   commitAllWorkspaceChanges,
   discardAllWorkspaceChanges,
   pullRebaseWorkspace,
@@ -1289,6 +1294,8 @@ export function WorkspaceBrowser({
                 listWorkspaceEntries={listWorkspaceEntries}
                 readWorkspaceFile={readWorkspaceFile}
                 listWorkspaceGitStatus={listWorkspaceGitStatus}
+                createWorkspaceFile={createWorkspaceFile}
+                createWorkspaceFolder={createWorkspaceFolder}
                 commitAllWorkspaceChanges={commitAllWorkspaceChanges}
                 discardAllWorkspaceChanges={discardAllWorkspaceChanges}
                 pullRebaseWorkspace={pullRebaseWorkspace}

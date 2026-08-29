@@ -5,6 +5,9 @@ import {
 import type {
   WorkspaceArchiveSessionRequest,
   WorkspaceArchiveValue,
+  WorkspaceCreateDirectoryValue,
+  WorkspaceCreateEntryRequest,
+  WorkspaceCreateFileValue,
   WorkspaceCreateRequest,
   WorkspaceCreateValue,
   WorkspaceDeleteRequest,
@@ -107,6 +110,10 @@ class FakeWorkspaceRemote implements WorkspaceRemote {
     Promise.resolve(remoteOk({ kind: 'text', content: '', version: 'fake-version' } as WorkspaceFileContent))
   onWriteFile: (_request: WorkspaceWriteFileRequest) => Promise<RemoteResult<WorkspaceWriteFileValue>> = () =>
     Promise.resolve(remoteOk({ version: 'fake-version' } as WorkspaceWriteFileValue))
+  onCreateFile: (request: WorkspaceCreateEntryRequest) => Promise<RemoteResult<WorkspaceCreateFileValue>> = request =>
+    Promise.resolve(remoteOk({ path: `${request.parentPath}/${request.name}`, version: 'fake-version' } as WorkspaceCreateFileValue))
+  onCreateDirectory: (request: WorkspaceCreateEntryRequest) => Promise<RemoteResult<WorkspaceCreateDirectoryValue>> = request =>
+    Promise.resolve(remoteOk({ path: `${request.parentPath}/${request.name}` }))
   onGitStatus: (_request: WorkspaceGitRequest) => Promise<RemoteResult<WorkspaceGitStatus>> = () =>
     Promise.resolve(remoteOk({ isRepo: false, branch: null, files: {} }))
   onGitCommitAll: (_request: WorkspaceGitCommitAllRequest) => Promise<RemoteResult<WorkspaceGitCommitAllValue>> = () =>
@@ -163,6 +170,16 @@ class FakeWorkspaceRemote implements WorkspaceRemote {
   writeFile(request: WorkspaceWriteFileRequest): Promise<RemoteResult<WorkspaceWriteFileValue>> {
     this.record('writeFile', request)
     return this.onWriteFile(request)
+  }
+
+  createFile(request: WorkspaceCreateEntryRequest): Promise<RemoteResult<WorkspaceCreateFileValue>> {
+    this.record('createFile', request)
+    return this.onCreateFile(request)
+  }
+
+  createDirectory(request: WorkspaceCreateEntryRequest): Promise<RemoteResult<WorkspaceCreateDirectoryValue>> {
+    this.record('createDirectory', request)
+    return this.onCreateDirectory(request)
   }
 
   gitStatus(request: WorkspaceGitRequest): Promise<RemoteResult<WorkspaceGitStatus>> {

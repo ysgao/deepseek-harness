@@ -16,8 +16,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   Button, IconArrowDownOutline14, IconArrowUpOutline14, IconCheckOutline14, IconChevronDuoUpOutline14, IconCloseFill14,
-  IconFilePlaceholder16, IconFolderClose16, IconFolderOpen16, IconRefreshOutline14, IconTriangleRightFill14,
-  IconUndoOutline14, Modal, StateDot,
+  IconFilePlaceholder16, IconFolderClose16, IconFolderOpen16, IconNewFile16, IconNewFolder16, IconRefreshOutline14,
+  IconTriangleRightFill14, IconUndoOutline14, Modal, StateDot,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceGitStatus, WorkspaceId,
@@ -41,6 +41,10 @@ export interface FilesNodeProps {
   readWorkspaceFile: (workspaceId: WorkspaceId, path: string, signal?: AbortSignal) => Promise<WorkspaceFileContent>
   /** Report the Workspace's current git branch and pending file changes, if its directory is inside a git working tree. */
   listWorkspaceGitStatus: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<WorkspaceGitStatus>
+  /** Create one new, empty regular file as a child of an existing directory; returns the created file's absolute path. */
+  createWorkspaceFile: (workspaceId: WorkspaceId, parentPath: string, name: string, signal?: AbortSignal) => Promise<string>
+  /** Create one new, empty directory as a child of an existing directory; returns the created directory's absolute path. */
+  createWorkspaceFolder: (workspaceId: WorkspaceId, parentPath: string, name: string, signal?: AbortSignal) => Promise<string>
   /** Stage every pending change (tracked and untracked) and commit them with `message`. */
   commitAllChanges: (workspaceId: WorkspaceId, message: string, signal?: AbortSignal) => Promise<void>
   /** Revert every tracked file's pending change to its `HEAD` content; an untracked file is left untouched. */
@@ -237,6 +241,84 @@ function GitCommitInput({ message, onMessageChange, onSubmit, onCancel, pending,
   )
 }
 
+/**
+ * The Files header's always-visible Add-file/Add-folder triggers — shown
+ * regardless of git-repo status (unlike the git action group), before the
+ * branch/status display. `busy` mirrors the git action group's own
+ * single-write-at-a-time posture: creating a file/folder also touches the
+ * working tree.
+ */
+function AddEntryButtons({ onAddFile, onAddFolder, busy, t }: {
+  onAddFile: () => void
+  onAddFolder: () => void
+  busy: boolean
+  t: FilesTranslate
+}) {
+  return (
+    <span className={css.addEntryButtons}>
+      <button type="button" className={css.gitRefreshButton} title={t('files.add.file')} disabled={busy} onClick={onAddFile}>
+        <IconNewFile16 />
+      </button>
+      <button
+        type="button"
+        className={css.gitRefreshButton}
+        title={t('files.add.folder')}
+        disabled={busy}
+        onClick={onAddFolder}
+      >
+        <IconNewFolder16 />
+      </button>
+    </span>
+  )
+}
+
+/** The Files header's inline new-file/new-folder name entry, replacing the branch/count/refresh row while active. */
+function CreateEntryInput({ kind, name, onNameChange, onSubmit, onCancel, pending, t }: {
+  kind: 'file' | 'folder'
+  name: string
+  onNameChange: (value: string) => void
+  onSubmit: () => void
+  onCancel: () => void
+  pending: boolean
+  t: FilesTranslate
+}) {
+  return (
+    <span className={css.gitCommitInput}>
+      <input
+        type="text"
+        className={css.gitCommitField}
+        value={name}
+        placeholder={kind === 'file' ? t('files.add.filePlaceholder') : t('files.add.folderPlaceholder')}
+        disabled={pending}
+        autoFocus
+        onChange={(e) => { onNameChange(e.target.value) }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && name.trim() !== '' && !pending) onSubmit()
+          if (e.key === 'Escape' && !pending) onCancel()
+        }}
+      />
+      <button
+        type="button"
+        className={css.gitRefreshButton}
+        title={t('files.add.submit')}
+        disabled={pending || name.trim() === ''}
+        onClick={onSubmit}
+      >
+        <IconCheckOutline14 />
+      </button>
+      <button
+        type="button"
+        className={css.gitRefreshButton}
+        title={t('files.git.cancel')}
+        disabled={pending}
+        onClick={onCancel}
+      >
+        <IconCloseFill14 />
+      </button>
+    </span>
+  )
+}
+
 /** One file row's git status badge (a single letter, color-coded by change kind); renders nothing for an unchanged file. */
 function GitStatusBadge({ code, t }: { code: string | undefined; t: FilesTranslate }) {
   if (code === undefined) return null
@@ -316,24 +398,38 @@ function useLevel(
   return state
 }
 
-/** One directory row: chevron + folder glyph + name; expands its own nested level in place. */
-function DirectoryRow({ entry, depth, onOpenFile, listWorkspaceEntries, gitStatusFiles, t }: {
+/**
+ * One directory row: chevron + folder glyph + name; expands its own nested
+ * level in place. A click both toggles expansion and marks this directory
+ * the create-target for the header's Add-file/Add-folder actions — the two
+ * gestures share one click rather than earning a separate selection
+ * affordance, so a folder does not need to stay expanded to remain the
+ * target of a later Add action.
+ */
+function DirectoryRow({ entry, depth, onOpenFile, listWorkspaceEntries, gitStatusFiles, selectedDirPath, onSelectDir, t }: {
   entry: WorkspaceEntry
   depth: number
   onOpenFile: (path: string) => void
   listWorkspaceEntries: (path: string, signal?: AbortSignal) => Promise<WorkspaceEntryListing>
   gitStatusFiles: Readonly<Record<string, string>> | undefined
+  selectedDirPath: string | null
+  onSelectDir: (path: string) => void
   t: FilesTranslate
 }) {
   const [expanded, setExpanded] = useState(false)
+  const selected = selectedDirPath === entry.path
   return (
     <>
       <button
         type="button"
-        className={css.row}
+        className={clsx(css.row, selected && css.rowSelected)}
         style={{ paddingLeft: 8 + depth * 22 }}
         aria-expanded={expanded}
-        onClick={() => { setExpanded(value => !value) }}
+        aria-selected={selected}
+        onClick={() => {
+          setExpanded(value => !value)
+          onSelectDir(entry.path)
+        }}
       >
         <span className={clsx(css.slot, css.chevron)}>
           <IconTriangleRightFill14 className={clsx(css.arrow, expanded && css.arrowOpen)} />
@@ -351,6 +447,8 @@ function DirectoryRow({ entry, depth, onOpenFile, listWorkspaceEntries, gitStatu
           onOpenFile={onOpenFile}
           listWorkspaceEntries={listWorkspaceEntries}
           gitStatusFiles={gitStatusFiles}
+          selectedDirPath={selectedDirPath}
+          onSelectDir={onSelectDir}
           t={t}
         />
       )}
@@ -388,12 +486,14 @@ function FileRow({ entry, depth, onOpen, gitStatusFiles, t }: {
 }
 
 /** One fetched level's rows: loading/error/empty states, else directory rows before file rows. */
-function FilesLevel({ path, depth, onOpenFile, listWorkspaceEntries, gitStatusFiles, t }: {
+function FilesLevel({ path, depth, onOpenFile, listWorkspaceEntries, gitStatusFiles, selectedDirPath, onSelectDir, t }: {
   path: string
   depth: number
   onOpenFile: (path: string) => void
   listWorkspaceEntries: (path: string, signal?: AbortSignal) => Promise<WorkspaceEntryListing>
   gitStatusFiles: Readonly<Record<string, string>> | undefined
+  selectedDirPath: string | null
+  onSelectDir: (path: string) => void
   t: FilesTranslate
 }) {
   const state = useLevel(path, listWorkspaceEntries)
@@ -419,6 +519,8 @@ function FilesLevel({ path, depth, onOpenFile, listWorkspaceEntries, gitStatusFi
               onOpenFile={onOpenFile}
               listWorkspaceEntries={listWorkspaceEntries}
               gitStatusFiles={gitStatusFiles}
+              selectedDirPath={selectedDirPath}
+              onSelectDir={onSelectDir}
               t={t}
             />
           )
@@ -438,20 +540,31 @@ function FilesLevel({ path, depth, onOpenFile, listWorkspaceEntries, gitStatusFi
  */
 export function FilesNode({
   workspaceId, rootPath, listWorkspaceEntries, readWorkspaceFile, listWorkspaceGitStatus,
+  createWorkspaceFile, createWorkspaceFolder,
   commitAllChanges, discardAllChanges, pullRebase, push, openPath, currentSessionId, openFileInSession, t,
 }: FilesNodeProps) {
   const [expanded, setExpanded] = useState(false)
   const [previewPath, setPreviewPath] = useState<string | null>(null)
   const [gitStatus, refreshGitStatus] = useGitStatus(workspaceId, listWorkspaceGitStatus)
-  // Bumped after a successful commit or discard to force the currently
-  // rendered directory level (and every level nested under it) to remount
-  // and refetch — a commit hook or a discard can both change file content on
-  // disk, which the level's own fetch has no other way to learn about.
+  // Bumped after a successful commit, discard, or create to force the
+  // currently rendered directory level (and every level nested under it) to
+  // remount and refetch — a commit hook, a discard, or a new file/folder can
+  // all change directory content on disk, which the level's own fetch has no
+  // other way to learn about.
   const [levelRefreshKey, setLevelRefreshKey] = useState(0)
+  // The most recently clicked directory (its own click both expands/collapses
+  // it and marks it the Add-file/Add-folder target); null targets the
+  // workspace root. Not persisted across a collapse-then-reopen of the Files
+  // node itself — a fresh expand always targets the root again.
+  const [selectedDirPath, setSelectedDirPath] = useState<string | null>(null)
   const [commitMode, setCommitMode] = useState(false)
   const [commitMessage, setCommitMessage] = useState('')
   const [commitPending, setCommitPending] = useState(false)
   const [commitError, setCommitError] = useState<string | null>(null)
+  const [createMode, setCreateMode] = useState<'file' | 'folder' | null>(null)
+  const [createName, setCreateName] = useState('')
+  const [createPending, setCreatePending] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [discardConfirming, setDiscardConfirming] = useState(false)
   const [discardPending, setDiscardPending] = useState(false)
   const [discardError, setDiscardError] = useState<string | null>(null)
@@ -459,12 +572,12 @@ export function FilesNode({
   const [pullError, setPullError] = useState<string | null>(null)
   const [pushPending, setPushPending] = useState(false)
   const [pushError, setPushError] = useState<string | null>(null)
-  // Only one write action (commit, discard, pull, push) may run against the
-  // working tree at a time — concurrent git subprocesses race on the same
-  // index/working tree otherwise. The discard confirmation counts too: once
-  // it's open, starting another action first would need to reason about a
-  // discard the user is mid-way through confirming.
-  const busy = discardPending || discardConfirming || pullPending || pushPending
+  // Only one write action (commit, discard, pull, push, create) may run
+  // against the working tree at a time — concurrent operations race on the
+  // same index/working tree otherwise. The discard confirmation counts too:
+  // once it's open, starting another action first would need to reason
+  // about a discard the user is mid-way through confirming.
+  const busy = discardPending || discardConfirming || pullPending || pushPending || createPending
   // Pull/Push each hold the AbortController for their own in-flight call, so
   // the Cancel button (GitStatusSummary) can abort a hung network request —
   // both use the RPC's 'caller-signal-only' timeout policy, which never
@@ -476,6 +589,7 @@ export function FilesNode({
     setDiscardError(null)
     setPullError(null)
     setPushError(null)
+    setCreateError(null)
   }, [])
   const handleRefresh = useCallback(() => {
     clearGitErrors()
@@ -508,6 +622,35 @@ export function FilesNode({
       setCommitError(reason instanceof Error ? reason.message : String(reason))
     })
   }, [commitAllChanges, workspaceId, commitMessage, refreshGitStatus])
+  const startCreate = useCallback((kind: 'file' | 'folder') => {
+    setCreateName('')
+    clearGitErrors()
+    setCreateMode(kind)
+  }, [clearGitErrors])
+  const cancelCreate = useCallback(() => {
+    setCreateMode(null)
+    setCreateError(null)
+  }, [])
+  const submitCreate = useCallback(() => {
+    // Both callers (the submit button's disabled state, CreateEntryInput's
+    // own Enter-key guard) already require a non-blank name and a set mode
+    // before invoking this — there is no route to reach it with either unset.
+    if (createMode === null) return
+    const name = createName.trim()
+    const parentPath = selectedDirPath ?? rootPath
+    const create = createMode === 'file' ? createWorkspaceFile : createWorkspaceFolder
+    setCreatePending(true)
+    setCreateError(null)
+    create(workspaceId, parentPath, name).then(() => {
+      setCreatePending(false)
+      setCreateMode(null)
+      setCreateName('')
+      setLevelRefreshKey(key => key + 1)
+    }).catch((reason: unknown) => {
+      setCreatePending(false)
+      setCreateError(reason instanceof Error ? reason.message : String(reason))
+    })
+  }, [createMode, createName, selectedDirPath, rootPath, createWorkspaceFile, createWorkspaceFolder, workspaceId])
   const openDiscardConfirm = useCallback(() => {
     clearGitErrors()
     setDiscardConfirming(true)
@@ -606,6 +749,11 @@ export function FilesNode({
       if (next) refreshGitStatus()
       return next
     })
+    // Collapsing (or reopening) the Files node itself always retargets
+    // Add-file/Add-folder to the workspace root — a stale selected
+    // subdirectory from a prior expansion would otherwise silently outlive
+    // the tree that showed it.
+    setSelectedDirPath(null)
   }, [refreshGitStatus])
   return (
     <>
@@ -625,34 +773,55 @@ export function FilesNode({
           </span>
           <span className={css.name}>{t('files.label')}</span>
         </button>
-        {commitMode
+        {createMode !== null
           ? (
-            <GitCommitInput
-              message={commitMessage}
-              onMessageChange={setCommitMessage}
-              onSubmit={submitCommit}
-              onCancel={cancelCommit}
-              pending={commitPending}
+            <CreateEntryInput
+              kind={createMode}
+              name={createName}
+              onNameChange={setCreateName}
+              onSubmit={submitCreate}
+              onCancel={cancelCreate}
+              pending={createPending}
               t={t}
             />
           )
-          : (
-            <GitStatusSummary
-              status={gitStatus}
-              onRefresh={handleRefresh}
-              onCommit={startCommit}
-              onDiscard={openDiscardConfirm}
-              onPull={runPull}
-              onPush={runPush}
-              onCancelPull={cancelPull}
-              onCancelPush={cancelPush}
-              busy={busy}
-              pullPending={pullPending}
-              pushPending={pushPending}
-              t={t}
-            />
-          )}
+          : commitMode
+            ? (
+              <GitCommitInput
+                message={commitMessage}
+                onMessageChange={setCommitMessage}
+                onSubmit={submitCommit}
+                onCancel={cancelCommit}
+                pending={commitPending}
+                t={t}
+              />
+            )
+            : (
+              <>
+                <AddEntryButtons
+                  onAddFile={() => { startCreate('file') }}
+                  onAddFolder={() => { startCreate('folder') }}
+                  busy={busy}
+                  t={t}
+                />
+                <GitStatusSummary
+                  status={gitStatus}
+                  onRefresh={handleRefresh}
+                  onCommit={startCommit}
+                  onDiscard={openDiscardConfirm}
+                  onPull={runPull}
+                  onPush={runPush}
+                  onCancelPull={cancelPull}
+                  onCancelPush={cancelPush}
+                  busy={busy}
+                  pullPending={pullPending}
+                  pushPending={pushPending}
+                  t={t}
+                />
+              </>
+            )}
       </div>
+      {createError !== null && <div className={css.notice} role="alert">{createError}</div>}
       {commitError !== null && <div className={css.notice} role="alert">{commitError}</div>}
       {pullError !== null && <div className={css.notice} role="alert">{pullError}</div>}
       {pushError !== null && <div className={css.notice} role="alert">{pushError}</div>}
@@ -664,6 +833,8 @@ export function FilesNode({
           onOpenFile={handleOpenFile}
           listWorkspaceEntries={list}
           gitStatusFiles={gitStatus?.files}
+          selectedDirPath={selectedDirPath}
+          onSelectDir={setSelectedDirPath}
           t={t}
         />
       )}

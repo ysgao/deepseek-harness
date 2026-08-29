@@ -12,7 +12,7 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto'
-import { opendir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, opendir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import type { WorkspaceEntry, WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileVersion } from './types.ts'
 
@@ -25,7 +25,7 @@ export class WorkspaceFileError extends Error {
    * @param maxBytes - the enforced read/write bound, present only for `file-too-large`.
    */
   constructor(
-    readonly code: 'directory-unreadable' | 'file-too-large' | 'file-changed',
+    readonly code: 'directory-unreadable' | 'file-too-large' | 'file-changed' | 'already-exists' | 'parent-missing',
     readonly path: string,
     message: string,
     readonly maxBytes?: number,
@@ -308,4 +308,57 @@ export async function writeWorkspaceFile(
   }
   /* v8 ignore stop */
   return hashContent(nextBytes)
+}
+
+/**
+ * Create one new, empty regular file at `path`; never overwrites or reads
+ * existing content (a distinct primitive from `writeWorkspaceFile`, which
+ * only ever overwrites an existing file). The Files tree's "Add file"
+ * action.
+ * @param path - absolute path of the file to create (must not already exist).
+ * @param signal - caller lifetime; abort rejects with the abort reason before creation.
+ * @returns the empty file's content version (the empty-string hash).
+ * @throws {WorkspaceFileError} `already-exists` when `path` already names a
+ * file or directory, `parent-missing` when the enclosing directory does not
+ * exist, `directory-unreadable` for any other creation failure.
+ */
+export async function createWorkspaceFile(path: string, signal?: AbortSignal): Promise<WorkspaceFileVersion> {
+  signal?.throwIfAborted()
+  try {
+    // 'wx': create-exclusive — fails with EEXIST rather than truncating an
+    // existing file, so this can never silently clobber content.
+    await writeFile(path, '', { flag: 'wx', signal })
+  } catch (error: unknown) {
+    signal?.throwIfAborted()
+    throw createFailure(error, path)
+  }
+  return hashContent(Buffer.alloc(0))
+}
+
+/**
+ * Create one new, empty directory at `path`. The Files tree's "Add folder" action.
+ * @param path - absolute path of the directory to create (must not already exist).
+ * @param signal - caller lifetime; abort rejects with the abort reason before creation.
+ * @throws {WorkspaceFileError} `already-exists` when `path` already names a
+ * file or directory, `parent-missing` when the enclosing directory does not
+ * exist, `directory-unreadable` for any other creation failure.
+ */
+export async function createWorkspaceDirectory(path: string, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted()
+  try {
+    // recursive: false — the enclosing directory must already exist; this
+    // creates exactly one new path segment, never a chain of parents.
+    await mkdir(path, { recursive: false })
+  } catch (error: unknown) {
+    signal?.throwIfAborted()
+    throw createFailure(error, path)
+  }
+}
+
+/** Classify a create-primitive's rejection by its node:fs error code. */
+function createFailure(error: unknown, path: string): WorkspaceFileError {
+  const code = error instanceof Error && 'code' in error ? error.code : undefined
+  if (code === 'EEXIST') return new WorkspaceFileError('already-exists', path, `"${path}" already exists`)
+  if (code === 'ENOENT') return new WorkspaceFileError('parent-missing', path, `the parent directory of "${path}" does not exist`)
+  return new WorkspaceFileError('directory-unreadable', path, `cannot create ${path}: ${messageOf(error)}`)
 }

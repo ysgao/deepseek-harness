@@ -21,6 +21,7 @@ import type {
 } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { WorkspaceRemote } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {
+  WorkspaceCreateDirectoryValue, WorkspaceCreateEntryRequest, WorkspaceCreateFileValue,
   WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceFollowFrame, WorkspaceGitCommitAllValue,
   WorkspaceGitDiscardAllValue, WorkspaceGitPullRebaseValue, WorkspaceGitPushValue, WorkspaceGitStatus, WorkspaceWriteFileValue,
 } from '@deepseek-ai/dsh-api-workspace-controller/types'
@@ -211,6 +212,17 @@ export class FakeApiClient {
   onWorkspaceWriteFile: (payload: unknown) => Promise<RemoteResult<WorkspaceWriteFileValue>> =
     () => Promise.resolve(remoteOk({ version: 'fake-version' } as WorkspaceWriteFileValue))
 
+  onWorkspaceCreateFile: (payload: unknown) => Promise<RemoteResult<WorkspaceCreateFileValue>> =
+    payload => Promise.resolve(remoteOk({
+      path: `${(payload as WorkspaceCreateEntryRequest).parentPath}/${(payload as WorkspaceCreateEntryRequest).name}`,
+      version: 'fake-version',
+    } as WorkspaceCreateFileValue))
+
+  onWorkspaceCreateDirectory: (payload: unknown) => Promise<RemoteResult<WorkspaceCreateDirectoryValue>> =
+    payload => Promise.resolve(remoteOk({
+      path: `${(payload as WorkspaceCreateEntryRequest).parentPath}/${(payload as WorkspaceCreateEntryRequest).name}`,
+    }))
+
   onWorkspaceGitStatus: (payload: unknown) => Promise<RemoteResult<WorkspaceGitStatus>> =
     () => Promise.resolve(remoteOk({ isRepo: false, branch: null, files: {} }))
 
@@ -311,6 +323,8 @@ export class FakeApiClient {
         listEntries: payload => this.record('workspace.listEntries', payload, this.onWorkspaceListEntries(payload)),
         readFile: payload => this.record('workspace.readFile', payload, this.onWorkspaceReadFile(payload)),
         writeFile: payload => this.record('workspace.writeFile', payload, this.onWorkspaceWriteFile(payload)),
+        createFile: payload => this.record('workspace.createFile', payload, this.onWorkspaceCreateFile(payload)),
+        createDirectory: payload => this.record('workspace.createDirectory', payload, this.onWorkspaceCreateDirectory(payload)),
         gitStatus: payload => this.record('workspace.gitStatus', payload, this.onWorkspaceGitStatus(payload)),
         gitCommitAll: payload => this.record('workspace.gitCommitAll', payload, this.onWorkspaceGitCommitAll(payload)),
         gitDiscardAll: payload => this.record('workspace.gitDiscardAll', payload, this.onWorkspaceGitDiscardAll(payload)),

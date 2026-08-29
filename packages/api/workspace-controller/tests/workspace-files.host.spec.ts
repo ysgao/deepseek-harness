@@ -1,13 +1,15 @@
 /** Pure-function and real-filesystem branch coverage of workspace-files.ts. */
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { WorkspaceFileVersion } from '../src/types.ts'
 import {
-  isWithinWorkspace, listWorkspaceEntries, mediaTypeFor, readWorkspaceFile, resolveWorkspacePath, WorkspaceFileError,
-  writeWorkspaceFile,
+  createWorkspaceDirectory, createWorkspaceFile, isWithinWorkspace, listWorkspaceEntries, mediaTypeFor,
+  readWorkspaceFile, resolveWorkspacePath, WorkspaceFileError, writeWorkspaceFile,
 } from '../src/files.ts'
 
 /** `hashContent` isn't exported (an implementation detail); tests derive the expected version independently the same way it would. */
@@ -194,5 +196,76 @@ describe('writeWorkspaceFile', () => {
     writeFileSync(path, 'old')
     await writeWorkspaceFile(path, 'new', versionOf('old'))
     expect(readdirSync(root).filter(name => name.endsWith('.tmp'))).toHaveLength(0)
+  })
+})
+
+describe('createWorkspaceFile', () => {
+  it('creates a new empty file and returns the empty-content version', async () => {
+    const root = tempDir('dsh-workspace-files-create-file-ok-')
+    const path = join(root, 'notes.txt')
+    const version = await createWorkspaceFile(path)
+    expect(version).toBe(versionOf(''))
+    expect(readFileSync(path, 'utf-8')).toBe('')
+  })
+
+  it('rejects an already-existing target with already-exists, leaving its content untouched', async () => {
+    const root = tempDir('dsh-workspace-files-create-file-exists-')
+    const path = join(root, 'notes.txt')
+    writeFileSync(path, 'existing content')
+    await expect(createWorkspaceFile(path)).rejects.toMatchObject({ code: 'already-exists', path })
+    expect(readFileSync(path, 'utf-8')).toBe('existing content')
+  })
+
+  it('rejects a missing parent directory with parent-missing', async () => {
+    const root = tempDir('dsh-workspace-files-create-file-noparent-')
+    const path = join(root, 'missing-dir', 'notes.txt')
+    await expect(createWorkspaceFile(path)).rejects.toMatchObject({ code: 'parent-missing', path })
+  })
+
+  it('rejects an already-aborted signal before any I/O', async () => {
+    const root = tempDir('dsh-workspace-files-create-file-preaborted-')
+    const path = join(root, 'notes.txt')
+    const controller = new AbortController()
+    controller.abort()
+    await expect(createWorkspaceFile(path, controller.signal)).rejects.toThrow()
+    expect(existsSync(path)).toBe(false)
+  })
+})
+
+describe('createWorkspaceDirectory', () => {
+  it('creates a new empty directory', async () => {
+    const root = tempDir('dsh-workspace-files-create-dir-ok-')
+    const path = join(root, 'sub')
+    await createWorkspaceDirectory(path)
+    expect(readdirSync(root)).toContain('sub')
+  })
+
+  it('rejects an already-existing directory target with already-exists', async () => {
+    const root = tempDir('dsh-workspace-files-create-dir-exists-')
+    const path = join(root, 'sub')
+    mkdirSync(path)
+    await expect(createWorkspaceDirectory(path)).rejects.toMatchObject({ code: 'already-exists', path })
+  })
+
+  it('rejects an already-existing file target with already-exists', async () => {
+    const root = tempDir('dsh-workspace-files-create-dir-file-exists-')
+    const path = join(root, 'notes.txt')
+    writeFileSync(path, 'x')
+    await expect(createWorkspaceDirectory(path)).rejects.toMatchObject({ code: 'already-exists', path })
+  })
+
+  it('rejects a missing parent directory with parent-missing (never creates a chain of parents)', async () => {
+    const root = tempDir('dsh-workspace-files-create-dir-noparent-')
+    const path = join(root, 'missing-dir', 'sub')
+    await expect(createWorkspaceDirectory(path)).rejects.toMatchObject({ code: 'parent-missing', path })
+  })
+
+  it('rejects an already-aborted signal before any I/O', async () => {
+    const root = tempDir('dsh-workspace-files-create-dir-preaborted-')
+    const path = join(root, 'sub')
+    const controller = new AbortController()
+    controller.abort()
+    await expect(createWorkspaceDirectory(path, controller.signal)).rejects.toThrow()
+    expect(existsSync(path)).toBe(false)
   })
 })

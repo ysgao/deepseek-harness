@@ -704,6 +704,46 @@ export const IconFilePlaceholder16 = ({ size = 16, className }: IconProps) => (
   </svg>
 )
 
+/**
+ * "Add file": {@link IconFilePlaceholder16}'s glyph, shrunk and shifted
+ * up-left, with a small filled-circle plus badge riding its bottom-right
+ * corner (the background paint uses the page's own currentColor with 12%
+ * opacity, so the badge reads correctly on both themes without a
+ * theme-token prop this icon set otherwise has no room for).
+ */
+export const IconNewFile16 = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} className={className} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M3.5 1H8L10.5 3.5V10.5C10.5 10.7761 10.2761 11 10 11H3.5C3.22386 11 3 10.7761 3 10.5V1.5C3 1.22386 3.22386 1 3.5 1Z"
+      stroke="currentColor"
+      strokeWidth="1"
+      fill="none"
+      strokeLinejoin="round"
+    />
+    <path d="M7.75 1V3.5H10.25" stroke="currentColor" strokeWidth="1" fill="none" strokeLinejoin="round" />
+    <circle cx="11.5" cy="11.5" r="4" fill="currentColor" opacity="0.12" />
+    <path d="M11.5 9.5V13.5M9.5 11.5H13.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+  </svg>
+)
+
+/**
+ * "Add folder": {@link IconFolderClose16}'s glyph, shrunk and shifted
+ * up-left, with the same plus badge {@link IconNewFile16} uses.
+ */
+export const IconNewFolder16 = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} className={className} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M1 2.5C1 1.94772 1.44772 1.5 2 1.5H4.5L5.5 3H9.5C10.0523 3 10.5 3.44772 10.5 4V9C10.5 9.55228 10.0523 10 9.5 10H2C1.44772 10 1 9.55228 1 9V2.5Z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1"
+      strokeLinejoin="round"
+    />
+    <circle cx="11.5" cy="11.5" r="4" fill="currentColor" opacity="0.12" />
+    <path d="M11.5 9.5V13.5M9.5 11.5H13.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+  </svg>
+)
+
 /** tree_corner_8x10 (figma extract; session-tree "L" connector, stroke geometry pre-expanded) */
 export const IconTreeCorner8x10 = ({ size = 10, className }: IconProps) => (
   <svg width={(size * 8) / 10} height={size} className={className} viewBox="-0.5 0 8.5 10.5" fill="none">

@@ -21,6 +21,9 @@ import {
 import type {
   WorkspaceArchiveSessionRequest,
   WorkspaceArchiveValue,
+  WorkspaceCreateDirectoryValue,
+  WorkspaceCreateEntryRequest,
+  WorkspaceCreateFileValue,
   WorkspaceCreateRequest,
   WorkspaceCreateValue,
   WorkspaceDeleteRequest,
@@ -169,6 +172,14 @@ class ScriptedWorkspaceRemote implements WorkspaceRemote {
     throw new Error('unused')
   }
 
+  createFile(_request: WorkspaceCreateEntryRequest): Promise<RemoteResult<WorkspaceCreateFileValue>> {
+    throw new Error('unused')
+  }
+
+  createDirectory(_request: WorkspaceCreateEntryRequest): Promise<RemoteResult<WorkspaceCreateDirectoryValue>> {
+    throw new Error('unused')
+  }
+
   gitStatus(_request: WorkspaceGitRequest): Promise<RemoteResult<WorkspaceGitStatus>> {
     throw new Error('unused')
   }
@@ -244,6 +255,14 @@ class CommandWorkspaceRemote implements WorkspaceRemote {
   readonly writeFile = vi.fn<WorkspaceRemote['writeFile']>(() => Promise.resolve(remoteOk({
     version: 'fake-version',
   } as WorkspaceWriteFileValue)))
+
+  readonly createFile = vi.fn<WorkspaceRemote['createFile']>(request => Promise.resolve(remoteOk({
+    path: `${request.parentPath}/${request.name}`, version: 'fake-version',
+  } as WorkspaceCreateFileValue)))
+
+  readonly createDirectory = vi.fn<WorkspaceRemote['createDirectory']>(request => Promise.resolve(remoteOk({
+    path: `${request.parentPath}/${request.name}`,
+  })))
 
   readonly gitStatus = vi.fn<WorkspaceRemote['gitStatus']>(() => Promise.resolve(remoteOk({
     isRepo: false, branch: null, files: {},

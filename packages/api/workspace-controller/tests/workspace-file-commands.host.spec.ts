@@ -164,6 +164,87 @@ describe('WorkspaceController file-tree methods', () => {
   })
 })
 
+describe('WorkspaceController createFile/createDirectory methods', () => {
+  it('creates a new file as a child of the workspace root and rejects a duplicate name', async () => {
+    const { controller, root } = await harness()
+    const created = await controller.create({ path: root })
+    const workspaceId = created.workspace.workspaceId
+
+    const result = await controller.createFile(
+      { workspaceId, parentPath: root, name: 'notes.txt' },
+      new AbortController().signal,
+    )
+    expect(result.path).toBe(join(root, 'notes.txt'))
+    expect(await controller.readFile({ workspaceId, path: result.path }, new AbortController().signal))
+      .toMatchObject({ kind: 'text', content: '' })
+
+    await expect(controller.createFile(
+      { workspaceId, parentPath: root, name: 'notes.txt' },
+      new AbortController().signal,
+    )).rejects.toMatchObject({ failure: { code: 'already-exists' } })
+  })
+
+  it('creates a new directory as a child of an existing subdirectory', async () => {
+    const { controller, root } = await harness()
+    mkdirSync(join(root, 'src'))
+    const created = await controller.create({ path: root })
+    const workspaceId = created.workspace.workspaceId
+
+    const result = await controller.createDirectory(
+      { workspaceId, parentPath: join(root, 'src'), name: 'lib' },
+      new AbortController().signal,
+    )
+    expect(result.path).toBe(join(root, 'src', 'lib'))
+    const listing = await controller.listEntries({ workspaceId, path: join(root, 'src') }, new AbortController().signal)
+    expect(listing.entries).toEqual([{ name: 'lib', path: join(root, 'src', 'lib'), type: 'directory', hidden: false }])
+  })
+
+  it('rejects a name containing a path separator with invalid-name, never reaching the filesystem', async () => {
+    const { controller, root } = await harness()
+    const created = await controller.create({ path: root })
+    await expect(rejection(() => controller.createFile(
+      { workspaceId: created.workspace.workspaceId, parentPath: root, name: 'nested/notes.txt' },
+      new AbortController().signal,
+    ))).resolves.toMatchObject({ failure: { code: 'invalid-name' } })
+  })
+
+  it('rejects a blank name with invalid-name', async () => {
+    const { controller, root } = await harness()
+    const created = await controller.create({ path: root })
+    await expect(rejection(() => controller.createDirectory(
+      { workspaceId: created.workspace.workspaceId, parentPath: root, name: '   ' },
+      new AbortController().signal,
+    ))).resolves.toMatchObject({ failure: { code: 'invalid-name' } })
+  })
+
+  it('rejects a parentPath outside the workspace root with directory-unreadable', async () => {
+    const { controller, root } = await harness()
+    const created = await controller.create({ path: root })
+    const outside = mkdtempSync(join(tmpdir(), 'dsh-outside-'))
+    await expect(rejection(() => controller.createFile(
+      { workspaceId: created.workspace.workspaceId, parentPath: outside, name: 'notes.txt' },
+      new AbortController().signal,
+    ))).resolves.toMatchObject({ failure: { code: 'directory-unreadable' } })
+  })
+
+  it('rejects an unknown workspaceId with workspace-not-found', async () => {
+    const { controller, root } = await harness()
+    await expect(rejection(() => controller.createFile(
+      { workspaceId: 'missing' as WorkspaceId, parentPath: root, name: 'notes.txt' },
+      new AbortController().signal,
+    ))).resolves.toMatchObject({ failure: { code: 'workspace-not-found' } })
+  })
+
+  it('rejects a missing parent directory with parent-missing', async () => {
+    const { controller, root } = await harness()
+    const created = await controller.create({ path: root })
+    await expect(controller.createDirectory(
+      { workspaceId: created.workspace.workspaceId, parentPath: join(root, 'missing'), name: 'sub' },
+      new AbortController().signal,
+    )).rejects.toMatchObject({ failure: { code: 'parent-missing' } })
+  })
+})
+
 describe('WorkspaceController git methods', () => {
   it('reports git status, commits, and discards through the enclosing repository', async () => {
     const { controller, root } = await harness()

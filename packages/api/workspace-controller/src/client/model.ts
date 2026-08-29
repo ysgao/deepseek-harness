@@ -7,6 +7,9 @@ import type {
   WorkspaceArchiveSessionRequest,
   WorkspaceArchiveValue,
   WorkspaceBaseline,
+  WorkspaceCreateDirectoryValue,
+  WorkspaceCreateEntryRequest,
+  WorkspaceCreateFileValue,
   WorkspaceCreateRequest,
   WorkspaceCreateValue,
   WorkspaceDeleteValue,
@@ -225,6 +228,29 @@ export class ClientWorkspaceModel implements WorkspaceFollowSink {
    */
   writeFile(request: WorkspaceWriteFileRequest, signal?: AbortSignal): Promise<RemoteResult<WorkspaceWriteFileValue>> {
     return this.callFile(() => this.remote.writeFile(request, signal))
+  }
+
+  /**
+   * Create one new, empty regular file as a child of an existing directory under a workspace root.
+   * @param request - workspace identity, target parent directory, and new file's name.
+   * @param signal - caller lifetime; abort rejects before creation.
+   * @returns generated Remote result.
+   */
+  createFile(request: WorkspaceCreateEntryRequest, signal?: AbortSignal): Promise<RemoteResult<WorkspaceCreateFileValue>> {
+    return this.callFile(() => this.remote.createFile(request, signal))
+  }
+
+  /**
+   * Create one new, empty directory as a child of an existing directory under a workspace root.
+   * @param request - workspace identity, target parent directory, and new directory's name.
+   * @param signal - caller lifetime; abort rejects before creation.
+   * @returns generated Remote result.
+   */
+  createDirectory(
+    request: WorkspaceCreateEntryRequest,
+    signal?: AbortSignal,
+  ): Promise<RemoteResult<WorkspaceCreateDirectoryValue>> {
+    return this.callFile(() => this.remote.createDirectory(request, signal))
   }
 
   /**

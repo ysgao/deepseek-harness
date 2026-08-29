@@ -266,4 +266,36 @@ export class TestWorkspaces implements IWorkspaces {
     if (stub !== undefined) return await (stub(workspaceId, path, content, expectedVersion, signal) as Promise<WorkspaceFileVersion>)
     return `test-version-${content.length}` as WorkspaceFileVersion
   }
+
+  /**
+   * Create one new, empty file (recorded). The default echoes the joined
+   * path; stub to simulate an `already-exists`/`parent-missing` rejection.
+   * @param workspaceId - owning workspace.
+   * @param parentPath - existing parent directory.
+   * @param name - new file's name.
+   * @param signal - forwarded like the production face.
+   * @returns the created file's absolute path.
+   */
+  async createFile(workspaceId: WorkspaceId, parentPath: string, name: string, signal?: AbortSignal): Promise<string> {
+    this.calls.push({ method: 'createFile', args: [workspaceId, parentPath, name, signal] })
+    const stub = this.stubs.get('createFile')
+    if (stub !== undefined) return await (stub(workspaceId, parentPath, name, signal) as Promise<string>)
+    return `${parentPath}/${name}`
+  }
+
+  /**
+   * Create one new, empty directory (recorded). The default echoes the
+   * joined path; stub to simulate an `already-exists`/`parent-missing` rejection.
+   * @param workspaceId - owning workspace.
+   * @param parentPath - existing parent directory.
+   * @param name - new directory's name.
+   * @param signal - forwarded like the production face.
+   * @returns the created directory's absolute path.
+   */
+  async createDirectory(workspaceId: WorkspaceId, parentPath: string, name: string, signal?: AbortSignal): Promise<string> {
+    this.calls.push({ method: 'createDirectory', args: [workspaceId, parentPath, name, signal] })
+    const stub = this.stubs.get('createDirectory')
+    if (stub !== undefined) return await (stub(workspaceId, parentPath, name, signal) as Promise<string>)
+    return `${parentPath}/${name}`
+  }
 }

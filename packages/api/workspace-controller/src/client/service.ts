@@ -129,6 +129,24 @@ export interface IWorkspaces {
     signal?: AbortSignal,
   ): Promise<WorkspaceFileVersion>
   /**
+   * Create one new, empty regular file as a child of an existing directory.
+   * @param workspaceId - target workspace.
+   * @param parentPath - existing directory the new file is created under.
+   * @param name - new file's name (a single non-blank path segment).
+   * @param signal - caller lifetime; abort rejects before creation.
+   * @returns the created file's absolute path.
+   */
+  createFile(workspaceId: WorkspaceId, parentPath: string, name: string, signal?: AbortSignal): Promise<string>
+  /**
+   * Create one new, empty directory as a child of an existing directory.
+   * @param workspaceId - target workspace.
+   * @param parentPath - existing directory the new directory is created under.
+   * @param name - new directory's name (a single non-blank path segment).
+   * @param signal - caller lifetime; abort rejects before creation.
+   * @returns the created directory's absolute path.
+   */
+  createDirectory(workspaceId: WorkspaceId, parentPath: string, name: string, signal?: AbortSignal): Promise<string>
+  /**
    * Report the current branch and pending file changes of a workspace's enclosing git repository.
    * @param workspaceId - target workspace.
    * @param signal - caller lifetime; abort rejects with the abort reason.
@@ -242,6 +260,18 @@ export class WorkspaceController extends Service implements IWorkspaces {
     const result = await this.model.writeFile({ workspaceId, path, content, expectedVersion }, signal)
     if (!result.ok) throw new WorkspaceFileBrowseError('write file', result.error)
     return result.value.version
+  }
+
+  async createFile(workspaceId: WorkspaceId, parentPath: string, name: string, signal?: AbortSignal): Promise<string> {
+    const result = await this.model.createFile({ workspaceId, parentPath, name }, signal)
+    if (!result.ok) throw new WorkspaceFileBrowseError('create file', result.error)
+    return result.value.path
+  }
+
+  async createDirectory(workspaceId: WorkspaceId, parentPath: string, name: string, signal?: AbortSignal): Promise<string> {
+    const result = await this.model.createDirectory({ workspaceId, parentPath, name }, signal)
+    if (!result.ok) throw new WorkspaceFileBrowseError('create directory', result.error)
+    return result.value.path
   }
 
   async gitStatus(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<WorkspaceGitStatus> {

@@ -139,6 +139,8 @@ class FakeWorkspaces implements IWorkspaces {
   declare readonly listEntries: IWorkspaces['listEntries']
   declare readonly readFile: IWorkspaces['readFile']
   declare readonly writeFile: IWorkspaces['writeFile']
+  declare readonly createFile: IWorkspaces['createFile']
+  declare readonly createDirectory: IWorkspaces['createDirectory']
   declare readonly gitStatus: IWorkspaces['gitStatus']
   declare readonly commitAllChanges: IWorkspaces['commitAllChanges']
   declare readonly discardAllChanges: IWorkspaces['discardAllChanges']

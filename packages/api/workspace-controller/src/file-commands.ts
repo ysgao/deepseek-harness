@@ -6,17 +6,22 @@
  * `GitNotARepositoryError`/`GitCommandError` into `TypertRemoteFailure`.
  */
 
+import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { TypertRemoteFailure } from '@deepseek-ai/dsh-typert-protocol'
 import { WorkspaceId } from '@deepseek-ai/dsh-workspace'
 import {
-  isWithinWorkspace, listWorkspaceEntries, readWorkspaceFile, resolveWorkspacePath, WorkspaceFileError, writeWorkspaceFile,
+  createWorkspaceDirectory, createWorkspaceFile, isWithinWorkspace, listWorkspaceEntries, readWorkspaceFile,
+  resolveWorkspacePath, WorkspaceFileError, writeWorkspaceFile,
 } from './files.ts'
 import {
   commitAllChanges, discardAllChanges, GitCommandError, GitNotARepositoryError, pullRebase, push, workspaceFileAtHead,
   workspaceGitStatus,
 } from './workspace-git.ts'
 import type {
+  WorkspaceCreateDirectoryValue,
+  WorkspaceCreateEntryRequest,
+  WorkspaceCreateFileValue,
   WorkspaceEntryListing,
   WorkspaceFileContent,
   WorkspaceFileDiff,
@@ -33,6 +38,11 @@ import type {
   WorkspaceWriteFileRequest,
   WorkspaceWriteFileValue,
 } from './types.ts'
+
+/** A single non-blank path segment: non-blank, not `.`/`..`, no path separator. */
+function isValidEntryName(name: string): boolean {
+  return name.trim() !== '' && name !== '.' && name !== '..' && !/[/\\]/.test(name)
+}
 
 /** Workspace file-tree deployment policy. */
 export interface WorkspaceFileCommandsConfig {
@@ -90,6 +100,34 @@ export class WorkspaceFileCommands {
     const version = await writeWorkspaceFile(path, request.content, request.expectedVersion, this.maxReadBytes, signal)
       .catch(mapFileError)
     return { version }
+  }
+
+  /**
+   * Creates one new, empty regular file as a child of `parentPath` under a
+   * workspace root — the Files tree's "Add file" action. Never overwrites
+   * an existing file (a distinct primitive from `writeFile`, which only
+   * ever overwrites).
+   * @param request - workspace identity, target parent directory, and new file's name.
+   * @param signal - caller lifetime; abort rejects before creation.
+   * @returns the created file's absolute path and initial content version.
+   */
+  async createFile(request: WorkspaceCreateEntryRequest, signal: AbortSignal): Promise<WorkspaceCreateFileValue> {
+    const path = this.requireContainedChildPath(request)
+    const version = await createWorkspaceFile(path, signal).catch(mapFileError)
+    return { path, version }
+  }
+
+  /**
+   * Creates one new, empty directory as a child of `parentPath` under a
+   * workspace root — the Files tree's "Add folder" action.
+   * @param request - workspace identity, target parent directory, and new directory's name.
+   * @param signal - caller lifetime; abort rejects before creation.
+   * @returns the created directory's absolute path.
+   */
+  async createDirectory(request: WorkspaceCreateEntryRequest, signal: AbortSignal): Promise<WorkspaceCreateDirectoryValue> {
+    const path = this.requireContainedChildPath(request)
+    await createWorkspaceDirectory(path, signal).catch(mapFileError)
+    return { path }
   }
 
   /**
@@ -199,6 +237,15 @@ export class WorkspaceFileCommands {
     }
     return path
   }
+
+  /** Validate a create request's `name` as one path segment, then join and contain it under `parentPath`. */
+  private requireContainedChildPath(request: WorkspaceCreateEntryRequest): string {
+    if (!isValidEntryName(request.name)) {
+      throw failure('invalid-name', `"${request.name}" is not a valid file or folder name`, { name: request.name })
+    }
+    const parent = this.requireContainedPath(request.workspaceId, request.parentPath)
+    return join(parent, request.name)
+  }
 }
 
 function mapFileError(error: unknown): never {
@@ -210,6 +257,12 @@ function mapFileError(error: unknown): never {
     }
     if (error.code === 'file-changed') {
       throw failure('file-changed', error.message, { path: error.path })
+    }
+    if (error.code === 'already-exists') {
+      throw failure('already-exists', error.message, { path: error.path })
+    }
+    if (error.code === 'parent-missing') {
+      throw failure('parent-missing', error.message, { path: error.path })
     }
     throw failure('directory-unreadable', error.message, { path: error.path })
   }

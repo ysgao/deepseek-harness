@@ -130,6 +130,10 @@ export function apply(ctx: Context): void {
     listWorkspaceEntries: (workspaceId, path, signal) => workspaces.listEntries(workspaceId, path, signal),
     readWorkspaceFile: (workspaceId, path, signal) => workspaces.readFile(workspaceId, path, signal),
     listWorkspaceGitStatus: (workspaceId, signal) => workspaces.gitStatus(workspaceId, signal),
+    createWorkspaceFile: (workspaceId, parentPath, name, signal) =>
+      workspaces.createFile(workspaceId, parentPath, name, signal),
+    createWorkspaceFolder: (workspaceId, parentPath, name, signal) =>
+      workspaces.createDirectory(workspaceId, parentPath, name, signal),
     commitAllWorkspaceChanges: (workspaceId, message, signal) => workspaces.commitAllChanges(workspaceId, message, signal),
     discardAllWorkspaceChanges: (workspaceId, signal) => workspaces.discardAllChanges(workspaceId, signal),
     pullRebaseWorkspace: (workspaceId, signal) => workspaces.pullRebase(workspaceId, signal),

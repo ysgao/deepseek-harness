@@ -11,6 +11,9 @@ import { DEFAULT_MAX_ENTRIES, DEFAULT_MAX_READ_BYTES } from './files.ts'
 import type {
   WorkspaceArchiveSessionRequest,
   WorkspaceArchiveValue,
+  WorkspaceCreateDirectoryValue,
+  WorkspaceCreateEntryRequest,
+  WorkspaceCreateFileValue,
   WorkspaceCreateRequest,
   WorkspaceCreateValue,
   WorkspaceDeleteRequest,
@@ -192,6 +195,28 @@ export class WorkspaceController extends TypertRemoteService {
   @Remote('writeFile')
   writeFile(request: WorkspaceWriteFileRequest, signal: AbortSignal): Promise<WorkspaceWriteFileValue> {
     return this.files.writeFile(request, signal)
+  }
+
+  /**
+   * Creates one new, empty regular file as a child of an existing directory under a workspace root.
+   * @param request - workspace identity, target parent directory, and new file's name.
+   * @param signal - caller lifetime; abort rejects before creation.
+   * @returns the created file's absolute path and initial content version.
+   */
+  @Remote('createFile')
+  createFile(request: WorkspaceCreateEntryRequest, signal: AbortSignal): Promise<WorkspaceCreateFileValue> {
+    return this.files.createFile(request, signal)
+  }
+
+  /**
+   * Creates one new, empty directory as a child of an existing directory under a workspace root.
+   * @param request - workspace identity, target parent directory, and new directory's name.
+   * @param signal - caller lifetime; abort rejects before creation.
+   * @returns the created directory's absolute path.
+   */
+  @Remote('createDirectory')
+  createDirectory(request: WorkspaceCreateEntryRequest, signal: AbortSignal): Promise<WorkspaceCreateDirectoryValue> {
+    return this.files.createDirectory(request, signal)
   }
 
   /**

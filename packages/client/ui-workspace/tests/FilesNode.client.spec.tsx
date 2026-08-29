@@ -41,6 +41,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -69,6 +71,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -94,6 +98,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -119,6 +125,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -142,6 +150,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -168,6 +178,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -199,6 +211,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -230,6 +244,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={sessionId}
         openFileInSession={openFileInSession}
         t={t}
@@ -262,6 +278,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={sessionId}
         openFileInSession={openFileInSession}
         t={t}
@@ -289,6 +307,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -319,6 +339,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -348,6 +370,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -377,6 +401,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -403,6 +429,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -425,6 +453,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -455,6 +485,8 @@ describe('FilesNode', () => {
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
           isRepo: true, branch: 'main', files: { '/ws/changed.txt': 'M' },
         }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -481,6 +513,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.reject(new Error('denied')))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -506,6 +540,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => new Promise<WorkspaceGitStatus>((resolve) => { resolveStatus = resolve }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -534,6 +570,8 @@ describe('FilesNode', () => {
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
           isRepo: true, branch: 'main', files: { '/ws/changed.txt': 'T' },
         }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -567,6 +605,8 @@ describe('FilesNode', () => {
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
           isRepo: true, branch: 'main', files: { '/ws/src/deep/nested.ts': 'M' },
         }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -597,6 +637,8 @@ describe('FilesNode', () => {
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
           isRepo: true, branch: 'main', files: { '/ws/foobar/x.txt': 'M' },
         }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -624,6 +666,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={listWorkspaceGitStatus}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -652,6 +696,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -680,6 +726,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={listWorkspaceGitStatus}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -709,6 +757,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -729,6 +779,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -753,6 +805,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -782,6 +836,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -815,6 +871,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={listWorkspaceGitStatus}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -848,6 +906,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -878,6 +938,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -906,6 +968,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -939,6 +1003,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -971,6 +1037,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={listWorkspaceGitStatus}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1002,6 +1070,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1031,6 +1101,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1059,6 +1131,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1091,6 +1165,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1122,6 +1198,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={listWorkspaceGitStatus}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1151,6 +1229,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1177,6 +1257,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1203,6 +1285,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1232,6 +1316,8 @@ describe('FilesNode', () => {
         push={push}
         openPath={vi.fn()}
         listWorkspaceGitStatus={listWorkspaceGitStatus}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1262,6 +1348,8 @@ describe('FilesNode', () => {
         push={push}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1288,6 +1376,8 @@ describe('FilesNode', () => {
         push={push}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1314,6 +1404,8 @@ describe('FilesNode', () => {
         push={push}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1344,6 +1436,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1376,6 +1470,8 @@ describe('FilesNode', () => {
         push={push}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1409,6 +1505,8 @@ describe('FilesNode', () => {
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
           isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' },
         }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1444,6 +1542,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={listWorkspaceGitStatus}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1473,6 +1573,8 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1501,6 +1603,8 @@ describe('FilesNode', () => {
         push={push}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
         openFileInSession={vi.fn(() => false)}
         t={t}
@@ -1511,5 +1615,216 @@ describe('FilesNode', () => {
     await screen.findByText('conflict during rebase')
     await act(async () => { screen.getByTitle(t('files.git.push')).click() })
     await waitFor(() => { expect(screen.queryByText('conflict during rebase')).toBeNull() })
+  })
+})
+
+describe('FilesNode create actions', () => {
+  it('shows Add-file/Add-folder even with no git repo (unlike the git action group)', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    await screen.findByTitle(t('files.add.file'))
+    expect(screen.getByTitle(t('files.add.folder'))).not.toBeNull()
+    // No git repo: the git action group renders nothing at all.
+    expect(screen.queryByTitle(t('files.git.pull'))).toBeNull()
+  })
+
+  it('creates a new file at the workspace root by default and refetches the level', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [{ name: 'existing.txt', path: '/ws/existing.txt', type: 'file', hidden: false }] })
+    const createWorkspaceFile = vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={createWorkspaceFile}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    await screen.findByText('existing.txt')
+    await act(async () => { screen.getByTitle(t('files.add.file')).click() })
+    const input = await screen.findByPlaceholderText(t('files.add.filePlaceholder'))
+    await act(async () => { fireEvent.change(input, { target: { value: 'new.txt' } }) })
+    await act(async () => { screen.getByTitle(t('files.add.submit')).click() })
+    await waitFor(() => { expect(createWorkspaceFile).toHaveBeenCalledWith(wsId, '/ws', 'new.txt') })
+    // The input row reverts to the default header once the create succeeds.
+    await screen.findByTitle(t('files.add.file'))
+  })
+
+  it('creates a new folder targeted at the most recently clicked directory', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({
+      '/ws': [{ name: 'src', path: '/ws/src', type: 'directory', hidden: false }],
+      '/ws/src': [],
+    })
+    const createWorkspaceFolder = vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={createWorkspaceFolder}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    await screen.findByText('src')
+    // Clicking the directory row both expands it and marks it the create-target.
+    await act(async () => { screen.getByText('src').click() })
+    await act(async () => { screen.getByTitle(t('files.add.folder')).click() })
+    const input = await screen.findByPlaceholderText(t('files.add.folderPlaceholder'))
+    await act(async () => { fireEvent.change(input, { target: { value: 'lib' } }) })
+    await act(async () => { screen.getByTitle(t('files.add.submit')).click() })
+    await waitFor(() => { expect(createWorkspaceFolder).toHaveBeenCalledWith(wsId, '/ws/src', 'lib') })
+  })
+
+  it('submits the create name on Enter and cancels on Escape', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const createWorkspaceFile = vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={createWorkspaceFile}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    await act(async () => { screen.getByTitle(t('files.add.file')).click() })
+    const escInput = await screen.findByPlaceholderText(t('files.add.filePlaceholder'))
+    await act(async () => { fireEvent.keyDown(escInput, { key: 'Escape' }) })
+    await screen.findByTitle(t('files.add.file'))
+    expect(createWorkspaceFile).not.toHaveBeenCalled()
+
+    await act(async () => { screen.getByTitle(t('files.add.file')).click() })
+    const enterInput = await screen.findByPlaceholderText(t('files.add.filePlaceholder'))
+    await act(async () => { fireEvent.change(enterInput, { target: { value: 'via-enter.txt' } }) })
+    await act(async () => { fireEvent.keyDown(enterInput, { key: 'Enter' }) })
+    await waitFor(() => { expect(createWorkspaceFile).toHaveBeenCalledWith(wsId, '/ws', 'via-enter.txt') })
+  })
+
+  it('shows an error notice and keeps the input open when create fails, retrying on resubmit', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const createWorkspaceFile = vi.fn()
+      .mockRejectedValueOnce(new Error('already exists'))
+      .mockResolvedValueOnce('/ws/dup.txt')
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={createWorkspaceFile}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    await act(async () => { screen.getByTitle(t('files.add.file')).click() })
+    const input = await screen.findByPlaceholderText(t('files.add.filePlaceholder'))
+    await act(async () => { fireEvent.change(input, { target: { value: 'dup.txt' } }) })
+    await act(async () => { screen.getByTitle(t('files.add.submit')).click() })
+    await screen.findByText('already exists')
+    // The input is still open (create failed, not cancelled) — resubmitting the same name succeeds.
+    expect(screen.getByPlaceholderText(t('files.add.filePlaceholder'))).not.toBeNull()
+    await act(async () => { screen.getByTitle(t('files.add.submit')).click() })
+    await waitFor(() => { expect(createWorkspaceFile).toHaveBeenCalledTimes(2) })
+    await screen.findByTitle(t('files.add.file'))
+  })
+
+  it('resets the create target to the workspace root on a collapse-then-reopen', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({
+      '/ws': [{ name: 'src', path: '/ws/src', type: 'directory', hidden: false }],
+      '/ws/src': [],
+    })
+    const createWorkspaceFile = vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(noGitStatus)}
+        createWorkspaceFile={createWorkspaceFile}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    await screen.findByText('src')
+    await act(async () => { screen.getByText('src').click() }) // select /ws/src as the target
+    // Collapse then reopen the whole Files node.
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    await act(async () => { screen.getByText(t('files.label')).click() })
+    await screen.findByText('src')
+    await act(async () => { screen.getByTitle(t('files.add.file')).click() })
+    const input = await screen.findByPlaceholderText(t('files.add.filePlaceholder'))
+    await act(async () => { fireEvent.change(input, { target: { value: 'root-again.txt' } }) })
+    await act(async () => { screen.getByTitle(t('files.add.submit')).click() })
+    await waitFor(() => { expect(createWorkspaceFile).toHaveBeenCalledWith(wsId, '/ws', 'root-again.txt') })
   })
 })

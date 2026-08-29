@@ -56,6 +56,12 @@ export interface WorkspaceErrorDetailsMap {
   'file-too-large': { readonly path: string; readonly maxBytes: number }
   /** A `writeFile`'s `expectedVersion` did not match the file's current on-disk content. */
   'file-changed': { readonly path: string }
+  /** A `createFile`/`createDirectory` target path already names a file or directory. */
+  'already-exists': { readonly path: string }
+  /** A `createFile`/`createDirectory` target's enclosing directory does not exist. */
+  'parent-missing': { readonly path: string }
+  /** A `createFile`/`createDirectory` `name` is blank, `.`/`..`, or contains a path separator. */
+  'invalid-name': { readonly name: string }
   /** The workspace's own directory is outside any git working tree. */
   'git-not-a-repository': { readonly path: string }
   /** The underlying `git` command exited non-zero; `message` carries its own output. */
@@ -247,6 +253,29 @@ export interface WorkspaceWriteFileRequest {
 /** `workspace.writeFile` response value: the version the write produced. */
 export interface WorkspaceWriteFileValue {
   readonly version: WorkspaceFileVersion
+}
+
+/**
+ * `workspace.createFile` / `workspace.createDirectory` request: one new
+ * child of `parentPath` (an existing directory under the workspace root)
+ * named `name` — a single non-blank path segment, never a multi-segment
+ * path, so the caller cannot escape `parentPath` through the name field.
+ */
+export interface WorkspaceCreateEntryRequest {
+  readonly workspaceId: WorkspaceId
+  readonly parentPath: string
+  readonly name: string
+}
+
+/** `workspace.createFile` response value: the created empty file's absolute path and initial content version. */
+export interface WorkspaceCreateFileValue {
+  readonly path: string
+  readonly version: WorkspaceFileVersion
+}
+
+/** `workspace.createDirectory` response value: the created directory's absolute path. */
+export interface WorkspaceCreateDirectoryValue {
+  readonly path: string
 }
 
 /**

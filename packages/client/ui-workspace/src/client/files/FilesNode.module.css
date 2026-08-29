@@ -23,6 +23,14 @@
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
+/* The directory row most recently clicked — the Add-file/Add-folder
+   create-target — stays visibly marked after the click (unlike hover,
+   which is transient), distinct from `:hover` so the target reads even
+   while the pointer sits elsewhere. */
+.rowSelected {
+  background: var(--dsw-alias-interactive-bg-active);
+}
+
 .headerRow {
   display: flex;
   align-items: center;
@@ -83,6 +91,16 @@
   gap: 5px;
   flex: none;
   max-width: 75%;
+}
+
+/* Always visible (unlike .gitSummary's action icons, gated on git-repo
+   status): Add-file/Add-folder work in any workspace. Sits before the git
+   branch/status group in the header row. */
+.addEntryButtons {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
 }
 
 .gitBranch {
