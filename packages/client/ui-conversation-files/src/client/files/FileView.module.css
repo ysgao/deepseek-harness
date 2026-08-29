@@ -1,3 +1,12 @@
+/* This view mounts inside ConversationRoot's single scrollport
+   (`.scrollBody`, `data-conversation-scroll`), which grows to the view's full
+   content height in the active phase rather than clipping it — `.root` itself
+   never becomes a scroll container. `.header` sticks against that ancestor
+   scrollport instead: `position: sticky` resolves against the nearest actual
+   scrolling ancestor even across the non-scrolling flex boxes in between, so
+   giving `.root` its own `overflow` here would only create a second,
+   never-triggered scroll container that breaks that resolution (see the
+   owning Agent Note). */
 .root {
   display: flex;
   flex-direction: column;
@@ -6,12 +15,19 @@
 }
 
 .header {
+  position: sticky;
+  top: 0;
+  /* Above markdown CodeBlock sticky banners (z-index 6) so a Markdown file's
+     code-block copy strip never paints over this toolbar while scrolling —
+     same ordering rule the active-phase composer seat uses. */
+  z-index: 7;
   flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 8px 16px;
+  background: var(--dsw-alias-bg-base);
   border-bottom: 1px solid var(--dsw-alias-border-l2);
 }
 
@@ -62,12 +78,12 @@
   font-size: 14px;
 }
 
+/* No independent scroller: `.scrollBody` (the ancestor) scrolls this whole
+   view, including this content and the sticky `.header` above it. */
 .body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
-  padding: 0 16px 16px;
-  max-height: none;
+  padding: 16px;
 }
 
 .empty {
