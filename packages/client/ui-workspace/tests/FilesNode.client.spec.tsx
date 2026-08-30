@@ -1378,9 +1378,12 @@ describe('FilesNode', () => {
     await waitFor(() => { expect((pullButton as HTMLButtonElement).disabled).toBe(false) })
   })
 
-  it('pushes on click without refreshing git status or the directory listing', async () => {
+  it('pushes on click, refreshing git status (so a satisfied Push disappears) but not the directory listing', async () => {
     const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
-    const listWorkspaceGitStatus = vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 1, behind: 0 }))
+    const listWorkspaceGitStatus = vi.fn()
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 1, behind: 0 }) // initial mount
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 1, behind: 0 }) // expand-triggered refresh
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 }) // post-push refresh
     const push = vi.fn(async () => {})
     render(
       <FilesNode
@@ -1403,11 +1406,12 @@ describe('FilesNode', () => {
     )
     await act(async () => { screen.getByText(t('files.label')).click() }) // expand: fetches listing once
     await screen.findByText('main')
-    const statusCallsBeforePush = listWorkspaceGitStatus.mock.calls.length
     const entriesCallsBeforePush = listWorkspaceEntries.mock.calls.length
     await act(async () => { screen.getByTitle(t('files.git.push', { n: 1 })).click() })
     expect(push).toHaveBeenCalledWith(wsId, expect.any(AbortSignal))
-    expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(statusCallsBeforePush)
+    await waitFor(() => { expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(3) })
+    await waitFor(() => { expect(screen.queryByTitle(t('files.git.push', { n: 1 }))).toBeNull() })
+    // The directory level did not remount — push changes no local file content.
     expect(listWorkspaceEntries).toHaveBeenCalledTimes(entriesCallsBeforePush)
   })
 

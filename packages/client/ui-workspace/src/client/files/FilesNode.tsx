@@ -722,19 +722,21 @@ export function FilesNode({
     pushControllerRef.current = controller
     setPushPending(true)
     clearGitErrors()
-    // Unlike pull, a push never changes the local working tree or anything
-    // WorkspaceGitStatus reports (no ahead/behind field), so there is
-    // nothing here to refresh on success.
     push(workspaceId, controller.signal).then(() => {
       pushControllerRef.current = null
       setPushPending(false)
+      // A push never changes local file content, but it does change how far
+      // ahead of its upstream the branch is (typically back to zero) — refresh
+      // so a satisfied Push button/count disappears on its own instead of
+      // staying visible (stale) until the user clicks Refresh themselves.
+      refreshGitStatus()
     }).catch((reason: unknown) => {
       pushControllerRef.current = null
       setPushPending(false)
       if (controller.signal.aborted) return
       setPushError(reason instanceof Error ? reason.message : String(reason))
     })
-  }, [push, workspaceId, clearGitErrors])
+  }, [push, workspaceId, clearGitErrors, refreshGitStatus])
   const cancelPush = useCallback(() => {
     pushControllerRef.current?.abort()
   }, [])
