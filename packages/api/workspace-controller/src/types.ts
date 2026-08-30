@@ -292,8 +292,9 @@ export interface WorkspaceCreateDirectoryValue {
 }
 
 /**
- * `workspace.gitStatus` / `workspace.gitCommitAll` / `workspace.gitDiscardAll` / `workspace.gitPullRebase` /
- * `workspace.gitPush` request: identifies the workspace whose enclosing git repository is acted on.
+ * `workspace.gitStatus` / `workspace.gitCommitAll` / `workspace.gitDiscardAll` / `workspace.gitFetch` /
+ * `workspace.gitPullRebase` / `workspace.gitPush` request: identifies the workspace whose enclosing git
+ * repository is acted on.
  */
 export interface WorkspaceGitRequest {
   readonly workspaceId: WorkspaceId
@@ -313,6 +314,21 @@ export interface WorkspaceGitCommitAllValue {
 /** `workspace.gitDiscardAll` response value. */
 export interface WorkspaceGitDiscardAllValue {
   readonly discarded: true
+}
+
+/**
+ * `workspace.gitFetch` response value. Fetching only downloads new commits
+ * and updates the workspace's own remote-tracking refs (e.g.
+ * `refs/remotes/origin/master`) — unlike `gitPullRebase`, it never rebases,
+ * merges, or otherwise touches `HEAD`, the current branch, or the working
+ * tree, so a successful fetch alone never changes {@link
+ * WorkspaceGitStatus.files}. It exists to make {@link
+ * WorkspaceGitStatus.ahead}/{@link WorkspaceGitStatus.behind} accurate: both
+ * are computed from already-known local refs, which only reflect the real
+ * remote as of the last fetch/pull/push.
+ */
+export interface WorkspaceGitFetchValue {
+  readonly fetched: true
 }
 
 /** `workspace.gitPullRebase` response value. */

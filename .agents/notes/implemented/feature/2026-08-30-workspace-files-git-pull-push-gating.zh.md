@@ -35,3 +35,5 @@ Status: implemented
 - 本地化键 `files.git.pull`／`files.git.push`（`zh`与`en`两侧）新增了 `{n}` 占位符；每处调用都传入对应的 `behind`／`ahead` 计数。
 - `packages/client/ui-workspace/README.md`／`README.zh.md` 说明 Pull／Push 分别依据各自与上游相关的提交计数门控显示，并展示该计数。
 - 每个改动到的文件在其所属包的测试套件中都达到 100% 的行／分支／函数覆盖率：`workspace-git.host.spec.ts` 新增了针对"无上游"与"分支已分叉"两种情形的真实远端覆盖；`FilesNode.client.spec.tsx` 新增了专门的可见性测试（已同步时两者都隐藏、已分叉时两者都显示并带各自计数、仅落后时只显示 Pull、仅领先时只显示 Push）、一个证明成功推送会刷新状态、从而让已满足的按钮自行消失的测试，同时更新了每一个既有 Pull／Push 交互测试的夹具与标题查找。
+
+本记录留下一个缺口：这里的任何内容都不会调用 `git fetch`，因此 `ahead`／`behind` 的新鲜度只取决于此前某次 fetch／pull／push 恰好留下的状态，应用内没有任何按需更新它们的办法。[Refresh 会 fetch 的决定](2026-08-30-workspace-files-git-fetch.zh.md)补上了这个缺口。

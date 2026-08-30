@@ -36,6 +36,7 @@ import type {
   WorkspaceGitCommitAllRequest,
   WorkspaceGitCommitAllValue,
   WorkspaceGitDiscardAllValue,
+  WorkspaceGitFetchValue,
   WorkspaceGitFileDiffRequest,
   WorkspaceGitPullRebaseValue,
   WorkspaceGitPushValue,
@@ -192,6 +193,10 @@ class ScriptedWorkspaceRemote implements WorkspaceRemote {
     throw new Error('unused')
   }
 
+  gitFetch(_request: WorkspaceGitRequest): Promise<RemoteResult<WorkspaceGitFetchValue>> {
+    throw new Error('unused')
+  }
+
   gitPullRebase(_request: WorkspaceGitRequest): Promise<RemoteResult<WorkspaceGitPullRebaseValue>> {
     throw new Error('unused')
   }
@@ -271,6 +276,8 @@ class CommandWorkspaceRemote implements WorkspaceRemote {
   readonly gitCommitAll = vi.fn<WorkspaceRemote['gitCommitAll']>(() => Promise.resolve(remoteOk({ committed: true })))
 
   readonly gitDiscardAll = vi.fn<WorkspaceRemote['gitDiscardAll']>(() => Promise.resolve(remoteOk({ discarded: true })))
+
+  readonly gitFetch = vi.fn<WorkspaceRemote['gitFetch']>(() => Promise.resolve(remoteOk({ fetched: true })))
 
   readonly gitPullRebase = vi.fn<WorkspaceRemote['gitPullRebase']>(() => Promise.resolve(remoteOk({ pulled: true })))
 
@@ -548,6 +555,7 @@ describe('WorkspaceController', () => {
     await expect(controller.gitStatus(wid('one'))).resolves.toMatchObject({ isRepo: false })
     await expect(controller.commitAllChanges(wid('one'), 'msg')).resolves.toBeUndefined()
     await expect(controller.discardAllChanges(wid('one'))).resolves.toBeUndefined()
+    await expect(controller.fetchRemote(wid('one'))).resolves.toBeUndefined()
     await expect(controller.pullRebase(wid('one'))).resolves.toBeUndefined()
     await expect(controller.push(wid('one'))).resolves.toBeUndefined()
     await expect(controller.gitFileDiff(wid('one'), '/work/one/a.txt')).resolves.toMatchObject({ oldText: null })
@@ -635,6 +643,9 @@ describe('WorkspaceController', () => {
 
     remote.gitDiscardAll.mockResolvedValueOnce(remoteFailure(notARepo))
     await expect(controller.discardAllChanges(wid('w'))).rejects.toThrow('workspace git discard failed: git-not-a-repository: not a repo')
+
+    remote.gitFetch.mockResolvedValueOnce(remoteFailure(notARepo))
+    await expect(controller.fetchRemote(wid('w'))).rejects.toThrow('workspace git fetch failed: git-not-a-repository: not a repo')
 
     remote.gitPullRebase.mockResolvedValueOnce(remoteFailure(notARepo))
     await expect(controller.pullRebase(wid('w'))).rejects.toThrow('workspace git pull failed: git-not-a-repository: not a repo')

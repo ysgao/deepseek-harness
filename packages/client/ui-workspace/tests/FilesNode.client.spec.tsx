@@ -37,6 +37,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -67,6 +68,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -94,6 +96,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -121,6 +124,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -146,6 +150,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -174,6 +179,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -207,6 +213,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={readWorkspaceFile}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -240,6 +247,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={readWorkspaceFile}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -274,6 +282,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={readWorkspaceFile}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -303,6 +312,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -335,6 +345,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -366,6 +377,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={readWorkspaceFile}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -397,6 +409,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -425,6 +438,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -449,6 +463,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -479,6 +494,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -509,6 +525,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -536,6 +553,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -564,6 +582,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -599,6 +618,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -631,6 +651,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -662,6 +683,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -680,6 +702,138 @@ describe('FilesNode', () => {
     await waitFor(() => { expect(screen.queryByTitle(t('files.git.changedCount', { n: 1 }))).not.toBeNull() })
   })
 
+  it('fetches from the remote before re-reading git status when Refresh is clicked, so a stale Pull button updates on its own', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const listWorkspaceGitStatus = vi.fn()
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 }) // initial mount: not yet known to be behind
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 }) // expand-triggered refresh
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 1 }) // post-fetch refresh: now behind
+    const fetchRemote = vi.fn(async () => {})
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={fetchRemote}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={listWorkspaceGitStatus}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await act(async () => { screen.getByText(t('files.label')).click() }) // expand: fetches listing once
+    await screen.findByText('main')
+    expect(screen.queryByTitle(t('files.git.pull', { n: 1 }))).toBeNull()
+    await act(async () => { screen.getByTitle(t('files.git.refresh')).click() })
+    expect(fetchRemote).toHaveBeenCalledWith(wsId)
+    await waitFor(() => { expect(screen.getByTitle(t('files.git.pull', { n: 1 }))).not.toBeNull() })
+  })
+
+  it('shows an error notice when the Refresh-triggered fetch fails, but still re-reads local git status', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    const listWorkspaceGitStatus = vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 }))
+    const fetchRemote = vi.fn(() => Promise.reject(new Error('could not read from remote repository')))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={fetchRemote}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={listWorkspaceGitStatus}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByText('main')
+    const statusCallsBeforeRefresh = listWorkspaceGitStatus.mock.calls.length
+    await act(async () => { screen.getByTitle(t('files.git.refresh')).click() })
+    await screen.findByText('could not read from remote repository')
+    // Local status is still re-read even though the fetch itself failed.
+    await waitFor(() => { expect(listWorkspaceGitStatus.mock.calls.length).toBeGreaterThan(statusCallsBeforeRefresh) })
+  })
+
+  it('stringifies a non-Error fetch rejection', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- exercising the non-Error rejection branch on purpose.
+    const fetchRemote = vi.fn(() => Promise.reject('offline'))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={fetchRemote}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByText('main')
+    await act(async () => { screen.getByTitle(t('files.git.refresh')).click() })
+    await screen.findByText('offline')
+  })
+
+  it('disables the Refresh control only while its own fetch is pending, not while another action is busy', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    let resolveFetch: (() => void) | undefined
+    const fetchRemote = vi.fn(() => new Promise<void>((resolve) => { resolveFetch = resolve }))
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={fetchRemote}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
+          isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0,
+        }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    const refreshButton = await screen.findByTitle(t('files.git.refresh'))
+    const commitButton = await screen.findByTitle(t('files.git.commit'))
+    await act(async () => { refreshButton.click() })
+    expect((refreshButton as HTMLButtonElement).disabled).toBe(true)
+    // Commit stays enabled: a read-only fetch never touches the working tree/index, unlike commit/discard/pull/push.
+    expect((commitButton as HTMLButtonElement).disabled).toBe(false)
+    await act(async () => { resolveFetch?.() })
+    await waitFor(() => { expect((refreshButton as HTMLButtonElement).disabled).toBe(false) })
+  })
+
   it('does not toggle the Files tree when the refresh control inside the header is clicked', async () => {
     const listWorkspaceEntries = treeListWorkspaceEntries({
       '/ws': [{ name: 'a.txt', path: '/ws/a.txt', type: 'file', hidden: false }],
@@ -692,6 +846,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -722,6 +877,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -753,6 +909,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -775,6 +932,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -801,6 +959,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -832,6 +991,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -867,6 +1027,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={commitAllChanges}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -902,6 +1063,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={commitAllChanges}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -934,6 +1096,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={commitAllChanges}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -964,6 +1127,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={commitAllChanges}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -999,6 +1163,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={discardAllChanges}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1033,6 +1198,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={discardAllChanges}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1066,6 +1232,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={discardAllChanges}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1097,6 +1264,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={discardAllChanges}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1127,6 +1295,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={discardAllChanges}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1161,6 +1330,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1189,6 +1359,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1217,6 +1388,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1242,6 +1414,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1272,6 +1445,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={pullRebase}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1303,6 +1477,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={pullRebase}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1331,6 +1506,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={pullRebase}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1359,6 +1535,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={pullRebase}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1393,6 +1570,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={push}
         openPath={vi.fn()}
@@ -1426,6 +1604,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={push}
         openPath={vi.fn()}
@@ -1454,6 +1633,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={push}
         openPath={vi.fn()}
@@ -1482,6 +1662,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={push}
         openPath={vi.fn()}
@@ -1514,6 +1695,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={pullRebase}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1548,6 +1730,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={push}
         openPath={vi.fn()}
@@ -1581,6 +1764,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={pullRebase}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1620,6 +1804,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={pullRebase}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1651,6 +1836,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={pullRebase}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1681,6 +1867,7 @@ describe('FilesNode', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={pullRebase}
         push={push}
         openPath={vi.fn()}
@@ -1711,6 +1898,7 @@ describe('FilesNode create actions', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1740,6 +1928,7 @@ describe('FilesNode create actions', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1776,6 +1965,7 @@ describe('FilesNode create actions', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1809,6 +1999,7 @@ describe('FilesNode create actions', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1847,6 +2038,7 @@ describe('FilesNode create actions', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
@@ -1885,6 +2077,7 @@ describe('FilesNode create actions', () => {
         readWorkspaceFile={vi.fn()}
         commitAllChanges={vi.fn(async () => {})}
         discardAllChanges={vi.fn(async () => {})}
+        fetchRemote={vi.fn(async () => {})}
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}

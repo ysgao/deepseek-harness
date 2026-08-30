@@ -25,6 +25,7 @@ import type {
   WorkspaceGitCommitAllRequest,
   WorkspaceGitCommitAllValue,
   WorkspaceGitDiscardAllValue,
+  WorkspaceGitFetchValue,
   WorkspaceGitFileDiffRequest,
   WorkspaceGitPullRebaseValue,
   WorkspaceGitPushValue,
@@ -254,7 +255,21 @@ export class WorkspaceController extends TypertRemoteService {
   }
 
   /**
-   * Fetches from the remote tracked by the current branch and rebases local commits on top.
+   * Downloads new commits and updates the workspace's remote-tracking refs,
+   * without touching the current branch or working tree.
+   * @param request - workspace identity.
+   * @param signal - caller lifetime; abort rejects with the abort reason.
+   * @returns fetch confirmation.
+   */
+  @Remote('gitFetch')
+  gitFetch(request: WorkspaceGitRequest, signal: AbortSignal): Promise<WorkspaceGitFetchValue> {
+    return this.files.gitFetch(request, signal)
+  }
+
+  /**
+   * Rebases local commits onto the current branch's already-known upstream,
+   * without fetching first (pair with `gitFetch` for the rebase to include
+   * the remote's very latest commits).
    * @param request - workspace identity.
    * @param signal - caller lifetime; abort rejects with the abort reason.
    * @returns pull confirmation.

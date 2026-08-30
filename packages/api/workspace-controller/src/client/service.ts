@@ -167,7 +167,19 @@ export interface IWorkspaces {
    */
   discardAllChanges(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void>
   /**
-   * Fetch from the remote tracked by the current branch and rebase local commits on top.
+   * Download new commits and update the workspace's remote-tracking refs
+   * (e.g. `refs/remotes/origin/master`), without touching the current
+   * branch or working tree. Makes `gitStatus`'s `ahead`/`behind` accurate as
+   * of the remote's current state, since those are otherwise computed from
+   * whatever refs a prior fetch/pull/push already left behind locally.
+   * @param workspaceId - target workspace.
+   * @param signal - caller lifetime; abort rejects with the abort reason.
+   */
+  fetchRemote(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void>
+  /**
+   * Rebase local commits onto the current branch's already-known upstream,
+   * without fetching first (pair with {@link fetchRemote} for the rebase to
+   * include the remote's very latest commits).
    * @param workspaceId - target workspace.
    * @param signal - caller lifetime; abort rejects with the abort reason.
    */
@@ -288,6 +300,11 @@ export class WorkspaceController extends Service implements IWorkspaces {
   async discardAllChanges(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void> {
     const result = await this.model.gitDiscardAll(workspaceId, signal)
     if (!result.ok) throw commandError('git discard', result.error)
+  }
+
+  async fetchRemote(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void> {
+    const result = await this.model.gitFetch(workspaceId, signal)
+    if (!result.ok) throw commandError('git fetch', result.error)
   }
 
   async pullRebase(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void> {

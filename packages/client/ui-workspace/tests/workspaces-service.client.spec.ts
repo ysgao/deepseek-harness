@@ -144,6 +144,7 @@ class FakeWorkspaces implements IWorkspaces {
   declare readonly gitStatus: IWorkspaces['gitStatus']
   declare readonly commitAllChanges: IWorkspaces['commitAllChanges']
   declare readonly discardAllChanges: IWorkspaces['discardAllChanges']
+  declare readonly fetchRemote: IWorkspaces['fetchRemote']
   declare readonly pullRebase: IWorkspaces['pullRebase']
   declare readonly push: IWorkspaces['push']
   declare readonly gitFileDiff: IWorkspaces['gitFileDiff']

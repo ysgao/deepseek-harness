@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
-  commitAllChanges, discardAllChanges, GitCommandError, GitNotARepositoryError, pullRebase, push, workspaceFileAtHead,
-  workspaceGitStatus,
+  commitAllChanges, discardAllChanges, fetchRemote, GitCommandError, GitNotARepositoryError, pullRebase, push,
+  workspaceFileAtHead, workspaceGitStatus,
 } from '../src/workspace-git.ts'
 
 function tempDir(prefix: string): string {
@@ -235,8 +235,70 @@ describe('commitAllChanges', () => {
   })
 })
 
+describe('fetchRemote', () => {
+  it('downloads new commits and updates remote-tracking refs, without touching HEAD or the working tree', async () => {
+    const remote = tempDir('dsh-workspace-git-remote-')
+    initBareRemote(remote)
+    const a = tempDir('dsh-workspace-git-fetch-a-')
+    cloneRepo(remote, a)
+    writeFileSync(join(a, 'base.txt'), 'base')
+    commitAll(a, 'base')
+    execFileSync('git', ['-C', a, 'push', '-q'])
+
+    const b = tempDir('dsh-workspace-git-fetch-b-')
+    cloneRepo(remote, b)
+
+    // A commit lands on the remote that b has not fetched yet.
+    writeFileSync(join(a, 'remote.txt'), 'remote')
+    commitAll(a, 'remote change')
+    execFileSync('git', ['-C', a, 'push', '-q'])
+
+    const beforeHead = execFileSync('git', ['-C', b, 'rev-parse', 'HEAD']).toString().trim()
+    await fetchRemote(b)
+
+    // HEAD and the working tree are untouched...
+    expect(execFileSync('git', ['-C', b, 'rev-parse', 'HEAD']).toString().trim()).toBe(beforeHead)
+    expect(existsSync(join(b, 'remote.txt'))).toBe(false)
+    // ...but the remote-tracking ref now knows about the new commit.
+    expect(execFileSync('git', ['-C', b, 'log', '-1', '--format=%s', 'origin/main']).toString().trim())
+      .toBe('remote change')
+  })
+
+  it('rejects a directory outside any git working tree with GitNotARepositoryError', async () => {
+    const root = tempDir('dsh-workspace-git-fetch-none-')
+    await expect(fetchRemote(root)).rejects.toThrow(GitNotARepositoryError)
+  })
+
+  it('rejects with GitCommandError when the configured remote is unreachable', async () => {
+    const root = tempDir('dsh-workspace-git-fetch-unreachable-')
+    initRepo(root)
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    commitAll(root, 'init')
+    execFileSync('git', ['-C', root, 'remote', 'add', 'origin', join(root, 'does-not-exist')])
+    await expect(fetchRemote(root)).rejects.toThrow(GitCommandError)
+  })
+
+  it('resolves without error when the repository has no remote configured at all (a no-op fetch)', async () => {
+    const root = tempDir('dsh-workspace-git-fetch-none-configured-')
+    initRepo(root)
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    commitAll(root, 'init')
+    await expect(fetchRemote(root)).resolves.toBeUndefined()
+  })
+
+  it('propagates an abort instead of collapsing into a GitCommandError', async () => {
+    const root = tempDir('dsh-workspace-git-fetch-abort-')
+    initRepo(root)
+    const controller = new AbortController()
+    controller.abort()
+    const error = await fetchRemote(root, controller.signal).catch((reason: unknown) => reason)
+    expect(error).not.toBeInstanceOf(GitCommandError)
+    expect(error).not.toBeInstanceOf(GitNotARepositoryError)
+  })
+})
+
 describe('pullRebase', () => {
-  it('fetches from the remote and rebases local commits on top', async () => {
+  it('rebases local commits onto the already-fetched upstream, without fetching itself', async () => {
     const remote = tempDir('dsh-workspace-git-remote-')
     initBareRemote(remote)
     const a = tempDir('dsh-workspace-git-pull-a-')
@@ -255,6 +317,13 @@ describe('pullRebase', () => {
     commitAll(a, 'remote change')
     execFileSync('git', ['-C', a, 'push', '-q'])
 
+    // pullRebase alone (no prior fetch) has nothing new to rebase onto.
+    await pullRebase(b)
+    expect(execFileSync('git', ['-C', b, 'log', '--format=%s']).toString().trim().split('\n')).toEqual([
+      'local change', 'base',
+    ])
+
+    await fetchRemote(b)
     await pullRebase(b)
 
     expect(execFileSync('git', ['-C', b, 'log', '--format=%s']).toString().trim().split('\n')).toEqual([
@@ -286,6 +355,7 @@ describe('pullRebase', () => {
     commitAll(a, 'remote change')
     execFileSync('git', ['-C', a, 'push', '-q'])
 
+    await fetchRemote(b)
     await expect(pullRebase(b)).rejects.toThrow(GitCommandError)
   })
 
@@ -497,6 +567,7 @@ describe('discardAllChanges', () => {
     commitAll(a, 'remote change')
     execFileSync('git', ['-C', a, 'push', '-q'])
 
+    await fetchRemote(b)
     await expect(pullRebase(b)).rejects.toThrow(GitCommandError)
 
     await discardAllChanges(b)

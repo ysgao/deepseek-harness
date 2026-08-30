@@ -19,6 +19,7 @@ import type {
   WorkspaceGitCommitAllRequest,
   WorkspaceGitCommitAllValue,
   WorkspaceGitDiscardAllValue,
+  WorkspaceGitFetchValue,
   WorkspaceGitFileDiffRequest,
   WorkspaceGitPullRebaseValue,
   WorkspaceGitPushValue,
@@ -284,7 +285,19 @@ export class ClientWorkspaceModel implements WorkspaceFollowSink {
   }
 
   /**
-   * Fetch from the remote tracked by the current branch and rebase local commits on top.
+   * Download new commits and update the workspace's remote-tracking refs,
+   * without touching the current branch or working tree.
+   * @param workspaceId - target workspace.
+   * @param signal - caller lifetime; abort rejects with the abort reason.
+   * @returns generated Remote result.
+   */
+  gitFetch(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<RemoteResult<WorkspaceGitFetchValue>> {
+    return this.callFile(() => this.remote.gitFetch({ workspaceId }, signal))
+  }
+
+  /**
+   * Rebase local commits onto the current branch's already-known upstream,
+   * without fetching first.
    * @param workspaceId - target workspace.
    * @param signal - caller lifetime; abort rejects with the abort reason.
    * @returns generated Remote result.

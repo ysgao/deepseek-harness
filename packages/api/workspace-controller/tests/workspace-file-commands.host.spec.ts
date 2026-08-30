@@ -294,6 +294,7 @@ describe('WorkspaceController git methods', () => {
     writeFileSync(join(seed, 'a.txt'), 'two')
     commitAll(seed, 'upstream change')
     execFileSync('git', ['-C', seed, 'push', '-q'])
+    await expect(controller.gitFetch({ workspaceId }, new AbortController().signal)).resolves.toEqual({ fetched: true })
     await expect(controller.gitPullRebase({ workspaceId }, new AbortController().signal)).resolves.toEqual({ pulled: true })
     expect(execFileSync('git', ['-C', root, 'log', '-1', '--format=%s']).toString().trim()).toBe('upstream change')
 

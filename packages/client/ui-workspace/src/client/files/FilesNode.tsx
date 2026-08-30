@@ -49,7 +49,21 @@ export interface FilesNodeProps {
   commitAllChanges: (workspaceId: WorkspaceId, message: string, signal?: AbortSignal) => Promise<void>
   /** Revert every tracked file's pending change to its `HEAD` content; an untracked file is left untouched. */
   discardAllChanges: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<void>
-  /** Fetch from the remote tracked by the current branch and rebase local commits on top. */
+  /**
+   * Download new commits and update the workspace's remote-tracking refs,
+   * without touching the current branch or working tree. The header's
+   * Refresh control calls this before re-reading git status, so the
+   * ahead/behind counts driving Pull/Push's own visibility reflect the real
+   * remote instead of lagging behind it indefinitely.
+   */
+  fetchRemote: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<void>
+  /**
+   * Rebase local commits onto the current branch's already-known upstream,
+   * without fetching first — pairs with `fetchRemote`, which the Refresh
+   * control already calls, so what Pull applies always matches the
+   * already-displayed `behind` count rather than a second, later fetch's
+   * possibly-different result landing mid-rebase.
+   */
   pullRebase: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<void>
   /** Push the current branch to its configured remote. */
   push: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<void>
@@ -121,20 +135,26 @@ function useGitStatus(
  * commit count ({@link WorkspaceGitStatus.behind}/{@link
  * WorkspaceGitStatus.ahead}) to be positive — a branch with no configured
  * upstream, or one that is already in sync, shows neither, since a click
- * would either fail immediately or do nothing. Refresh always renders: it is
- * how a `behind`/`ahead` count first becomes known after a fetch.
+ * would either fail immediately or do nothing. Refresh always renders: it
+ * fetches from the remote (making a stale `behind`/`ahead` count accurate),
+ * then re-reads local git status.
  *
  * `busy` disables every trigger except Refresh while another write action
  * (commit, discard, pull, push) is in flight or the discard confirmation is
  * open — these all mutate the same working tree, so only one may run at a
- * time. While its own action is pending, Pull/Push each also grow an
- * adjacent Cancel button: both are network operations with no deadline (see
- * `pullRebase`/`push`'s `'caller-signal-only'` timeout policy), so a stuck
- * credential prompt or unreachable remote needs an escape hatch, not just a
- * disabled icon.
+ * time. Refresh's own fetch is deliberately exempt from `busy` in both
+ * directions: it never touches the working tree or index (unlike every
+ * other trigger here), so it may run alongside them; it disables only
+ * itself (`fetchPending`) to guard against a double-click starting two
+ * concurrent fetches. While its own action is pending, Pull/Push each also
+ * grow an adjacent Cancel button: both are network operations with no
+ * deadline (see `pullRebase`/`push`'s `'caller-signal-only'` timeout
+ * policy), so a stuck credential prompt or unreachable remote needs an
+ * escape hatch, not just a disabled icon.
  */
 function GitStatusSummary({
-  status, onRefresh, onCommit, onDiscard, onPull, onPush, onCancelPull, onCancelPush, busy, pullPending, pushPending, t,
+  status, onRefresh, onCommit, onDiscard, onPull, onPush, onCancelPull, onCancelPush,
+  busy, fetchPending, pullPending, pushPending, t,
 }: {
   status: WorkspaceGitStatus | undefined
   onRefresh: () => void
@@ -145,6 +165,7 @@ function GitStatusSummary({
   onCancelPull: () => void
   onCancelPush: () => void
   busy: boolean
+  fetchPending: boolean
   pullPending: boolean
   pushPending: boolean
   t: FilesTranslate
@@ -207,6 +228,7 @@ function GitStatusSummary({
         type="button"
         className={css.gitRefreshButton}
         title={t('files.git.refresh')}
+        disabled={fetchPending}
         onClick={onRefresh}
       >
         <IconRefreshOutline14 />
@@ -561,7 +583,7 @@ function FilesLevel({ path, depth, onOpenFile, listWorkspaceEntries, gitStatusFi
 export function FilesNode({
   workspaceId, rootPath, listWorkspaceEntries, readWorkspaceFile, listWorkspaceGitStatus,
   createWorkspaceFile, createWorkspaceFolder,
-  commitAllChanges, discardAllChanges, pullRebase, push, openPath, currentSessionId, openFileInSession, t,
+  commitAllChanges, discardAllChanges, fetchRemote, pullRebase, push, openPath, currentSessionId, openFileInSession, t,
 }: FilesNodeProps) {
   const [expanded, setExpanded] = useState(false)
   const [previewPath, setPreviewPath] = useState<string | null>(null)
@@ -588,6 +610,8 @@ export function FilesNode({
   const [discardConfirming, setDiscardConfirming] = useState(false)
   const [discardPending, setDiscardPending] = useState(false)
   const [discardError, setDiscardError] = useState<string | null>(null)
+  const [fetchPending, setFetchPending] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [pullPending, setPullPending] = useState(false)
   const [pullError, setPullError] = useState<string | null>(null)
   const [pushPending, setPushPending] = useState(false)
@@ -596,7 +620,10 @@ export function FilesNode({
   // against the working tree at a time — concurrent operations race on the
   // same index/working tree otherwise. The discard confirmation counts too:
   // once it's open, starting another action first would need to reason
-  // about a discard the user is mid-way through confirming.
+  // about a discard the user is mid-way through confirming. Refresh's own
+  // fetch is deliberately absent here (see GitStatusSummary's own doc): it
+  // never touches the working tree or index, so it may run alongside any of
+  // these, and is guarded only by its own `fetchPending` self-disable.
   const busy = discardPending || discardConfirming || pullPending || pushPending || createPending
   // Pull/Push each hold the AbortController for their own in-flight call, so
   // the Cancel button (GitStatusSummary) can abort a hung network request —
@@ -607,14 +634,27 @@ export function FilesNode({
   const clearGitErrors = useCallback(() => {
     setCommitError(null)
     setDiscardError(null)
+    setFetchError(null)
     setPullError(null)
     setPushError(null)
     setCreateError(null)
   }, [])
   const handleRefresh = useCallback(() => {
     clearGitErrors()
-    refreshGitStatus()
-  }, [clearGitErrors, refreshGitStatus])
+    setFetchPending(true)
+    fetchRemote(workspaceId).then(() => {
+      setFetchPending(false)
+      refreshGitStatus()
+    }).catch((reason: unknown) => {
+      setFetchPending(false)
+      setFetchError(reason instanceof Error ? reason.message : String(reason))
+      // The fetch failed, but whatever git status is already locally known
+      // (branch, pending changes) may still be worth re-displaying — e.g. a
+      // commit made from a terminal since the last read — so still refresh
+      // from local state rather than leaving the display untouched.
+      refreshGitStatus()
+    })
+  }, [clearGitErrors, fetchRemote, workspaceId, refreshGitStatus])
   const startCommit = useCallback(() => {
     setCommitMessage('')
     clearGitErrors()
@@ -762,9 +802,11 @@ export function FilesNode({
     if (currentSessionId !== undefined && openFileInSession(currentSessionId, workspaceId, path)) return
     setPreviewPath(path)
   }, [currentSessionId, workspaceId, openFileInSession])
-  // A collapse-then-reopen also refreshes git status (mirroring the level
-  // fetch's own "collapse-then-reopen refetches" posture) — a second, no-UI
-  // route to fresh status alongside the explicit refresh control.
+  // A collapse-then-reopen also re-reads git status locally (mirroring the
+  // level fetch's own "collapse-then-reopen refetches" posture) — a second,
+  // no-UI route to fresh status alongside the explicit Refresh control.
+  // Unlike Refresh, this does NOT fetch from the remote first: it is a
+  // low-cost, no-network gesture, not a deliberate "check for updates" click.
   const toggleExpanded = useCallback(() => {
     setExpanded((value) => {
       const next = !value
@@ -836,6 +878,7 @@ export function FilesNode({
                   onCancelPull={cancelPull}
                   onCancelPush={cancelPush}
                   busy={busy}
+                  fetchPending={fetchPending}
                   pullPending={pullPending}
                   pushPending={pushPending}
                   t={t}
@@ -845,6 +888,7 @@ export function FilesNode({
       </div>
       {createError !== null && <div className={css.notice} role="alert">{createError}</div>}
       {commitError !== null && <div className={css.notice} role="alert">{commitError}</div>}
+      {fetchError !== null && <div className={css.notice} role="alert">{fetchError}</div>}
       {pullError !== null && <div className={css.notice} role="alert">{pullError}</div>}
       {pushError !== null && <div className={css.notice} role="alert">{pushError}</div>}
       {expanded && (

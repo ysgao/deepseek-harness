@@ -237,7 +237,7 @@ type SessionTreeProps = Pick<
   | 'insertWorkspaceBefore' | 'insertSessionBefore' | 't'
   | 'listWorkspaceEntries' | 'readWorkspaceFile' | 'listWorkspaceGitStatus'
   | 'createWorkspaceFile' | 'createWorkspaceFolder'
-  | 'commitAllWorkspaceChanges' | 'discardAllWorkspaceChanges' | 'pullRebaseWorkspace' | 'pushWorkspace'
+  | 'commitAllWorkspaceChanges' | 'discardAllWorkspaceChanges' | 'fetchWorkspaceRemote' | 'pullRebaseWorkspace' | 'pushWorkspace'
   | 'openPath' | 'openFileInSession'
 > & {
   /** Host account home for POSIX hover-path abbreviation. */
@@ -277,7 +277,8 @@ function SessionTree({
   groupExpansion, setGroupExpanded,
   sessionOrderByAccount, sessionUpdatedAtByAccount, syncSessionOrderAccount, setSessionOrder, home, t,
   listWorkspaceEntries, readWorkspaceFile, listWorkspaceGitStatus, createWorkspaceFile, createWorkspaceFolder,
-  commitAllWorkspaceChanges, discardAllWorkspaceChanges, pullRebaseWorkspace, pushWorkspace, openPath, openFileInSession,
+  commitAllWorkspaceChanges, discardAllWorkspaceChanges, fetchWorkspaceRemote, pullRebaseWorkspace, pushWorkspace,
+  openPath, openFileInSession,
 }: SessionTreeProps) {
   const list = useSessions(s => s)
   const pendingInteractions = useSessionPendingInteraction(s => s)
@@ -546,6 +547,7 @@ function SessionTree({
                   createWorkspaceFolder={createWorkspaceFolder}
                   commitAllChanges={commitAllWorkspaceChanges}
                   discardAllChanges={discardAllWorkspaceChanges}
+                  fetchRemote={fetchWorkspaceRemote}
                   pullRebase={pullRebaseWorkspace}
                   push={pushWorkspace}
                   openPath={openPath}
@@ -858,6 +860,7 @@ export function WorkspaceBrowser({
   createWorkspaceFolder,
   commitAllWorkspaceChanges,
   discardAllWorkspaceChanges,
+  fetchWorkspaceRemote,
   pullRebaseWorkspace,
   pushWorkspace,
   openPath,
@@ -1298,6 +1301,7 @@ export function WorkspaceBrowser({
                 createWorkspaceFolder={createWorkspaceFolder}
                 commitAllWorkspaceChanges={commitAllWorkspaceChanges}
                 discardAllWorkspaceChanges={discardAllWorkspaceChanges}
+                fetchWorkspaceRemote={fetchWorkspaceRemote}
                 pullRebaseWorkspace={pullRebaseWorkspace}
                 pushWorkspace={pushWorkspace}
                 openPath={openPath}

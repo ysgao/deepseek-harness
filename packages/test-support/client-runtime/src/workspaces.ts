@@ -212,7 +212,18 @@ export class TestWorkspaces implements IWorkspaces {
   }
 
   /**
-   * Fetch from the remote and rebase local commits on top (recorded). The default resolves with no effect; stub to simulate failure.
+   * Download new commits and update remote-tracking refs (recorded). The default resolves with no effect; stub to simulate failure.
+   * @param workspaceId - owning workspace.
+   * @param signal - forwarded like the production face.
+   */
+  async fetchRemote(workspaceId: WorkspaceId, signal?: AbortSignal): Promise<void> {
+    this.calls.push({ method: 'fetchRemote', args: [workspaceId, signal] })
+    const stub = this.stubs.get('fetchRemote')
+    if (stub !== undefined) await (stub(workspaceId, signal) as Promise<void>)
+  }
+
+  /**
+   * Rebase local commits onto the already-known upstream (recorded). The default resolves with no effect; stub to simulate failure.
    * @param workspaceId - owning workspace.
    * @param signal - forwarded like the production face.
    */

@@ -499,6 +499,7 @@ describe('workspaces action face', () => {
     await expect(ws.gitStatus('w1' as WorkspaceId)).resolves.toEqual({ isRepo: false, branch: null, files: {}, ahead: 0, behind: 0 })
     await ws.commitAllChanges('w1' as WorkspaceId, 'a commit')
     await ws.discardAllChanges('w1' as WorkspaceId)
+    await ws.fetchRemote('w1' as WorkspaceId)
     await ws.pullRebase('w1' as WorkspaceId)
     await ws.push('w1' as WorkspaceId)
     await expect(ws.writeFile('w1' as WorkspaceId, '/proj/file.ts', 'edited', 'v1' as WorkspaceFileVersion))
@@ -506,7 +507,7 @@ describe('workspaces action face', () => {
     expect(ws.calls.map(c => c.method)).toEqual([
       'create', 'create', 'rename', 'delete', 'insertBefore', 'insertSessionBefore',
       'archiveSession', 'gitFileDiff', 'listEntries', 'readFile', 'gitStatus',
-      'commitAllChanges', 'discardAllChanges', 'pullRebase', 'push', 'writeFile',
+      'commitAllChanges', 'discardAllChanges', 'fetchRemote', 'pullRebase', 'push', 'writeFile',
     ])
 
     ws.stub('create', () => Promise.resolve({ workspaceId: 'ws-x', title: 'X', path: '/x', sessionIds: [] } as never))
@@ -524,6 +525,8 @@ describe('workspaces action face', () => {
     ws.stub('commitAllChanges', commitAll)
     const discardAll = vi.fn(() => Promise.resolve())
     ws.stub('discardAllChanges', discardAll)
+    const fetchRemote = vi.fn(() => Promise.resolve())
+    ws.stub('fetchRemote', fetchRemote)
     const pullRebase = vi.fn(() => Promise.resolve())
     ws.stub('pullRebase', pullRebase)
     const push = vi.fn(() => Promise.resolve())
@@ -546,6 +549,8 @@ describe('workspaces action face', () => {
     expect(commitAll).toHaveBeenCalledWith('w1', 'another commit', undefined)
     await ws.discardAllChanges('w1' as WorkspaceId)
     expect(discardAll).toHaveBeenCalledWith('w1', undefined)
+    await ws.fetchRemote('w1' as WorkspaceId)
+    expect(fetchRemote).toHaveBeenCalledWith('w1', undefined)
     await ws.pullRebase('w1' as WorkspaceId)
     expect(pullRebase).toHaveBeenCalledWith('w1', undefined)
     await ws.push('w1' as WorkspaceId)

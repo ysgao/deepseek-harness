@@ -91,6 +91,7 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
     createWorkspaceFolder: vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`),
     commitAllWorkspaceChanges: vi.fn(async () => {}),
     discardAllWorkspaceChanges: vi.fn(async () => {}),
+    fetchWorkspaceRemote: vi.fn(async () => {}),
     pullRebaseWorkspace: vi.fn(async () => {}),
     pushWorkspace: vi.fn(async () => {}),
     openPath: vi.fn(async () => {}),

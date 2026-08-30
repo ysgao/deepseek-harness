@@ -23,7 +23,8 @@ import type { WorkspaceRemote } from '@deepseek-ai/dsh-api-workspace-controller/
 import type {
   WorkspaceCreateDirectoryValue, WorkspaceCreateEntryRequest, WorkspaceCreateFileValue,
   WorkspaceEntryListing, WorkspaceFileContent, WorkspaceFileDiff, WorkspaceFollowFrame, WorkspaceGitCommitAllValue,
-  WorkspaceGitDiscardAllValue, WorkspaceGitPullRebaseValue, WorkspaceGitPushValue, WorkspaceGitStatus, WorkspaceWriteFileValue,
+  WorkspaceGitDiscardAllValue, WorkspaceGitFetchValue, WorkspaceGitPullRebaseValue, WorkspaceGitPushValue,
+  WorkspaceGitStatus, WorkspaceWriteFileValue,
 } from '@deepseek-ai/dsh-api-workspace-controller/types'
 import type { RemoteFailure, RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import {
@@ -232,6 +233,9 @@ export class FakeApiClient {
   onWorkspaceGitDiscardAll: (payload: unknown) => Promise<RemoteResult<WorkspaceGitDiscardAllValue>> =
     () => Promise.resolve(remoteOk({ discarded: true }))
 
+  onWorkspaceGitFetch: (payload: unknown) => Promise<RemoteResult<WorkspaceGitFetchValue>> =
+    () => Promise.resolve(remoteOk({ fetched: true }))
+
   onWorkspaceGitPullRebase: (payload: unknown) => Promise<RemoteResult<WorkspaceGitPullRebaseValue>> =
     () => Promise.resolve(remoteOk({ pulled: true }))
 
@@ -328,6 +332,7 @@ export class FakeApiClient {
         gitStatus: payload => this.record('workspace.gitStatus', payload, this.onWorkspaceGitStatus(payload)),
         gitCommitAll: payload => this.record('workspace.gitCommitAll', payload, this.onWorkspaceGitCommitAll(payload)),
         gitDiscardAll: payload => this.record('workspace.gitDiscardAll', payload, this.onWorkspaceGitDiscardAll(payload)),
+        gitFetch: payload => this.record('workspace.gitFetch', payload, this.onWorkspaceGitFetch(payload)),
         gitPullRebase: payload => this.record('workspace.gitPullRebase', payload, this.onWorkspaceGitPullRebase(payload)),
         gitPush: payload => this.record('workspace.gitPush', payload, this.onWorkspaceGitPush(payload)),
         gitFileDiff: payload => this.record('workspace.gitFileDiff', payload, this.onWorkspaceGitFileDiff(payload)),

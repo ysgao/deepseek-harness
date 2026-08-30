@@ -20,6 +20,7 @@ import type {
   WorkspaceGitCommitAllRequest,
   WorkspaceGitCommitAllValue,
   WorkspaceGitDiscardAllValue,
+  WorkspaceGitFetchValue,
   WorkspaceGitFileDiffRequest,
   WorkspaceGitPullRebaseValue,
   WorkspaceGitPushValue,
@@ -120,6 +121,8 @@ class FakeWorkspaceRemote implements WorkspaceRemote {
     Promise.resolve(remoteOk({ committed: true }))
   onGitDiscardAll: (_request: WorkspaceGitRequest) => Promise<RemoteResult<WorkspaceGitDiscardAllValue>> = () =>
     Promise.resolve(remoteOk({ discarded: true }))
+  onGitFetch: (_request: WorkspaceGitRequest) => Promise<RemoteResult<WorkspaceGitFetchValue>> = () =>
+    Promise.resolve(remoteOk({ fetched: true }))
   onGitPullRebase: (_request: WorkspaceGitRequest) => Promise<RemoteResult<WorkspaceGitPullRebaseValue>> = () =>
     Promise.resolve(remoteOk({ pulled: true }))
   onGitPush: (_request: WorkspaceGitRequest) => Promise<RemoteResult<WorkspaceGitPushValue>> = () =>
@@ -195,6 +198,11 @@ class FakeWorkspaceRemote implements WorkspaceRemote {
   gitDiscardAll(request: WorkspaceGitRequest): Promise<RemoteResult<WorkspaceGitDiscardAllValue>> {
     this.record('gitDiscardAll', request)
     return this.onGitDiscardAll(request)
+  }
+
+  gitFetch(request: WorkspaceGitRequest): Promise<RemoteResult<WorkspaceGitFetchValue>> {
+    this.record('gitFetch', request)
+    return this.onGitFetch(request)
   }
 
   gitPullRebase(request: WorkspaceGitRequest): Promise<RemoteResult<WorkspaceGitPullRebaseValue>> {
@@ -505,6 +513,9 @@ describe('ClientWorkspaceModel', () => {
 
     await expect(model.gitDiscardAll(wid('w'), signal)).resolves.toMatchObject({ ok: true, value: { discarded: true } })
     expect(remote.calls).toContainEqual({ method: 'gitDiscardAll', request: { workspaceId: 'w' } })
+
+    await expect(model.gitFetch(wid('w'), signal)).resolves.toMatchObject({ ok: true, value: { fetched: true } })
+    expect(remote.calls).toContainEqual({ method: 'gitFetch', request: { workspaceId: 'w' } })
 
     await expect(model.gitPullRebase(wid('w'), signal)).resolves.toMatchObject({ ok: true, value: { pulled: true } })
     expect(remote.calls).toContainEqual({ method: 'gitPullRebase', request: { workspaceId: 'w' } })

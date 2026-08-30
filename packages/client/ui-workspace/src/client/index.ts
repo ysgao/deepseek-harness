@@ -136,6 +136,7 @@ export function apply(ctx: Context): void {
       workspaces.createDirectory(workspaceId, parentPath, name, signal),
     commitAllWorkspaceChanges: (workspaceId, message, signal) => workspaces.commitAllChanges(workspaceId, message, signal),
     discardAllWorkspaceChanges: (workspaceId, signal) => workspaces.discardAllChanges(workspaceId, signal),
+    fetchWorkspaceRemote: (workspaceId, signal) => workspaces.fetchRemote(workspaceId, signal),
     pullRebaseWorkspace: (workspaceId, signal) => workspaces.pullRebase(workspaceId, signal),
     pushWorkspace: (workspaceId, signal) => workspaces.push(workspaceId, signal),
     openPath: async (path) => {

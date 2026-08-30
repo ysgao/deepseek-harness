@@ -175,7 +175,19 @@ export type WorkspaceBrowserInjected = {
    * untracked file is left untouched (the Files tree header's Discard control).
    */
   discardAllWorkspaceChanges: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<void>
-  /** Fetch from the remote tracked by the current branch and rebase local commits on top (the Files tree header's Pull control). */
+  /**
+   * Download new commits and update the Workspace's remote-tracking refs,
+   * without touching the current branch or working tree (the Files tree
+   * header's Refresh control also calls this, so its ahead/behind counts —
+   * and therefore Pull/Push's own visibility — reflect the real remote
+   * instead of whatever a prior fetch/pull/push happened to leave behind).
+   */
+  fetchWorkspaceRemote: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<void>
+  /**
+   * Rebase local commits onto the current branch's already-known upstream,
+   * without fetching first (the Files tree header's Pull control; pairs
+   * with the header's own Refresh, which fetches).
+   */
   pullRebaseWorkspace: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<void>
   /** Push the current branch to its configured remote (the Files tree header's Push control). */
   pushWorkspace: (workspaceId: WorkspaceId, signal?: AbortSignal) => Promise<void>

@@ -1,19 +1,20 @@
 /**
  * Host-side git operations for the Web GUI's Files tree and File tab: status
- * (branch and pending-change classification), a file's `HEAD` content (for
- * the File tab's diff view), and the Commit-all/Discard-all/Pull-rebase/Push
- * write actions, all scanned or applied against the git repository enclosing
- * a workspace's own directory (which may be an ancestor of it). Shells out to
- * the host's own `git` binary via the shared {@link runNativeCommand} runner
- * (no-shell `execFile`, Windows console hide, abort propagation); there is no
- * bundled git implementation.
+ * (branch and pending-change classification, including upstream-relative
+ * ahead/behind counts), a file's `HEAD` content (for the File tab's diff
+ * view), and the Commit-all/Discard-all/Fetch/Rebase/Push write actions, all
+ * scanned or applied against the git repository enclosing a workspace's own
+ * directory (which may be an ancestor of it). Shells out to the host's own
+ * `git` binary via the shared {@link runNativeCommand} runner (no-shell
+ * `execFile`, Windows console hide, abort propagation); there is no bundled
+ * git implementation.
  *
  * `workspaceGitStatus` treats a directory outside any working tree, or a
  * host with no `git` binary at all, as `isRepo: false` rather than a thrown
  * error — it never distinguishes "not a repo" from "can't tell". The write
- * actions (`commitAllChanges`, `discardAllChanges`, `pullRebase`, `push`)
- * cannot use that same quiet fallback — a write the caller believes
- * succeeded must not silently no-op — so they throw
+ * actions (`commitAllChanges`, `discardAllChanges`, `fetchRemote`,
+ * `pullRebase`, `push`) cannot use that same quiet fallback — a write the
+ * caller believes succeeded must not silently no-op — so they throw
  * {@link GitNotARepositoryError} instead.
  * @module
  */
@@ -48,7 +49,7 @@ export class GitNotARepositoryError extends Error {
 /** Thrown by a write action when the underlying git command exits non-zero (including a failing commit hook). */
 export class GitCommandError extends Error {
   /**
-   * @param command - short name of the failing step (`add`, `commit`, `reset`, `checkout`, `rebase-abort`, `pull`, `push`).
+   * @param command - short name of the failing step (`add`, `commit`, `reset`, `checkout`, `rebase-abort`, `fetch`, `rebase`, `push`).
    * @param message - git's own stderr/stdout text.
    */
   constructor(readonly command: string, message: string) {
@@ -313,24 +314,60 @@ export async function discardAllChanges(path: string, signal?: AbortSignal): Pro
 }
 
 /**
- * Fetches from the remote tracked by the current branch and rebases local
- * commits on top, in the git repository enclosing `path`.
+ * Downloads new commits and updates the workspace's remote-tracking refs
+ * (`git fetch`, no arguments — the default remote's every tracked branch),
+ * in the git repository enclosing `path`. Never touches `HEAD`, the current
+ * branch, or the working tree — unlike {@link pullRebase}, this cannot
+ * conflict and never changes {@link workspaceGitStatus}'s `files`. Exists
+ * because {@link workspaceGitStatus}'s `ahead`/`behind` are computed from
+ * already-known local refs (see {@link aheadBehind}): without a fetch
+ * somewhere in the loop, those counts silently lag behind the real remote
+ * indefinitely, and Pull/Push (gated on them being positive) never appear
+ * even when there genuinely is something to sync.
  * @param path - workspace's own directory (absolute).
  * @param signal - caller lifetime; abort rejects with the abort reason.
  * @throws {GitNotARepositoryError} when `path` is outside any git working tree.
- * @throws {GitCommandError} when `git pull --rebase` exits non-zero (no
- * configured remote/upstream, a rebase conflict, network failure, …).
+ * @throws {GitCommandError} when `git fetch` exits non-zero (no configured
+ * remote, network failure, authentication failure, …).
  */
-export async function pullRebase(path: string, signal?: AbortSignal): Promise<void> {
+export async function fetchRemote(path: string, signal?: AbortSignal): Promise<void> {
   const repoRoot = await repoRootOrThrow(path, signal)
   try {
-    await runGit(['-C', repoRoot, 'pull', '--rebase'], signal)
+    await runGit(['-C', repoRoot, 'fetch'], signal)
   } catch (error: unknown) {
     /* v8 ignore next -- needs the caller signal to abort in the narrow window
        between the repo-root check settling and this call settling; not
        reliably raceable in a portable test (see currentBranch's own guard). */
     if (signal?.aborted) throw error
-    throw new GitCommandError('pull', messageOf(error))
+    throw new GitCommandError('fetch', messageOf(error))
+  }
+}
+
+/**
+ * Rebases local commits on top of the current branch's already-known
+ * upstream (`git rebase`, no arguments — the same default-upstream
+ * resolution `git pull` itself uses), in the git repository enclosing
+ * `path`. Deliberately does NOT fetch first: {@link fetchRemote} is a
+ * separate, explicit step (the Files tree's Refresh control runs it before
+ * re-reading status), so what the header displays as `behind` — and what
+ * this rebases onto — are always the same already-fetched commits, never a
+ * second, later fetch's possibly-different result landing mid-rebase.
+ * @param path - workspace's own directory (absolute).
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @throws {GitNotARepositoryError} when `path` is outside any git working tree.
+ * @throws {GitCommandError} when `git rebase` exits non-zero (no configured
+ * upstream, a rebase conflict, …).
+ */
+export async function pullRebase(path: string, signal?: AbortSignal): Promise<void> {
+  const repoRoot = await repoRootOrThrow(path, signal)
+  try {
+    await runGit(['-C', repoRoot, 'rebase'], signal)
+  } catch (error: unknown) {
+    /* v8 ignore next -- needs the caller signal to abort in the narrow window
+       between the repo-root check settling and this call settling; not
+       reliably raceable in a portable test (see currentBranch's own guard). */
+    if (signal?.aborted) throw error
+    throw new GitCommandError('rebase', messageOf(error))
   }
 }
 
