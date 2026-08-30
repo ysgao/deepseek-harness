@@ -174,12 +174,16 @@ function GitStatusSummary({
   const changedCount = Object.keys(status.files).length
   return (
     <span className={css.gitSummary}>
-      <span className={css.gitBranch} title={t('files.git.branch', { branch: status.branch })}>{status.branch}</span>
-      {changedCount > 0 && (
-        <>
+      <span className={css.gitTightGroup}>
+        <span className={css.gitBranch} title={t('files.git.branch', { branch: status.branch })}>{status.branch}</span>
+        {changedCount > 0 && (
           <span className={css.gitChangedCount} title={t('files.git.changedCount', { n: changedCount })}>
             {changedCount}
           </span>
+        )}
+      </span>
+      {changedCount > 0 && (
+        <>
           <button type="button" className={css.gitRefreshButton} title={t('files.git.commit')} disabled={busy} onClick={onCommit}>
             <IconArrowUpOutline14 />
           </button>
@@ -201,7 +205,7 @@ function GitStatusSummary({
               <IconCloseFill14 />
             </button>
           )}
-          <span className={css.gitAheadBehindGroup}>
+          <span className={css.gitTightGroup}>
             <button type="button" className={css.gitRefreshButton} title={t('files.git.pull', { n: status.behind })} disabled={busy} onClick={onPull}>
               <IconArrowDownOutline14 />
             </button>
@@ -216,7 +220,7 @@ function GitStatusSummary({
               <IconCloseFill14 />
             </button>
           )}
-          <span className={css.gitAheadBehindGroup}>
+          <span className={css.gitTightGroup}>
             <button type="button" className={css.gitRefreshButton} title={t('files.git.push', { n: status.ahead })} disabled={busy} onClick={onPush}>
               <IconChevronDuoUpOutline14 />
             </button>

@@ -107,6 +107,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
   font-size: 12px;
   line-height: 16px;
   color: var(--dsw-alias-label-tertiary);
@@ -133,15 +134,18 @@
   background: var(--dsw-alias-state-warn-tertiary);
 }
 
-/* Groups one Pull/Push icon button with its own count badge as a single
-   tight unit, separate from .gitSummary's own 5px gap (which still applies
-   between this whole group and its neighbors — the Cancel/Refresh buttons).
-   No gap of its own: the button's built-in padding around its 14px icon
-   already leaves a little breathing room before the badge starts. */
-.gitAheadBehindGroup {
+/* Groups one label (branch name, or a Pull/Push icon button) with its own
+   adjacent count badge as a single tight unit, separate from .gitSummary's
+   own 5px gap (which still applies between this whole group and its
+   neighbors — the next button or badge over). No gap of its own: each
+   badge's own padding and color already carry the visual separation, so an
+   extra flex gap on top would only widen it further. min-width: 0 (rather
+   than the fixed-size siblings' own flex: none) so the branch-name usage
+   can still shrink and ellipsis-truncate inside .gitSummary's max-width. */
+.gitTightGroup {
   display: inline-flex;
   align-items: center;
-  flex: none;
+  min-width: 0;
 }
 
 /* Colored (not the default tertiary label color) so the count reads as a
