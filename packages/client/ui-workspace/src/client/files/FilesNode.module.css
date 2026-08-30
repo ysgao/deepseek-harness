@@ -133,25 +133,33 @@
   background: var(--dsw-alias-state-warn-tertiary);
 }
 
-/* .gitSummary's own 5px flex gap already accounts for most of the space
-   between the preceding icon button and this badge; the negative margin
-   pulls the badge in further to compensate for the button's own internal
-   padding (a 20px button around a 14px icon leaves ~3px of transparent
-   space on each side), so the visible gap between the icon glyph and the
-   number reads as tight rather than doubled up. */
+/* Groups one Pull/Push icon button with its own count badge as a single
+   tight unit, separate from .gitSummary's own 5px gap (which still applies
+   between this whole group and its neighbors — the Cancel/Refresh buttons).
+   No gap of its own: the button's built-in padding around its 14px icon
+   already leaves a little breathing room before the badge starts. */
+.gitAheadBehindGroup {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
+/* Colored (not the default tertiary label color) so the count reads as a
+   highlighted call to action next to its muted-gray icon, distinct from
+   .gitChangedCount's warn-toned pill — a commit ready to sync is routine,
+   not a warning. */
 .gitAheadBehindCount {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: none;
-  min-width: 14px;
+  min-width: 12px;
   height: 14px;
-  padding: 0 3px;
-  margin-left: -7px;
+  padding: 0 1px;
   font-size: 10px;
   line-height: 14px;
   font-weight: 600;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--dsw-alias-state-business-primary);
 }
 
 .gitRefreshButton {
