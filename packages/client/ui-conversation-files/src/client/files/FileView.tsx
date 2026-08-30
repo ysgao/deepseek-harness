@@ -352,23 +352,23 @@ export function FileView({
                 </span>
               )}
               {saveState.phase === 'error' && <span className={css.conflict} role="alert">{t('files.edit.saveError')}</span>}
-              <Button variant="primary" disabled={!hasDraft || saveState.phase === 'saving'} onClick={handleSave}>
+              <Button variant="primary" size="sm" disabled={!hasDraft || saveState.phase === 'saving'} onClick={handleSave}>
                 {saveState.phase === 'saving' ? t('files.edit.saving') : t('files.edit.save')}
               </Button>
             </>
           )}
           {(showsDiffToggle || showsEditToggle) && (
             <div className={css.modeToggle}>
-              <Button variant={mode === 'view' ? 'primary' : 'ghost'} onClick={() => { setMode('view') }}>
+              <Button variant={mode === 'view' ? 'primary' : 'ghost'} size="sm" onClick={() => { setMode('view') }}>
                 {t('files.diff.view')}
               </Button>
               {showsEditToggle && (
-                <Button variant={mode === 'edit' ? 'primary' : 'ghost'} onClick={() => { setMode('edit') }}>
+                <Button variant={mode === 'edit' ? 'primary' : 'ghost'} size="sm" onClick={() => { setMode('edit') }}>
                   {t('files.edit.edit')}
                 </Button>
               )}
               {showsDiffToggle && (
-                <Button variant={mode === 'diff' ? 'primary' : 'ghost'} onClick={() => { setMode('diff') }}>
+                <Button variant={mode === 'diff' ? 'primary' : 'ghost'} size="sm" onClick={() => { setMode('diff') }}>
                   {t('files.diff.diff')}
                 </Button>
               )}
