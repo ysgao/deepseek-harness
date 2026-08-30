@@ -205,12 +205,16 @@ function GitStatusSummary({
               <IconCloseFill14 />
             </button>
           )}
-          <span className={css.gitTightGroup}>
-            <button type="button" className={css.gitRefreshButton} title={t('files.git.pull', { n: status.behind })} disabled={busy} onClick={onPull}>
-              <IconArrowDownOutline14 />
-            </button>
+          <button
+            type="button"
+            className={clsx(css.gitRefreshButton, css.gitCountButton)}
+            title={t('files.git.pull', { n: status.behind })}
+            disabled={busy}
+            onClick={onPull}
+          >
+            <IconArrowDownOutline14 />
             {status.behind > 0 && <span className={css.gitAheadBehindCount}>{status.behind}</span>}
-          </span>
+          </button>
         </>
       )}
       {(status.ahead > 0 || pushPending) && (
@@ -220,12 +224,16 @@ function GitStatusSummary({
               <IconCloseFill14 />
             </button>
           )}
-          <span className={css.gitTightGroup}>
-            <button type="button" className={css.gitRefreshButton} title={t('files.git.push', { n: status.ahead })} disabled={busy} onClick={onPush}>
-              <IconChevronDuoUpOutline14 />
-            </button>
+          <button
+            type="button"
+            className={clsx(css.gitRefreshButton, css.gitCountButton)}
+            title={t('files.git.push', { n: status.ahead })}
+            disabled={busy}
+            onClick={onPush}
+          >
+            <IconChevronDuoUpOutline14 />
             {status.ahead > 0 && <span className={css.gitAheadBehindCount}>{status.ahead}</span>}
-          </span>
+          </button>
         </>
       )}
       <button

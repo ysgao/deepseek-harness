@@ -134,14 +134,16 @@
   background: var(--dsw-alias-state-warn-tertiary);
 }
 
-/* Groups one label (branch name, or a Pull/Push icon button) with its own
-   adjacent count badge as a single tight unit, separate from .gitSummary's
-   own 5px gap (which still applies between this whole group and its
-   neighbors — the next button or badge over). No gap of its own: each
-   badge's own padding and color already carry the visual separation, so an
-   extra flex gap on top would only widen it further. min-width: 0 (rather
-   than the fixed-size siblings' own flex: none) so the branch-name usage
-   can still shrink and ellipsis-truncate inside .gitSummary's max-width. */
+/* Groups the branch name with its own adjacent changed-file count badge as
+   a single tight unit, separate from .gitSummary's own 5px gap (which still
+   applies between this whole group and its neighbors — Commit/Discard).
+   No gap of its own: the badge's own padding and color already carry the
+   visual separation, so an extra flex gap on top would only widen it
+   further. min-width: 0 (rather than a fixed-size flex: none) so the
+   branch name can still shrink and ellipsis-truncate inside .gitSummary's
+   max-width. Pull/Push use .gitCountButton instead — a single button
+   rather than a wrapped group — since their count sits next to a clickable
+   icon rather than plain text. */
 .gitTightGroup {
   display: inline-flex;
   align-items: center;
@@ -189,6 +191,21 @@
 .gitRefreshButton:disabled {
   cursor: default;
   opacity: 0.5;
+}
+
+/* Pull/Push modifier: the icon and its own ahead/behind count render as one
+   button's children (not an icon button beside a separate count span), so
+   the whole hit target — icon and number together — triggers the action,
+   and the total footprint is only as wide as the icon and number actually
+   need instead of a fixed 20px button plus a separate badge alongside it.
+   Overrides .gitRefreshButton's fixed 20px width/zero padding; the 20px
+   min-width keeps the icon-only (no count yet) case identical to every
+   other icon button here. */
+.gitCountButton {
+  width: auto;
+  min-width: 20px;
+  gap: 2px;
+  padding: 0 3px;
 }
 
 .gitDiscardButton:hover:not(:disabled) {
