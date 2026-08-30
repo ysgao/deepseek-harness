@@ -701,6 +701,45 @@ describe('sandbox escalation through the generic task producer', () => {
     expect(bash.modes).toEqual(['workspace-write', 'danger-full-access'])
   })
 
+  it('rejects an absolute workdir outside the workspace root under a confining mode', async () => {
+    const { ctx } = await setupSandboxed()
+    const agent = sandboxAgent('workspace-write')
+    const result = await call(ctx, 'bash', { command: 'true', description: 'd', workdir: '/definitely-outside' }, agent)
+    expect(result.isError).toBe(true)
+    expect(text(result)).toContain('invalid workdir')
+    expect(text(result)).toContain('/definitely-outside')
+    expect(text(result)).toContain('outside the session workspace')
+  })
+
+  it('accepts an absolute workdir inside the workspace root under a confining mode', async () => {
+    const { ctx, bash } = await setupSandboxed()
+    const agent = sandboxAgent('workspace-write')
+    const inside = `${process.cwd()}/subdir`
+    const result = await call(ctx, 'bash', { command: 'true', description: 'd', workdir: inside }, agent)
+    expect(result.isError).toBe(false)
+    expect(bash.modes).toEqual(['workspace-write'])
+  })
+
+  it('allows an absolute workdir outside the workspace root once escalated to danger-full-access', async () => {
+    const { ctx } = await setupSandboxed(true)
+    const agent = sandboxAgent('workspace-write')
+    ctx.on('approval/request', () => Promise.resolve<ApprovalOutcome>('allowed-once'))
+    const result = await call(ctx, 'bash', {
+      command: 'true',
+      description: 'd',
+      workdir: '/definitely-outside',
+      sandbox_permissions: 'danger-full-access',
+      justification: 'needs full access outside the workspace',
+    }, agent)
+    expect(result.isError).toBe(false)
+  })
+
+  it('does not check workdir containment without a confining executor (no policy to check against)', async () => {
+    const ctx = await setup()
+    const result = await call(ctx, 'bash', { command: 'true', description: 'd', workdir: '/tmp' })
+    expect(result.isError).toBe(false)
+  })
+
   it('omits sandbox facts the executor did not acquire from the canonical result', async () => {
     const { ctx } = await setupSandboxed()
     const result = await call(ctx, 'bash', {
