@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-30-workspace-files-git-pull-push-gating.md
-2026-08-30-workspace-files-git-pull-push-gating.md: 71721bb3bd2af286b3d62a196b3c11a2e7b2e6ff
-2026-08-30-workspace-files-git-pull-push-gating.zh.md: a53e2754f4b08bbf394ac921c499cbb598b9aef6
+2026-08-30-workspace-files-git-pull-push-gating.md: b03e7fd2b0780026206febf699e98e8d69e7f699
+2026-08-30-workspace-files-git-pull-push-gating.zh.md: 47f6a70d02ce4744da86bb402d10e68570666ca4

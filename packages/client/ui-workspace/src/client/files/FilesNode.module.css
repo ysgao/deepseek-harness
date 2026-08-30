@@ -198,13 +198,13 @@
    the whole hit target — icon and number together — triggers the action,
    and the total footprint is only as wide as the icon and number actually
    need instead of a fixed 20px button plus a separate badge alongside it.
-   Overrides .gitRefreshButton's fixed 20px width/zero padding; the 20px
-   min-width keeps the icon-only (no count yet) case identical to every
-   other icon button here. */
+   No gap between icon and count: the count's own padding and color already
+   read as distinct from the icon beside it. Overrides .gitRefreshButton's
+   fixed 20px width/zero padding; the 20px min-width keeps the icon-only (no
+   count yet) case identical to every other icon button here. */
 .gitCountButton {
   width: auto;
   min-width: 20px;
-  gap: 2px;
   padding: 0 3px;
 }
 
