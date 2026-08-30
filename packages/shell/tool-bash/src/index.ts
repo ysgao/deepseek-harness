@@ -10,7 +10,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { isAbsolute, resolve as resolvePath } from 'node:path'
+import { isAbsolute, resolve as resolvePath, sep as sepPath } from 'node:path'
 import { defineTool, TOOL_ABORTED } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, TerminalCallView, ToolExecution, ToolResult, ToolResultView } from '@deepseek-ai/dsh-tools'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
@@ -155,6 +155,39 @@ function resolveWorkdir(
   return modelWorkdir
 }
 
+/**
+ * Lexical containment check mirroring the fast path in `fs-sandbox`'s
+ * {@link isPathUnder}: this call site only needs the cheap synchronous
+ * comparison, since a real escape is still stopped by the executor's own
+ * confinement (Landlock/bwrap/Seatbelt) regardless of this pre-check.
+ */
+function isLexicallyUnderRoot(path: string, root: string): boolean {
+  const resolved = resolvePath(path)
+  if (resolved === root) return true
+  const prefix = root.endsWith(sepPath) ? root : root + sepPath
+  return resolved.startsWith(prefix)
+}
+
+/**
+ * Reject an absolute `workdir` outside the resolved sandbox workspace root
+ * BEFORE dispatch, when a confining executor makes that root known and the
+ * standing mode still restricts file effects. `danger-full-access` has no
+ * containment to violate. Confined-mode workdir escapes would otherwise
+ * surface late and confusingly as an opaque spawn/sandbox-denial failure from
+ * the executor; this turns that into a clear, immediate tool error naming the
+ * expected root.
+ */
+function rejectWorkdirEscape(modelWorkdir: string | undefined, policy: SandboxExecutionPolicy | undefined): void {
+  if (modelWorkdir === undefined || policy === undefined) return
+  if (policy.mode === 'danger-full-access') return
+  if (!isAbsolute(modelWorkdir)) return
+  if (isLexicallyUnderRoot(modelWorkdir, policy.workspaceRoot)) return
+  throw new Error(
+    `invalid workdir: ${JSON.stringify(modelWorkdir)} is outside the session workspace `
+    + `${JSON.stringify(policy.workspaceRoot)}; use a relative path instead of an absolute one`,
+  )
+}
+
 /** Detach the executor DTO from readonly Service Definition types into plain JSON data. */
 function canonicalBashResult(result: ShellRunResult) {
   const output = (stream: ShellRunResult['stdout']) => ({
@@ -252,7 +285,7 @@ export function apply(ctx: Context, config: Config = {}): void {
           + '"git status" → "Show working tree status"; "npm install" → "Install package dependencies".',
       },
       timeoutMs: { type: 'number', description: 'Timeout in milliseconds. The executor applies its configured default and cap, and kills the command on expiry.' },
-      workdir: { type: 'string', description: 'Working directory for this command. Defaults to the session workspace; a relative path is resolved against it.' },
+      workdir: { type: 'string', description: 'Working directory for this command. Defaults to the session workspace; a relative path is resolved against it. Prefer a relative path or omitting this: under a confining sandbox mode, an absolute path outside the session workspace is rejected.' },
       ...backgroundEnabled ? {
         run_in_background: { type: 'boolean' as const, description: 'Run in the background and return a job id immediately (collect with job_output, stop with job_kill). No timeout applies.' },
       } : {},
@@ -337,6 +370,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       const policy = approvedMode === undefined
         ? standingPolicy
         : { ...(standingPolicy as SandboxExecutionPolicy), mode: approvedMode }
+      rejectWorkdirEscape(args.workdir, policy)
       const workdir = resolveWorkdir(args.workdir, exec, standingPolicy?.workspaceRoot)
       const dshEnv = ctx.shellEnv.collect(exec)
       const request = {
