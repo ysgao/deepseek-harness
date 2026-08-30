@@ -114,9 +114,15 @@ function useGitStatus(
 }
 
 /**
- * The Files header's branch name, dirty indicator, Pull/Push/Refresh
- * controls, and (when there are pending changes) Commit-all/Discard-all
- * triggers; renders nothing outside a git working tree.
+ * The Files header's branch name and dirty indicator always render for a
+ * repository (independent of upstream reachability), while the write
+ * actions gate on there being something to act on: Commit-all/Discard-all
+ * need a pending change, and Pull/Push each need their own upstream-relative
+ * commit count ({@link WorkspaceGitStatus.behind}/{@link
+ * WorkspaceGitStatus.ahead}) to be positive — a branch with no configured
+ * upstream, or one that is already in sync, shows neither, since a click
+ * would either fail immediately or do nothing. Refresh always renders: it is
+ * how a `behind`/`ahead` count first becomes known after a fetch.
  *
  * `busy` disables every trigger except Refresh while another write action
  * (commit, discard, pull, push) is in flight or the discard confirmation is
@@ -167,22 +173,32 @@ function GitStatusSummary({
           </button>
         </>
       )}
-      {pullPending && (
-        <button type="button" className={css.gitRefreshButton} title={t('files.git.cancel')} onClick={onCancelPull}>
-          <IconCloseFill14 />
-        </button>
+      {(status.behind > 0 || pullPending) && (
+        <>
+          {pullPending && (
+            <button type="button" className={css.gitRefreshButton} title={t('files.git.cancel')} onClick={onCancelPull}>
+              <IconCloseFill14 />
+            </button>
+          )}
+          <button type="button" className={css.gitRefreshButton} title={t('files.git.pull', { n: status.behind })} disabled={busy} onClick={onPull}>
+            <IconArrowDownOutline14 />
+          </button>
+          {status.behind > 0 && <span className={css.gitAheadBehindCount}>{status.behind}</span>}
+        </>
       )}
-      <button type="button" className={css.gitRefreshButton} title={t('files.git.pull')} disabled={busy} onClick={onPull}>
-        <IconArrowDownOutline14 />
-      </button>
-      {pushPending && (
-        <button type="button" className={css.gitRefreshButton} title={t('files.git.cancel')} onClick={onCancelPush}>
-          <IconCloseFill14 />
-        </button>
+      {(status.ahead > 0 || pushPending) && (
+        <>
+          {pushPending && (
+            <button type="button" className={css.gitRefreshButton} title={t('files.git.cancel')} onClick={onCancelPush}>
+              <IconCloseFill14 />
+            </button>
+          )}
+          <button type="button" className={css.gitRefreshButton} title={t('files.git.push', { n: status.ahead })} disabled={busy} onClick={onPush}>
+            <IconChevronDuoUpOutline14 />
+          </button>
+          {status.ahead > 0 && <span className={css.gitAheadBehindCount}>{status.ahead}</span>}
+        </>
       )}
-      <button type="button" className={css.gitRefreshButton} title={t('files.git.push')} disabled={busy} onClick={onPush}>
-        <IconChevronDuoUpOutline14 />
-      </button>
       <button
         type="button"
         className={css.gitRefreshButton}

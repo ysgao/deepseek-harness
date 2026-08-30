@@ -224,7 +224,7 @@ export class FakeApiClient {
     }))
 
   onWorkspaceGitStatus: (payload: unknown) => Promise<RemoteResult<WorkspaceGitStatus>> =
-    () => Promise.resolve(remoteOk({ isRepo: false, branch: null, files: {} }))
+    () => Promise.resolve(remoteOk({ isRepo: false, branch: null, files: {}, ahead: 0, behind: 0 }))
 
   onWorkspaceGitCommitAll: (payload: unknown) => Promise<RemoteResult<WorkspaceGitCommitAllValue>> =
     () => Promise.resolve(remoteOk({ committed: true }))

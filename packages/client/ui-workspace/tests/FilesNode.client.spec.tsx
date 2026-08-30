@@ -15,7 +15,7 @@ const t = makeTranslate(zh)
 const wsId = 'ws-1' as WorkspaceId
 
 /** No-repo default for tests that don't exercise the git status display. */
-const noGitStatus = (): Promise<WorkspaceGitStatus> => Promise.resolve({ isRepo: false, branch: null, files: {} })
+const noGitStatus = (): Promise<WorkspaceGitStatus> => Promise.resolve({ isRepo: false, branch: null, files: {}, ahead: 0, behind: 0 })
 
 /** A tiny fixed two-level tree keyed by directory path, mirroring the fixture's own shape. */
 function treeListWorkspaceEntries(tree: Record<string, WorkspaceEntryListing['entries']>) {
@@ -428,7 +428,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -483,7 +483,7 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
-          isRepo: true, branch: 'main', files: { '/ws/changed.txt': 'M' },
+          isRepo: true, branch: 'main', files: { '/ws/changed.txt': 'M' }, ahead: 0, behind: 0,
         }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
@@ -549,7 +549,7 @@ describe('FilesNode', () => {
     )
     unmount()
     // Must not throw (a setState-after-unmount would surface as a React warning/error).
-    await act(async () => { resolveStatus?.({ isRepo: true, branch: 'main', files: {} }) })
+    await act(async () => { resolveStatus?.({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 }) })
   })
 
   it('shows no title tooltip for an unrecognized git status code', async () => {
@@ -568,7 +568,7 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
-          isRepo: true, branch: 'main', files: { '/ws/changed.txt': 'T' },
+          isRepo: true, branch: 'main', files: { '/ws/changed.txt': 'T' }, ahead: 0, behind: 0,
         }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
@@ -603,7 +603,7 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
-          isRepo: true, branch: 'main', files: { '/ws/src/deep/nested.ts': 'M' },
+          isRepo: true, branch: 'main', files: { '/ws/src/deep/nested.ts': 'M' }, ahead: 0, behind: 0,
         }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
@@ -635,7 +635,7 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
-          isRepo: true, branch: 'main', files: { '/ws/foobar/x.txt': 'M' },
+          isRepo: true, branch: 'main', files: { '/ws/foobar/x.txt': 'M' }, ahead: 0, behind: 0,
         }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
@@ -652,8 +652,8 @@ describe('FilesNode', () => {
   it('refetches git status when the explicit refresh control is clicked', async () => {
     const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
     const listWorkspaceGitStatus = vi.fn()
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} })
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } })
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 })
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 })
     render(
       <FilesNode
         workspaceId={wsId}
@@ -695,7 +695,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -712,8 +712,8 @@ describe('FilesNode', () => {
   it('refetches git status when the Files tree is collapsed and reopened', async () => {
     const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
     const listWorkspaceGitStatus = vi.fn()
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} })
-      .mockResolvedValueOnce({ isRepo: true, branch: 'feature-branch', files: {} })
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 })
+      .mockResolvedValueOnce({ isRepo: true, branch: 'feature-branch', files: {}, ahead: 0, behind: 0 })
     render(
       <FilesNode
         workspaceId={wsId}
@@ -756,7 +756,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -778,7 +778,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -804,7 +804,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -835,7 +835,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -855,9 +855,9 @@ describe('FilesNode', () => {
   it('submits the commit message, refreshing git status and the directory listing on success', async () => {
     const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
     const listWorkspaceGitStatus = vi.fn()
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }) // initial mount
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }) // expand-triggered refresh
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} }) // post-commit refresh
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }) // initial mount
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }) // expand-triggered refresh
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 }) // post-commit refresh
     const commitAllChanges = vi.fn(async () => {})
     render(
       <FilesNode
@@ -905,7 +905,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -937,7 +937,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -967,7 +967,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1002,7 +1002,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1021,9 +1021,9 @@ describe('FilesNode', () => {
   it('discards on confirm, refreshing git status and the directory listing on success', async () => {
     const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
     const listWorkspaceGitStatus = vi.fn()
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }) // initial mount
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }) // expand-triggered refresh
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} }) // post-discard refresh
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }) // initial mount
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }) // expand-triggered refresh
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 }) // post-discard refresh
     const discardAllChanges = vi.fn(async () => {})
     render(
       <FilesNode
@@ -1069,7 +1069,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1100,7 +1100,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1130,7 +1130,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1151,7 +1151,7 @@ describe('FilesNode', () => {
     await waitFor(() => { expect(screen.queryByText(t('files.git.discardConfirmTitle'))).toBeNull() })
   })
 
-  it('shows Pull and Push controls even with no pending changes', async () => {
+  it('hides Pull and Push when the branch is already in sync with its upstream', async () => {
     const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
     render(
       <FilesNode
@@ -1164,7 +1164,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1175,16 +1175,94 @@ describe('FilesNode', () => {
     await screen.findByText('main')
     expect(screen.queryByTitle(t('files.git.commit'))).toBeNull()
     expect(screen.queryByTitle(t('files.git.discard'))).toBeNull()
-    expect(screen.getByTitle(t('files.git.pull'))).not.toBeNull()
-    expect(screen.getByTitle(t('files.git.push'))).not.toBeNull()
+    expect(screen.queryByTitle(t('files.git.pull', { n: 0 }))).toBeNull()
+    expect(screen.queryByTitle(t('files.git.push', { n: 0 }))).toBeNull()
+  })
+
+  it('shows Pull and Push with their upstream-relative commit counts when the branch has diverged', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 2, behind: 3 }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByText('main')
+    expect(screen.getByTitle(t('files.git.pull', { n: 3 }))).not.toBeNull()
+    expect(screen.getByTitle(t('files.git.push', { n: 2 }))).not.toBeNull()
+    expect(screen.getByText('3')).not.toBeNull()
+    expect(screen.getByText('2')).not.toBeNull()
+  })
+
+  it('shows only Pull when the branch is behind but not ahead', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 1 }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByTitle(t('files.git.pull', { n: 1 }))
+    expect(screen.queryByTitle(t('files.git.push', { n: 0 }))).toBeNull()
+  })
+
+  it('shows only Push when the branch is ahead but not behind', async () => {
+    const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
+    render(
+      <FilesNode
+        workspaceId={wsId}
+        rootPath="/ws"
+        listWorkspaceEntries={listWorkspaceEntries}
+        readWorkspaceFile={vi.fn()}
+        commitAllChanges={vi.fn(async () => {})}
+        discardAllChanges={vi.fn(async () => {})}
+        pullRebase={vi.fn(async () => {})}
+        push={vi.fn(async () => {})}
+        openPath={vi.fn()}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 1, behind: 0 }))}
+        createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
+        currentSessionId={undefined}
+        openFileInSession={vi.fn(() => false)}
+        t={t}
+      />,
+    )
+    await screen.findByTitle(t('files.git.push', { n: 1 }))
+    expect(screen.queryByTitle(t('files.git.pull', { n: 0 }))).toBeNull()
   })
 
   it('pulls on click, refreshing git status and the directory listing on success', async () => {
     const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
     const listWorkspaceGitStatus = vi.fn()
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} }) // initial mount
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} }) // expand-triggered refresh
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' } }) // post-pull refresh
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 1 }) // initial mount
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 1 }) // expand-triggered refresh
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 0, behind: 0 }) // post-pull refresh
     const pullRebase = vi.fn(async () => {})
     render(
       <FilesNode
@@ -1207,7 +1285,7 @@ describe('FilesNode', () => {
     )
     await act(async () => { screen.getByText(t('files.label')).click() }) // expand: fetches listing once
     await screen.findByText('main')
-    await act(async () => { screen.getByTitle(t('files.git.pull')).click() })
+    await act(async () => { screen.getByTitle(t('files.git.pull', { n: 1 })).click() })
     expect(pullRebase).toHaveBeenCalledWith(wsId, expect.any(AbortSignal))
     await waitFor(() => { expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(3) })
     // The level remounted (new key), so its own fetch fired again.
@@ -1228,7 +1306,7 @@ describe('FilesNode', () => {
         pullRebase={pullRebase}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 1 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1236,8 +1314,8 @@ describe('FilesNode', () => {
         t={t}
       />,
     )
-    await screen.findByTitle(t('files.git.pull'))
-    await act(async () => { screen.getByTitle(t('files.git.pull')).click() })
+    await screen.findByTitle(t('files.git.pull', { n: 1 }))
+    await act(async () => { screen.getByTitle(t('files.git.pull', { n: 1 })).click() })
     await screen.findByText('conflict during rebase')
   })
 
@@ -1256,7 +1334,7 @@ describe('FilesNode', () => {
         pullRebase={pullRebase}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 1 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1264,8 +1342,8 @@ describe('FilesNode', () => {
         t={t}
       />,
     )
-    await screen.findByTitle(t('files.git.pull'))
-    await act(async () => { screen.getByTitle(t('files.git.pull')).click() })
+    await screen.findByTitle(t('files.git.pull', { n: 1 }))
+    await act(async () => { screen.getByTitle(t('files.git.pull', { n: 1 })).click() })
     await screen.findByText('offline')
   })
 
@@ -1284,7 +1362,7 @@ describe('FilesNode', () => {
         pullRebase={pullRebase}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 1 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1292,7 +1370,7 @@ describe('FilesNode', () => {
         t={t}
       />,
     )
-    const pullButton = await screen.findByTitle(t('files.git.pull'))
+    const pullButton = await screen.findByTitle(t('files.git.pull', { n: 1 }))
     await act(async () => { pullButton.click() })
     expect((pullButton as HTMLButtonElement).disabled).toBe(true)
     expect(pullRebase).toHaveBeenCalledTimes(1)
@@ -1302,7 +1380,7 @@ describe('FilesNode', () => {
 
   it('pushes on click without refreshing git status or the directory listing', async () => {
     const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
-    const listWorkspaceGitStatus = vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))
+    const listWorkspaceGitStatus = vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 1, behind: 0 }))
     const push = vi.fn(async () => {})
     render(
       <FilesNode
@@ -1327,7 +1405,7 @@ describe('FilesNode', () => {
     await screen.findByText('main')
     const statusCallsBeforePush = listWorkspaceGitStatus.mock.calls.length
     const entriesCallsBeforePush = listWorkspaceEntries.mock.calls.length
-    await act(async () => { screen.getByTitle(t('files.git.push')).click() })
+    await act(async () => { screen.getByTitle(t('files.git.push', { n: 1 })).click() })
     expect(push).toHaveBeenCalledWith(wsId, expect.any(AbortSignal))
     expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(statusCallsBeforePush)
     expect(listWorkspaceEntries).toHaveBeenCalledTimes(entriesCallsBeforePush)
@@ -1347,7 +1425,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={push}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 1, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1355,8 +1433,8 @@ describe('FilesNode', () => {
         t={t}
       />,
     )
-    await screen.findByTitle(t('files.git.push'))
-    await act(async () => { screen.getByTitle(t('files.git.push')).click() })
+    await screen.findByTitle(t('files.git.push', { n: 1 }))
+    await act(async () => { screen.getByTitle(t('files.git.push', { n: 1 })).click() })
     await screen.findByText('non-fast-forward')
   })
 
@@ -1375,7 +1453,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={push}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 1, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1383,8 +1461,8 @@ describe('FilesNode', () => {
         t={t}
       />,
     )
-    await screen.findByTitle(t('files.git.push'))
-    await act(async () => { screen.getByTitle(t('files.git.push')).click() })
+    await screen.findByTitle(t('files.git.push', { n: 1 }))
+    await act(async () => { screen.getByTitle(t('files.git.push', { n: 1 })).click() })
     await screen.findByText('denied')
   })
 
@@ -1403,7 +1481,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={push}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 1, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1411,7 +1489,7 @@ describe('FilesNode', () => {
         t={t}
       />,
     )
-    const pushButton = await screen.findByTitle(t('files.git.push'))
+    const pushButton = await screen.findByTitle(t('files.git.push', { n: 1 }))
     await act(async () => { pushButton.click() })
     expect((pushButton as HTMLButtonElement).disabled).toBe(true)
     expect(push).toHaveBeenCalledTimes(1)
@@ -1435,7 +1513,7 @@ describe('FilesNode', () => {
         pullRebase={pullRebase}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 1 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1443,7 +1521,7 @@ describe('FilesNode', () => {
         t={t}
       />,
     )
-    const pullButton = await screen.findByTitle(t('files.git.pull'))
+    const pullButton = await screen.findByTitle(t('files.git.pull', { n: 1 }))
     await act(async () => { pullButton.click() })
     expect((pullButton as HTMLButtonElement).disabled).toBe(true)
     const cancelButton = screen.getByTitle(t('files.git.cancel'))
@@ -1469,7 +1547,7 @@ describe('FilesNode', () => {
         pullRebase={vi.fn(async () => {})}
         push={push}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 1, behind: 0 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1477,7 +1555,7 @@ describe('FilesNode', () => {
         t={t}
       />,
     )
-    const pushButton = await screen.findByTitle(t('files.git.push'))
+    const pushButton = await screen.findByTitle(t('files.git.push', { n: 1 }))
     await act(async () => { pushButton.click() })
     expect((pushButton as HTMLButtonElement).disabled).toBe(true)
     const cancelButton = screen.getByTitle(t('files.git.cancel'))
@@ -1503,7 +1581,7 @@ describe('FilesNode', () => {
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
         listWorkspaceGitStatus={vi.fn(() => Promise.resolve({
-          isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' },
+          isRepo: true, branch: 'main', files: { '/ws/a.txt': 'M' }, ahead: 1, behind: 1,
         }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
@@ -1512,11 +1590,11 @@ describe('FilesNode', () => {
         t={t}
       />,
     )
-    const pullButton = await screen.findByTitle(t('files.git.pull'))
+    const pullButton = await screen.findByTitle(t('files.git.pull', { n: 1 }))
     await act(async () => { pullButton.click() })
     const commitButton = screen.getByTitle(t('files.git.commit'))
     const discardButton = screen.getByTitle(t('files.git.discard'))
-    const pushButton = screen.getByTitle(t('files.git.push'))
+    const pushButton = screen.getByTitle(t('files.git.push', { n: 1 }))
     expect((commitButton as HTMLButtonElement).disabled).toBe(true)
     expect((discardButton as HTMLButtonElement).disabled).toBe(true)
     expect((pushButton as HTMLButtonElement).disabled).toBe(true)
@@ -1526,9 +1604,9 @@ describe('FilesNode', () => {
   it('refreshes git status and the directory listing when a pull fails, to surface a mid-rebase conflict', async () => {
     const listWorkspaceEntries = treeListWorkspaceEntries({ '/ws': [] })
     const listWorkspaceGitStatus = vi.fn()
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} }) // initial mount
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {} }) // expand-triggered refresh
-      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'X' } }) // post-failure refresh
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 1 }) // initial mount
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 1 }) // expand-triggered refresh
+      .mockResolvedValueOnce({ isRepo: true, branch: 'main', files: { '/ws/a.txt': 'X' }, ahead: 0, behind: 1 }) // post-failure refresh
     const pullRebase = vi.fn(() => Promise.reject(new Error('conflict during rebase')))
     render(
       <FilesNode
@@ -1551,7 +1629,7 @@ describe('FilesNode', () => {
     )
     await act(async () => { screen.getByText(t('files.label')).click() }) // expand: fetches listing once
     await screen.findByText('main')
-    await act(async () => { screen.getByTitle(t('files.git.pull')).click() })
+    await act(async () => { screen.getByTitle(t('files.git.pull', { n: 1 })).click() })
     await screen.findByText('conflict during rebase')
     await waitFor(() => { expect(listWorkspaceGitStatus).toHaveBeenCalledTimes(3) })
     // The level remounted (new key), so its own fetch fired again.
@@ -1572,7 +1650,7 @@ describe('FilesNode', () => {
         pullRebase={pullRebase}
         push={vi.fn(async () => {})}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 1 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1580,8 +1658,8 @@ describe('FilesNode', () => {
         t={t}
       />,
     )
-    await screen.findByTitle(t('files.git.pull'))
-    await act(async () => { screen.getByTitle(t('files.git.pull')).click() })
+    await screen.findByTitle(t('files.git.pull', { n: 1 }))
+    await act(async () => { screen.getByTitle(t('files.git.pull', { n: 1 })).click() })
     await screen.findByText('conflict during rebase')
     await act(async () => { screen.getByTitle(t('files.git.refresh')).click() })
     await waitFor(() => { expect(screen.queryByText('conflict during rebase')).toBeNull() })
@@ -1602,7 +1680,7 @@ describe('FilesNode', () => {
         pullRebase={pullRebase}
         push={push}
         openPath={vi.fn()}
-        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {} }))}
+        listWorkspaceGitStatus={vi.fn(() => Promise.resolve({ isRepo: true, branch: 'main', files: {}, ahead: 1, behind: 1 }))}
         createWorkspaceFile={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         createWorkspaceFolder={vi.fn(async (_workspaceId: WorkspaceId, parentPath: string, name: string) => `${parentPath}/${name}`)}
         currentSessionId={undefined}
@@ -1610,10 +1688,10 @@ describe('FilesNode', () => {
         t={t}
       />,
     )
-    await screen.findByTitle(t('files.git.pull'))
-    await act(async () => { screen.getByTitle(t('files.git.pull')).click() })
+    await screen.findByTitle(t('files.git.pull', { n: 1 }))
+    await act(async () => { screen.getByTitle(t('files.git.pull', { n: 1 })).click() })
     await screen.findByText('conflict during rebase')
-    await act(async () => { screen.getByTitle(t('files.git.push')).click() })
+    await act(async () => { screen.getByTitle(t('files.git.push', { n: 1 })).click() })
     await waitFor(() => { expect(screen.queryByText('conflict during rebase')).toBeNull() })
   })
 })

@@ -4,6 +4,8 @@ Status: implemented
 
 English | [中文](2026-08-28-workspace-files-git-pull-push.zh.md)
 
+The [Pull/Push ahead/behind gating decision](2026-08-30-workspace-files-git-pull-push-gating.md) supersedes this note's "unconditional icon buttons" decision and its "gating on ahead/behind" alternative below. This note remains the rationale authority for the underlying RPC methods, the mid-rebase Discard recovery, the two hand-drawn icons, and the native-command shell-out.
+
 ## Problem
 
 The Files tree's git toolbar ([git-status Agent Note](2026-08-27-workspace-files-git-status.md)) already shows branch/status and offers Commit-all/Discard-all, but a user with a configured remote had no way to sync with it from inside the app — pulling or pushing meant leaving for a terminal.

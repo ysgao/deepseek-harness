@@ -265,7 +265,7 @@ class CommandWorkspaceRemote implements WorkspaceRemote {
   })))
 
   readonly gitStatus = vi.fn<WorkspaceRemote['gitStatus']>(() => Promise.resolve(remoteOk({
-    isRepo: false, branch: null, files: {},
+    isRepo: false, branch: null, files: {}, ahead: 0, behind: 0,
   })))
 
   readonly gitCommitAll = vi.fn<WorkspaceRemote['gitCommitAll']>(() => Promise.resolve(remoteOk({ committed: true })))

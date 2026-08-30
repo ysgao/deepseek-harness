@@ -228,6 +228,19 @@ export interface WorkspaceGitStatus {
    * conflicted path), one entry per path with a pending change.
    */
   readonly files: Readonly<Record<string, string>>
+  /**
+   * Commit count the current branch's upstream has that `HEAD` lacks (what a
+   * Pull would bring in). Zero when `isRepo` is false, `HEAD` is detached, or
+   * the branch has no configured upstream — those all mean "nothing to
+   * report", not "up to date with a real remote".
+   */
+  readonly behind: number
+  /**
+   * Commit count `HEAD` has that the current branch's upstream lacks (what a
+   * Push would send). Zero under the same no-upstream/detached/non-repo
+   * conditions as {@link behind}.
+   */
+  readonly ahead: number
 }
 
 /** `workspace.listEntries` request: one directory level under a workspace root. */

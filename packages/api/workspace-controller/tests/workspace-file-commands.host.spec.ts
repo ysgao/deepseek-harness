@@ -310,7 +310,7 @@ describe('WorkspaceController git methods', () => {
     const { controller, root } = await harness()
     const created = await controller.create({ path: root })
     await expect(controller.gitStatus({ workspaceId: created.workspace.workspaceId }, new AbortController().signal))
-      .resolves.toEqual({ isRepo: false, branch: null, files: {} })
+      .resolves.toEqual({ isRepo: false, branch: null, files: {}, ahead: 0, behind: 0 })
   })
 
   it('maps a write action outside any git working tree to git-not-a-repository', async () => {

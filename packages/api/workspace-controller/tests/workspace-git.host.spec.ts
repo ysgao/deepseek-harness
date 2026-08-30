@@ -41,7 +41,7 @@ describe('workspaceGitStatus', () => {
   it('reports isRepo: false for a directory outside any git working tree', async () => {
     const root = tempDir('dsh-workspace-git-none-')
     const status = await workspaceGitStatus(root)
-    expect(status).toEqual({ isRepo: false, branch: null, files: {} })
+    expect(status).toEqual({ isRepo: false, branch: null, files: {}, ahead: 0, behind: 0 })
   })
 
   it('reports the current branch and no pending changes for a clean repository', async () => {
@@ -51,7 +51,7 @@ describe('workspaceGitStatus', () => {
     commitAll(root, 'init')
 
     const status = await workspaceGitStatus(root)
-    expect(status).toEqual({ isRepo: true, branch: 'main', files: {} })
+    expect(status).toEqual({ isRepo: true, branch: 'main', files: {}, ahead: 0, behind: 0 })
   })
 
   it('classifies a modified tracked file as M', async () => {
@@ -118,7 +118,7 @@ describe('workspaceGitStatus', () => {
     writeFileSync(join(root, 'sub', 'a.txt'), 'changed')
 
     const status = await workspaceGitStatus(join(root, 'sub'))
-    expect(status).toEqual({ isRepo: true, branch: 'main', files: { [join(root, 'sub', 'a.txt')]: 'M' } })
+    expect(status).toEqual({ isRepo: true, branch: 'main', files: { [join(root, 'sub', 'a.txt')]: 'M' }, ahead: 0, behind: 0 })
   })
 
   it('reports the literal branch "HEAD" for a detached checkout', async () => {
@@ -159,6 +159,39 @@ describe('workspaceGitStatus', () => {
 
     const status = await workspaceGitStatus(root)
     expect(status.files).toEqual({ [join(root, 'f.txt')]: 'X' })
+  })
+
+  it('reports ahead/behind as 0 when the current branch has no configured upstream', async () => {
+    const root = tempDir('dsh-workspace-git-no-upstream-')
+    initRepo(root)
+    writeFileSync(join(root, 'a.txt'), 'hello')
+    commitAll(root, 'init')
+
+    const status = await workspaceGitStatus(root)
+    expect(status).toMatchObject({ ahead: 0, behind: 0 })
+  })
+
+  it('reports ahead/behind relative to the upstream after fetching diverged commits', async () => {
+    const remote = tempDir('dsh-workspace-git-remote-')
+    initBareRemote(remote)
+    const a = tempDir('dsh-workspace-git-ahead-behind-a-')
+    cloneRepo(remote, a)
+    writeFileSync(join(a, 'base.txt'), 'base')
+    commitAll(a, 'base')
+    execFileSync('git', ['-C', a, 'push', '-q', '-u', 'origin', 'main'])
+
+    const b = tempDir('dsh-workspace-git-ahead-behind-b-')
+    cloneRepo(remote, b)
+    writeFileSync(join(b, 'local.txt'), 'local')
+    commitAll(b, 'local change')
+
+    writeFileSync(join(a, 'remote.txt'), 'remote')
+    commitAll(a, 'remote change')
+    execFileSync('git', ['-C', a, 'push', '-q'])
+    execFileSync('git', ['-C', b, 'fetch', '-q'])
+
+    const status = await workspaceGitStatus(b)
+    expect(status).toMatchObject({ ahead: 1, behind: 1 })
   })
 })
 

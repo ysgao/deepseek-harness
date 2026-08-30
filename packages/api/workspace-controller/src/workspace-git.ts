@@ -133,10 +133,37 @@ function parsePorcelain(stdout: string, repoRoot: string): Record<string, string
 }
 
 /**
- * Reports one workspace's git branch and pending file changes, scanned from
- * the git repository enclosing `path` (its own directory, or an ancestor of
- * it). A directory outside any working tree, or a host missing the `git`
- * binary, reports `isRepo: false`.
+ * Commit counts between the current branch and its configured upstream:
+ * `behind` (upstream-only commits, what a Pull would bring in) and `ahead`
+ * (`HEAD`-only commits, what a Push would send). Resolves to `{ ahead: 0,
+ * behind: 0 }` — not an error — when the branch has no upstream configured,
+ * since "nothing to report" and "checked, found none" are the same outcome
+ * for this display.
+ * @param repoRoot - absolute repository root.
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @returns the upstream-relative commit counts.
+ */
+async function aheadBehind(repoRoot: string, signal: AbortSignal | undefined): Promise<{ ahead: number; behind: number }> {
+  try {
+    const { stdout } = await runGit(['-C', repoRoot, 'rev-list', '--left-right', '--count', '@{upstream}...HEAD'], signal)
+    const [behind, ahead] = stdout.trim().split(/\s+/)
+    return { ahead: Number(ahead), behind: Number(behind) }
+  } catch (error: unknown) {
+    /* v8 ignore next -- needs the caller signal to abort in the narrow window
+       between the repo-root check settling and this call settling; not
+       reliably raceable in a portable test (see currentBranch's own guard). */
+    if (signal?.aborted) throw error
+    // No upstream configured (or a detached HEAD, which has no `@{upstream}`
+    // either): `rev-list` exits non-zero rather than reporting zero counts.
+    return { ahead: 0, behind: 0 }
+  }
+}
+
+/**
+ * Reports one workspace's git branch, pending file changes, and
+ * upstream-relative commit counts, scanned from the git repository enclosing
+ * `path` (its own directory, or an ancestor of it). A directory outside any
+ * working tree, or a host missing the `git` binary, reports `isRepo: false`.
  * @param path - workspace's own directory (absolute).
  * @param signal - caller lifetime; abort rejects with the abort reason.
  * @returns the workspace's git status.
@@ -149,13 +176,14 @@ export async function workspaceGitStatus(path: string, signal?: AbortSignal): Pr
     // An abort must propagate (the caller reports cancelled), not collapse
     // into the ordinary "not a repo" result.
     if (signal?.aborted) throw error
-    return { isRepo: false, branch: null, files: {} }
+    return { isRepo: false, branch: null, files: {}, ahead: 0, behind: 0 }
   }
-  const [branch, { stdout: statusOut }] = await Promise.all([
+  const [branch, { stdout: statusOut }, counts] = await Promise.all([
     currentBranch(repoRoot, signal),
     runGit(['-C', repoRoot, 'status', '--porcelain=v1', '-z', '--untracked-files=all'], signal),
+    aheadBehind(repoRoot, signal),
   ])
-  return { isRepo: true, branch, files: parsePorcelain(statusOut, repoRoot) }
+  return { isRepo: true, branch, files: parsePorcelain(statusOut, repoRoot), ...counts }
 }
 
 /**

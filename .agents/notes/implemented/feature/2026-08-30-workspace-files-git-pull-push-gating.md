@@ -1,0 +1,35 @@
+# Agent Note: Workspace Files Pull/Push gate on ahead/behind commit counts
+
+Status: implemented
+
+English | [中文](2026-08-30-workspace-files-git-pull-push-gating.zh.md)
+
+This note partially supersedes the [git Pull/Push Agent Note](2026-08-28-workspace-files-git-pull-push.md)'s "unconditional icon buttons" decision and its "gating on ahead/behind" alternative; that note remains the rationale authority for the underlying RPC methods, the mid-rebase Discard recovery, the two hand-drawn icons, and the native-command shell-out.
+
+## Problem
+
+Pull and Push rendered unconditionally whenever the header showed a branch at all, per the prior note's explicit rejection of gating on an ahead/behind count as too costly to compute live. In practice this made both buttons indistinguishable from decorative chrome: a user with no configured upstream, or already in sync with one, saw the same two icons as a user with real commits to sync, with no way to tell from the toolbar alone whether clicking would do anything, or which direction ("pull commits in" vs "push commits out") either icon actually moved data.
+
+## Decision
+
+**`WorkspaceGitStatus` gains two required fields, `ahead` and `behind`**, both `number`, computed by a new `aheadBehind` helper in `workspace-git.ts` via `git rev-list --left-right --count @{upstream}...HEAD` (stdout is `<behind>\t<ahead>`, the left/right order matching the `@{upstream}...HEAD` operand order). This command compares only refs the local repository already knows about — it performs no network operation of its own — so the prior note's rejection of a "live push channel" (a standing filesystem watcher, or a `git fetch` on every render) does not apply here: `aheadBehind` is exactly as fresh as the last `git fetch`/`pull`/`push`, updated the same way `gitStatus`'s other fields already are (on mount, on explicit Refresh, and on collapse-then-reopen). A branch with no configured upstream, or a detached `HEAD` (neither has an `@{upstream}` to resolve), makes the git command exit non-zero rather than reporting zero counts; `aheadBehind` catches that and resolves `{ ahead: 0, behind: 0 }`, treating "nothing to report" and "checked, found none" as the same display outcome. `workspaceGitStatus` runs `aheadBehind` concurrently with the existing branch/porcelain-status calls via `Promise.all`, and the "not a repository" early return also reports `ahead: 0, behind: 0`.
+
+**Pull now renders only when `behind > 0` (or a pull is already pending); Push only when `ahead > 0` (or a push is already pending).** The pending-OR clause keeps a button (and its adjacent Cancel control) visible through its own in-flight call even if a concurrent status refresh would otherwise recompute the count to zero mid-flight. Branch name and the pending-change-count badge (`.gitChangedCount`) remain unconditional exactly as the git-status note established — this change touches only Pull/Push visibility, not the rest of the header.
+
+**Each rendered button's tooltip now names its own count** (`files.git.pull`/`files.git.push` locale strings gained a `{n}` placeholder — "Pull (rebase): {n} commits behind" / "Push: {n} commits ahead"), and a small numeric badge (new `.gitAheadBehindCount` CSS class, unstyled — no background — unlike `.gitChangedCount`'s pill, since it sits directly beside an icon whose tooltip already carries the same number) renders next to the icon whenever its count is positive. The badge carries no `title` of its own — nesting an identical tooltip on both the button and its adjacent badge produced two elements matching the same accessible name, ambiguous for both users and `getByTitle`-style test queries — the button's own title is the single source of that text.
+
+## Alternatives considered
+
+- **Keeping a shared, untitled badge but still deriving its accessible name from the same key as the button.** Rejected: any title text on the badge duplicates the button's title verbatim (same locale key, same count), which only reintroduces the "two elements, same accessible name" ambiguity this change deliberately removed; a plain visual number beside an already-labeled icon does not need its own independent label.
+- **A live `git fetch --dry-run` (or a background poll) so counts also reflect commits the user has not yet fetched.** Rejected: `gitStatus` never fetches from the remote today (the git-status note's own "no live push channel" alternative already rejected that cost); adding a fetch here would introduce credential prompts and network latency to what has otherwise always been an instant, local status read. Counts staying "as fresh as the last fetch/pull/push" matches how git itself reports ahead/behind in `git status`/`git branch -vv` on the command line.
+- **Treating `ahead`/`behind` as `number | null`** (null meaning "no upstream configured", distinct from a real zero). Rejected: nothing in the Files tree UI needs to distinguish "no upstream" from "in sync with one" — both mean "no Pull/Push button to show" — and a nullable field would force every consumer (including every existing test fixture) to handle a third state with no behavioral difference from zero.
+
+## Consequences
+
+- `WorkspaceGitStatus` (`packages/api/workspace-controller/src/types.ts`) gains required `ahead: number` and `behind: number` fields; every existing literal of this type across the repository's tests, fixtures, and test-support runtime doubles was updated to supply them (`ahead: 0, behind: 0` for the no-repo/in-sync default; positive values where a test exercises Pull/Push visibility or click behavior).
+- New `aheadBehind` function in `packages/api/workspace-controller/src/workspace-git.ts`; `workspaceGitStatus` now runs it alongside the existing branch/porcelain calls and spreads its result into the returned `WorkspaceGitStatus`.
+- `GitStatusSummary` (`packages/client/ui-workspace/src/client/files/FilesNode.tsx`) guards the Pull and Push button groups on `status.behind > 0 || pullPending` and `status.ahead > 0 || pushPending` respectively, instead of rendering both unconditionally.
+- New CSS class `.gitAheadBehindCount` in `FilesNode.module.css` (plain flex/inline-flex numeral, no background, distinct from the pill-styled `.gitChangedCount`).
+- Locale keys `files.git.pull`/`files.git.push` (both `zh` and `en`) gained a `{n}` placeholder; every call site passes the corresponding `behind`/`ahead` count.
+- `packages/client/ui-workspace/README.md`/`README.zh.md` note that Pull/Push each gate on their upstream-relative commit count and display it.
+- Every touched file reaches 100% line/branch/function coverage in its own package suite: `workspace-git.host.spec.ts` gained real-remote coverage for both the no-upstream and diverged-branch cases; `FilesNode.client.spec.tsx` gained dedicated visibility tests (in-sync hides both, diverged shows both with their counts, behind-only shows only Pull, ahead-only shows only Push) alongside updating every pre-existing Pull/Push interaction test's fixtures and title lookups.

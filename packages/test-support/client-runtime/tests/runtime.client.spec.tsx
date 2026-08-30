@@ -496,7 +496,7 @@ describe('workspaces action face', () => {
     await expect(ws.readFile('w1' as WorkspaceId, '/proj/file.ts')).resolves.toEqual({
       kind: 'text', content: '', version: 'test-version' as WorkspaceFileVersion,
     })
-    await expect(ws.gitStatus('w1' as WorkspaceId)).resolves.toEqual({ isRepo: false, branch: null, files: {} })
+    await expect(ws.gitStatus('w1' as WorkspaceId)).resolves.toEqual({ isRepo: false, branch: null, files: {}, ahead: 0, behind: 0 })
     await ws.commitAllChanges('w1' as WorkspaceId, 'a commit')
     await ws.discardAllChanges('w1' as WorkspaceId)
     await ws.pullRebase('w1' as WorkspaceId)

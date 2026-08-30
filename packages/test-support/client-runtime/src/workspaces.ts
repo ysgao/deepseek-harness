@@ -185,7 +185,7 @@ export class TestWorkspaces implements IWorkspaces {
     this.calls.push({ method: 'gitStatus', args: [workspaceId, signal] })
     const stub = this.stubs.get('gitStatus')
     if (stub !== undefined) return await (stub(workspaceId, signal) as Promise<WorkspaceGitStatus>)
-    return { isRepo: false, branch: null, files: {} }
+    return { isRepo: false, branch: null, files: {}, ahead: 0, behind: 0 }
   }
 
   /**

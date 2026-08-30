@@ -211,7 +211,7 @@ describe('FileView', () => {
   })
 
   it('shows a Diff toggle for a changed text file and renders the side-by-side diff on switch', async () => {
-    const getGitStatus = vi.fn(async () => ({ isRepo: true, branch: 'main', files: { '/ws/changed.txt': 'M' } }))
+    const getGitStatus = vi.fn(async () => ({ isRepo: true, branch: 'main', files: { '/ws/changed.txt': 'M' }, ahead: 0, behind: 0 }))
     const getFileDiff = vi.fn(async () => ({ oldText: 'old line', newText: 'new line' }))
     render(
       <FileView
@@ -231,7 +231,7 @@ describe('FileView', () => {
   })
 
   it('shows the empty-diff notice when the fetched diff sides are identical', async () => {
-    const getGitStatus = vi.fn(async () => ({ isRepo: true, branch: 'main', files: { '/ws/same.txt': 'M' } }))
+    const getGitStatus = vi.fn(async () => ({ isRepo: true, branch: 'main', files: { '/ws/same.txt': 'M' }, ahead: 0, behind: 0 }))
     const getFileDiff = vi.fn(async () => ({ oldText: 'same', newText: 'same' }))
     render(
       <FileView

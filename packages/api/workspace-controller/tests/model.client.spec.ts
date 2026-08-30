@@ -115,7 +115,7 @@ class FakeWorkspaceRemote implements WorkspaceRemote {
   onCreateDirectory: (request: WorkspaceCreateEntryRequest) => Promise<RemoteResult<WorkspaceCreateDirectoryValue>> = request =>
     Promise.resolve(remoteOk({ path: `${request.parentPath}/${request.name}` }))
   onGitStatus: (_request: WorkspaceGitRequest) => Promise<RemoteResult<WorkspaceGitStatus>> = () =>
-    Promise.resolve(remoteOk({ isRepo: false, branch: null, files: {} }))
+    Promise.resolve(remoteOk({ isRepo: false, branch: null, files: {}, ahead: 0, behind: 0 }))
   onGitCommitAll: (_request: WorkspaceGitCommitAllRequest) => Promise<RemoteResult<WorkspaceGitCommitAllValue>> = () =>
     Promise.resolve(remoteOk({ committed: true }))
   onGitDiscardAll: (_request: WorkspaceGitRequest) => Promise<RemoteResult<WorkspaceGitDiscardAllValue>> = () =>

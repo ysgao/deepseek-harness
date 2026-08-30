@@ -4,6 +4,8 @@ Status: implemented
 
 [English](2026-08-28-workspace-files-git-pull-push.md) | 中文
 
+[拉取／推送按落后／领先数门控的决定](2026-08-30-workspace-files-git-pull-push-gating.zh.md)取代了本记录下文"无条件显示的图标按钮"这一决定及其"按 ahead/behind 门控"的替代方案。本记录仍然是底层 RPC 方法、变基中途的 Discard 恢复逻辑、两个手绘图标以及 native-command 调用方式的原理权威来源。
+
 ## 问题
 
 文件树的 git 工具栏（[git-status Agent Note](2026-08-27-workspace-files-git-status.zh.md)）已经能显示分支与状态，并提供"提交全部"／"放弃全部"，但配置了远端的用户在应用内没有办法与之同步——拉取或推送都得离开应用去终端操作。
